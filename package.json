@@ -7,12 +7,17 @@
   "license": "MIT",
   "homepage": "https://infinitevariance.ai",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "test": "node test/graph-parity.mjs",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"test/unit/*.test.mjs\"",
+    "test:real": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"test/real/*.test.mjs\"",
     "dist": "electron-vite build && electron-builder --win --x64 --publish never",
     "release": "electron-vite build && electron-builder --win --x64 --publish always",
     "dist:linux": "electron-vite build && electron-builder --linux --x64 --publish never"

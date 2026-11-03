@@ -5,6 +5,16 @@ import fs from 'node:fs'
 import { buildPrompt, checkPrompt } from '../src/service/graph.js'
 
 const W = (process.env.IV_STUDIO_WORKFLOWS || 'D:/H3Characters/_workflows').replace(/[\/]?$/, '/')
+// The fixtures live outside the repo. If the variable is unset and the default folder is not there, there is
+// nothing to compare: say so and pass. If it is set to a folder without them, that is a typo: fail.
+if (!fs.existsSync(W + 'struct_states.json')) {
+  if (process.env.IV_STUDIO_WORKFLOWS) {
+    console.error(`graph-parity: IV_STUDIO_WORKFLOWS is ${W} but struct_states.json is not there.`)
+    process.exit(1)
+  }
+  console.log(`graph-parity skipped: no fixtures in ${W} (set IV_STUDIO_WORKFLOWS to the folder holding struct_states.json). npm run test:unit covers the graph builder without them.`)
+  process.exit(0)
+}
 const template = JSON.parse(fs.readFileSync('resources/workflows/iv_studio_api.json', 'utf8'))
 const meta = JSON.parse(fs.readFileSync('resources/workflows/iv_studio_api.groups.json', 'utf8'))
 const states = JSON.parse(fs.readFileSync(W + 'struct_states.json', 'utf8'))
