@@ -1,5 +1,5 @@
 // Characterization: what src/service/setup.js says about the GPU today, against the fake ComfyUI.
-// These pin CURRENT behaviour. r1 (the Mac port) changes some of it on purpose and flips the matching test.
+// These pin CURRENT behaviour. Supporting Apple Silicon (mps) changes some of it on purpose, and the matching test then flips.
 //   node --test test/unit/setup-gpu.test.mjs
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -38,12 +38,18 @@ describe('checkSetup GPU item', () => {
     assert.match(gpu.fix, /Under 16 GB/)
   })
 
-  test('mps is rejected today (r1 will flip this)', async () => {
-    const { gpu, ready } = await gpuItem('mps')
-    assert.equal(gpu.status, 'missing')
-    assert.equal(gpu.detail, 'mps · 64 GB')
-    // 'missing' is blocking, so the whole app reports not ready on a Mac even before nodes and models are counted
-    assert.equal(ready, false)
+  const blocking = (r) => r.items.filter((i) => i.status === 'missing').map((i) => i.id)
+
+  test('mps is rejected today (Apple Silicon ComfyUI reports mps; this flips when it is supported)', async () => {
+    const r = await gpuItem('mps')
+    assert.equal(r.gpu.status, 'missing')
+    assert.equal(r.gpu.detail, 'mps · 64 GB')
+    // 'missing' blocks, so the GPU item is one of the reasons setup is not ready
+    assert.ok(blocking(r).includes('gpu'))
+  })
+
+  test('cuda does not block on the GPU item', async () => {
+    assert.ok(!blocking(await gpuItem('cuda')).includes('gpu'))
   })
 
   test('no devices at all is missing, with "No GPU reported"', async () => {
@@ -68,12 +74,20 @@ describe('checkSetup GPU item', () => {
     assert.deepEqual(r.items.map((i) => i.id), ['comfyui'])
   })
 
-  test('DLSS pack is a warning, not blocking, when ComfyUI is on Linux (the cloud)', async () => {
+  const dlssStatus = async (os) => {
     fake.setDevices('cuda')
-    fake.state.os = 'posix'
+    fake.state.os = os
     const r = await checkSetup({ comfy, template, manifest, characters: [] })
     const dlss = manifest.node_packs.find((p) => p.classes.includes('DLSS5_Enhance_Video'))
-    assert.equal(r.items.find((i) => i.id === `pack:${dlss.label}`).status, 'warn')
+    return r.items.find((i) => i.id === `pack:${dlss.label}`).status
+  }
+
+  test('DLSS pack is a warning, not blocking, when ComfyUI is on Linux (the cloud)', async () => {
+    assert.equal(await dlssStatus('linux'), 'warn')
+  })
+
+  test('DLSS pack is missing (blocking) on Windows when its nodes are not installed', async () => {
+    assert.equal(await dlssStatus('win32'), 'missing')
   })
 })
 

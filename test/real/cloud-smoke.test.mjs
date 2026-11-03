@@ -1,11 +1,6 @@
-// Placeholder real test. Skips unless IV_REAL=1. See test/real/README.md.
-// When it runs it SPENDS Comfy Cloud credits, so run it deliberately.
-//   IV_REAL=1 npm run test:real
-// r2 (the Comfy Cloud backend) fills this in with one cheap job; its mocked twin lives in test/unit/.
+// Placeholder for the real tests. There are none yet, so this only reports that.
+// A real test goes in this folder, is gated on IV_REAL=1, and SPENDS Comfy Cloud credits when it runs.
+// See test/real/README.md.
 import { test } from 'node:test'
 
-const skip = process.env.IV_REAL ? false : 'set IV_REAL=1 to run real tests (they spend Comfy Cloud credits)'
-
-test('Comfy Cloud answers /system_stats', { skip }, () => {
-  throw new Error('not written yet: r2 adds the real call here')
-})
+test.todo('no real tests yet: a Comfy Cloud /system_stats call and one cheap render belong here')

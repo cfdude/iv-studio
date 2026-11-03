@@ -6,15 +6,19 @@ import os from 'node:os'
 import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import { Comfy } from '../../src/service/comfy.js'
-import { DEVICE_PROFILES, startFakeComfy } from '../fakes/comfyui.mjs'
+import { startFakeComfy } from '../fakes/comfyui.mjs'
 
 describe('fake ComfyUI', () => {
   let fake, comfy
+  const dirs = []
   before(async () => {
     fake = await startFakeComfy()
     comfy = new Comfy(fake.url)
   })
-  after(() => fake.close())
+  after(async () => {
+    for (const d of dirs) fs.rmSync(d, { recursive: true, force: true })
+    await fake.close()
+  })
 
   test('listens on an ephemeral loopback port', () => {
     assert.match(fake.url, /^http:\/\/127\.0\.0\.1:\d+$/)
@@ -30,17 +34,27 @@ describe('fake ComfyUI', () => {
 
   test('the devices profile can be switched to mps, and back', async () => {
     fake.setDevices('mps')
-    assert.deepEqual((await comfy.systemStats()).devices, [DEVICE_PROFILES.mps])
-    assert.equal(DEVICE_PROFILES.mps.vram_total, 68719476736)
+    const [mps] = (await comfy.systemStats()).devices
+    assert.equal(mps.type, 'mps')
+    assert.equal(mps.vram_total, 68719476736)
+    assert.equal(mps.index, null)
     fake.setDevices('cuda')
     assert.equal((await comfy.systemStats()).devices[0].type, 'cuda')
+  })
+
+  test('system.os is linux by default, and can be win32', async () => {
+    assert.equal((await comfy.systemStats()).system.os, 'linux')
+    fake.state.os = 'win32'
+    assert.equal((await comfy.systemStats()).system.os, 'win32')
+    fake.state.os = 'linux'
   })
 
   test('/object_info and /object_info/<cls>', async () => {
     fake.setObjectInfo({ Foo: { input: { required: {} } }, Bar: { input: { required: {} } } })
     assert.deepEqual(Object.keys(await comfy.objectInfo()).sort(), ['Bar', 'Foo'])
     assert.deepEqual(Object.keys(await comfy.objectInfo('Foo')), ['Foo'])
-    await assert.rejects(comfy.objectInfo('Nope'), /404/)
+    // like real ComfyUI: an unknown class is 200 {}, not a 404 (the client reads a 404 as "the pod is gone")
+    assert.deepEqual(await comfy.objectInfo('Nope'), {})
   })
 
   test('/prompt returns a prompt_id, records the graph, and fills /history', async () => {
@@ -70,7 +84,7 @@ describe('fake ComfyUI', () => {
     assert.deepEqual(await comfy.history(id), {})
     const q = await comfy.queue()
     assert.equal(q.queue_pending.length + q.queue_running.length, 1)
-    assert.match(await comfy.cancel(id), /removed from queue|interrupted/)
+    assert.equal(await comfy.cancel(id),'removed from queue')
     const after = await comfy.queue()
     assert.equal(after.queue_pending.length + after.queue_running.length, 0)
   })
@@ -81,7 +95,9 @@ describe('fake ComfyUI', () => {
   })
 
   test('/upload/image takes a multipart file and answers name + subfolder', async () => {
-    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ivfake-')), 'ref.png')
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ivfake-'))
+    dirs.push(dir)
+    const f = path.join(dir, 'ref.png')
     fs.writeFileSync(f, 'not really a png')
     assert.equal(await comfy.upload(f, 'iv_studio'), 'iv_studio/ref.png')
     assert.equal(fake.uploads.at(-1).name, 'ref.png')

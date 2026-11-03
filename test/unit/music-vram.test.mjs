@@ -1,5 +1,5 @@
 // Characterization: src/service/music.js status() and the two song graphs, against the fake ComfyUI.
-// Pins CURRENT behaviour: VRAM is only read from a cuda device, so a Mac (mps) reports vramGb null (r1 may change this).
+// Pins CURRENT behaviour: VRAM is only read from a cuda device, so Apple Silicon (mps) reports vramGb null today.
 //   node --test test/unit/music-vram.test.mjs
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -30,20 +30,24 @@ function objectInfoWithMusicModels() {
 }
 
 describe('Music.status VRAM', () => {
-  let fake, music
+  let fake, music, dataDir
   before(async () => {
     fake = await startFakeComfy()
     const studio = { comfy: new Comfy(fake.url), manifest }
-    music = new Music({ studio, dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'ivmusic-')), probe: null })
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ivmusic-'))
+    music = new Music({ studio, dataDir, probe: null })
   })
-  after(() => fake.close())
+  after(async () => {
+    fs.rmSync(dataDir, { recursive: true, force: true })
+    await fake.close()
+  })
 
   test('cuda reports its VRAM in whole GB', async () => {
     fake.setDevices('cuda')
     assert.equal((await music.status()).vramGb, 24)
   })
 
-  test('mps reports no VRAM today (r1 may change this): vramGb is null', async () => {
+  test('mps reports no VRAM today: vramGb is null', async () => {
     fake.setDevices('mps')
     assert.equal((await music.status()).vramGb, null)
   })

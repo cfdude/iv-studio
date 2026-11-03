@@ -10,10 +10,10 @@ import http from 'node:http'
 
 const GB = 1024 ** 3
 
-// What /system_stats reports as "devices". 'mps' is what Comfy Desktop reports on Rob's Mac.
+// What /system_stats reports as "devices". 'mps' is what ComfyUI reports on Apple Silicon. system.os is sys.platform: 'linux', 'win32' or 'darwin'.
 export const DEVICE_PROFILES = {
   cuda: { name: 'cuda:0 NVIDIA GeForce RTX 4090 : cudaMallocAsync', type: 'cuda', index: 0, vram_total: 25757220864, vram_free: 24000000000, torch_vram_total: 25757220864, torch_vram_free: 24000000000 },
-  mps: { name: 'mps', type: 'mps', index: 0, vram_total: 68719476736, vram_free: 60000000000, torch_vram_total: 68719476736, torch_vram_free: 60000000000 }
+  mps: { name: 'mps', type: 'mps', index: null, vram_total: 68719476736, vram_free: 60000000000, torch_vram_total: 68719476736, torch_vram_free: 60000000000 }
 }
 
 const json = (res, status, body) => {
@@ -49,7 +49,7 @@ function parseMultipart(buf, contentType) {
   return { fields, file }
 }
 
-export async function startFakeComfy({ devices = 'cuda', os = 'posix', version = '0.3.99', objectInfo = {}, models = {} } = {}) {
+export async function startFakeComfy({ devices = 'cuda', os = 'linux', version = '0.3.99', objectInfo = {}, models = {} } = {}) {
   const state = {
     devices,
     os,
@@ -88,7 +88,7 @@ export async function startFakeComfy({ devices = 'cuda', os = 'posix', version =
       if (route === '/object_info') return json(res, 200, state.objectInfo)
       if (route.startsWith('/object_info/')) {
         const cls = decodeURIComponent(route.slice('/object_info/'.length))
-        return state.objectInfo[cls] ? json(res, 200, { [cls]: state.objectInfo[cls] }) : json(res, 404, {})
+        return json(res, 200, state.objectInfo[cls] ? { [cls]: state.objectInfo[cls] } : {})
       }
       if (route === '/history') return json(res, 200, state.history)
       if (route.startsWith('/history/')) {
