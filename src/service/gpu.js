@@ -53,3 +53,11 @@ export function statsReadout(stats) {
   const d = findGpu(stats?.devices)
   return { gpu: d ? { name: gpuLabel(d), total: d.vram_total, free: d.vram_free, comfyHeld: d.torch_vram_total } : null }
 }
+
+export const SEEDVR2_MPS_MESSAGE = 'SeedVR2 isn\'t available on an Apple GPU yet.'
+
+// SeedVR2 is pinned to a CUDA device. Returns the refusal for an Apple GPU, else null.
+// `kind` is the GPU type from capabilities() ('cuda', 'mps' or null).
+export function seedvr2Refusal(kind) {
+  return kind === 'mps' ? SEEDVR2_MPS_MESSAGE : null
+}
