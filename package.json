@@ -20,7 +20,8 @@
     "test:real": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"test/real/*.test.mjs\"",
     "dist": "electron-vite build && electron-builder --win --x64 --publish never",
     "release": "electron-vite build && electron-builder --win --x64 --publish always",
-    "dist:linux": "electron-vite build && electron-builder --linux --x64 --publish never"
+    "dist:linux": "electron-vite build && electron-builder --linux --x64 --publish never",
+    "dist:mac": "node scripts/check-mac-ffmpeg.mjs && electron-vite build && electron-builder --mac --arm64 --publish never"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
@@ -80,6 +81,24 @@
       "uninstallDisplayName": "IV Studio",
       "artifactName": "IV-Studio-Setup.exe",
       "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "icon": "build/icon.icns",
+      "category": "public.app-category.video"
+    },
+    "dmg": {
+      "artifactName": "IV-Studio-${version}-arm64.dmg"
     },
     "publish": [
       {
