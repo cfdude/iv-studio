@@ -4,6 +4,7 @@ import { UpdateSettings } from './Update'
 import Hero from './Hero'
 import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
+import { usePlatform } from '../platform'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
 const GB = (b) => `${(b / 1e9).toFixed(1)} GB`
@@ -495,6 +496,7 @@ export function SettingsTabs({ tab, go, setup }) {
 
 // How IV Studio starts ComfyUI: the person's own launcher (found or picked) and whether to start it on open.
 function ComfyLauncher({ settings, setSettings, notify, recheck, comfyUp }) {
+  const platform = usePlatform()
   const [l, setL] = useState(null)
   const load = () => window.ivstudio.comfy.launcher().then(setL).catch(() => {})
   useEffect(() => {
@@ -567,7 +569,7 @@ function ComfyLauncher({ settings, setSettings, notify, recheck, comfyUp }) {
         Start ComfyUI when IV Studio opens, if it isn’t running already
       </label>
       <p className="small dim">
-        {navigator.userAgent.includes('Linux')
+        {platform === 'linux'
           ? 'A .sh script beside ComfyUI, or its main.py run with its own venv’s Python, so ComfyUI starts with your own settings and keeps running after IV Studio closes. Its output goes to comfyui.log in IV Studio’s data folder.'
           : 'The same shortcut or .bat you’d double-click, so ComfyUI starts with your own settings in its own window, and keeps running after IV Studio closes.'}
       </p>

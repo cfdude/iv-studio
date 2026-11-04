@@ -8,6 +8,7 @@ import { ContextMenu, GenDialog, PickDialog } from './Generate'
 import { ask } from '../Confirm'
 import Help from '../Help'
 import { editorKeyAction, modChord } from '../../../../shared/platform'
+import { usePlatform } from '../../platform'
 import { FRAME, clipEnd, clipFor, clipLength, describeChange, editLength, editPoints, insert, newId, nextTrackId, overwrite, remove, split, timecode, titleClip, tracksOf, videoLayers } from './model'
 
 // Panel sizes, remembered between sessions: bin and effect-controls widths, the source monitor's share
@@ -31,11 +32,6 @@ function useLayout() {
     })
   return [layout, set]
 }
-// TEMPORARY platform source for the editor shortcuts and the title bar (tasks 7.2 and 7.3). Task 3.3 adds the
-// one real renderer platform source (from app:info) and must replace this and every caller of it:
-// rg -n "tempPlatform" src/renderer. It reads the browser's own answer, which is enough for the three
-// platforms but is the kind of check 3.3 removes.
-export const tempPlatform = () => (/Mac/i.test(navigator.userAgent) ? 'darwin' : /Windows/i.test(navigator.userAgent) ? 'win32' : 'linux')
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 // the frame shape of each export format, for Reframe
 const SHAPE_OF = { '1080p': '16:9', '4k': '16:9', vertical: '9:16', square: '1:1' }
@@ -73,7 +69,7 @@ const fitFades = (c) => {
 // the timeline below, every border draggable. A full-screen workspace hides IV Studio's own sidebar.
 // An agent edits the same file through the MCP server: its changes appear here with a one-click undo.
 export default function EditEditor({ editId, notify, go, focus, setFocus, characters = [] }) {
-  const platform = tempPlatform() // TEMPORARY, see tempPlatform (task 3.3 replaces it)
+  const platform = usePlatform()
   const [meta, setMeta] = useState(null)
   const [edit, setEdit] = useState(null)
   const [gens, setGens] = useState([]) // new footage on its way (src/service/editgen.js)
@@ -532,7 +528,6 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
             <span className="mono label">Effect controls</span>
           </header>
           <Inspector
-            platform={platform}
             clip={selClip}
             media={edit.media}
             meta={meta}

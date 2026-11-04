@@ -1,5 +1,6 @@
 import { clipKind, clipLength, timecode } from './model'
 import { modChord } from '../../../../shared/platform'
+import { usePlatform } from '../../platform'
 
 function Num({ label, value, onChange, step = 0.1, min = 0, max }) {
   return (
@@ -28,7 +29,8 @@ const shortcuts = (platform) => [
 ]
 
 // Effect controls: the selected clip's settings, or (nothing selected) the edit's format, markers and keys.
-export default function Inspector({ platform, clip, media, meta, settings, markers, selMarker, onClip, onSettings, onMarkers, onSeek }) {
+export default function Inspector({ clip, media, meta, settings, markers, selMarker, onClip, onSettings, onMarkers, onSeek }) {
+  const platform = usePlatform()
   if (!clip)
     return (
       <div className="ed-insp">
