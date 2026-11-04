@@ -19,7 +19,7 @@ import { Reframes } from '../service/reframe'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState } from './updater'
-import { menuTemplateFor, windowOptions } from '../shared/platform'
+import { keyStoreMissingText, menuTemplateFor, windowOptions } from '../shared/platform'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { ModelInstaller } from '../service/models'
@@ -241,7 +241,7 @@ function handle(channel, fn) {
   })
 }
 
-const KEY_STORE_MISSING = process.platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : 'No system keyring (GNOME Keyring or KWallet) is available, so the key cannot be stored safely.'
+const KEY_STORE_MISSING = keyStoreMissingText(process.platform)
 
 // On Linux without a keyring Electron falls back to a fixed built-in password ('basic_text'), which isn't safe.
 const keysSafe = () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text')

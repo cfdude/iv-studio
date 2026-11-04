@@ -26,7 +26,7 @@ import { Cutouts } from '../service/cutout'
 import { Reframes } from '../service/reframe'
 import { MediaTools } from '../service/media'
 import { comfyFolders, contentDir, dataDir, readSettings, resourcesDir, writerOf, writeSettings } from '../service/paths'
-import { mcpVideosDir } from '../service/platform'
+import { editsFolderText, mcpVideosDir, rendersFolderText } from '../service/platform'
 import { ASPECTS, FRAME_GEN_FPS, MODES } from '../service/plan'
 import { RETAKE_MODES, SHOT_SECONDS } from '../service/sequence'
 import { Studio } from '../service/studio'
@@ -291,7 +291,7 @@ tool('set_edit_settings', `Rename an edit or change its export format (${Object.
   return describe(edits.save(editId, { name, settings: { ...e.settings, ...(format && { format }), ...(fps && { fps }), ...(loudness && { loudness }) } }))
 })
 tool('delete_edit', 'Delete an edit (the timeline only: its media files and exported videos stay). Ask the person first.', { editId: z.string() }, ({ editId }) => edits.remove(editId))
-tool('add_media', `Add files to an edit's media bin: local video, picture or audio paths, and/or IV Studio renders by key (list_renders; cloud renders download to Videos\\IV Studio). Returns the new media ids. With append, each also goes on the end of V1 (video, pictures) or A1 (sound), in the order given. ${LIVE}`, {
+tool('add_media', `Add files to an edit's media bin: local video, picture or audio paths, and/or IV Studio renders by key (list_renders; cloud renders download to ${rendersFolderText(process.platform)}). Returns the new media ids. With append, each also goes on the end of V1 (video, pictures) or A1 (sound), in the order given. ${LIVE}`, {
   editId: z.string(),
   files: z.array(z.string()).optional().describe('Absolute paths on this PC'),
   renders: z.array(z.string()).optional().describe('Keys from list_renders'),
@@ -511,7 +511,7 @@ tool('make_reel', `Make a reel: pictures (and video clips), in order, cut to a s
   length: z.number().min(3).optional().describe('At most this many seconds'),
   name: z.string().default('Reel')
 }, (args) => reels.make(args))
-tool('export_edit', `Render the whole edit to one MP4 (H.264 + AAC) in Videos\\IV Studio\\Edits, or outDir. Returns at once; follow with get_edit_export. The export runs inside this MCP server, so it stops if the server stops.`, {
+tool('export_edit', `Render the whole edit to one MP4 (H.264 + AAC) in ${editsFolderText(process.platform)}, or outDir. Returns at once; follow with get_edit_export. The export runs inside this MCP server, so it stops if the server stops.`, {
   editId: z.string(),
   outDir: z.string().optional()
 }, ({ editId, outDir }) => {

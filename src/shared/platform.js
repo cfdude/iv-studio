@@ -15,6 +15,12 @@ export const dataFolderText = (platform) => (platform === 'darwin' ? '~/Library/
 export const rendersFolderText = (platform) => (platform === 'darwin' ? '~/Movies/IV Studio' : 'Videos\\IV Studio')
 export const secretStoreName = (platform) => (platform === 'darwin' ? 'Keychain' : platform === 'win32' ? 'Windows encryption' : 'GNOME Keyring or KWallet')
 export const fileManagerName = (platform) => (platform === 'darwin' ? 'Finder' : platform === 'win32' ? 'Explorer' : 'your file manager')
+// The folder separator in text shown to a person: '/' on a Mac, '\\' on Windows and Linux (which keep today's text).
+export const sepText = (platform) => (platform === 'darwin' ? '/' : '\\')
+export const editsFolderText = (platform) => `${rendersFolderText(platform)}${sepText(platform)}Edits`
+// Said when the system secret store can't hold a key. (A store that refuses access to a saved key is task 6.3's.)
+export const keyStoreMissingText = (platform) =>
+  platform === 'darwin' ? 'The Mac Keychain is not available, so the key cannot be stored safely.' : platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : `No system keyring (${secretStoreName(platform)}) is available, so the key cannot be stored safely.`
 
 // ---------- Filled in by later tasks (minimal behaviour for now) ----------
 // Task 7.3: the editor's key-to-action mapping: 'undo' | 'redo' | 'splitAll' | 'prevMarker' | 'none' | 'pass'.

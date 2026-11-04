@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Hero from './Hero'
 import { ask } from './Confirm'
+import { rendersFolderText } from '../../../shared/platform'
+import { usePlatform } from '../platform'
 
 // The title-bar meter while rendering in the cloud: GPU time and its estimated cost since IV Studio opened,
 // ticking while a GPU is up. Modal is asked every 30 s which containers run; each one counts from its own
@@ -197,6 +199,7 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
 
 // Cloud mode on the user's own Modal or RunPod account: pick one, set it up, then switch.
 export default function Cloud({ notify, recheck, setup, info }) {
+  const platform = usePlatform()
   const [st, setSt] = useState(null)
   const [gpu, setGpu] = useState('L40S')
   const [idle, setIdle] = useState(300)
@@ -391,7 +394,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
         </div>
         <div className="group-body">
           <p className="small dim">
-            Everything in Create, Sequences and the prompt writer works the same on Modal and RunPod. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps) instead. Finished videos download to Videos\IV Studio when you open them.
+            Everything in Create, Sequences and the prompt writer works the same on Modal and RunPod. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps) instead. Finished videos download to {rendersFolderText(platform)} when you open them.
           </p>
         </div>
       </section>

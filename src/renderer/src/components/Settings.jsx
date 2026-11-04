@@ -4,6 +4,7 @@ import { UpdateSettings } from './Update'
 import Hero from './Hero'
 import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
+import { sepText } from '../../../shared/platform'
 import { usePlatform } from '../platform'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
@@ -182,6 +183,7 @@ function CivitaiSettings({ settings, setSettings, notify }) {
 
 // Folders: where in ComfyUI's output folder renders save, normally and in Incognito.
 function FolderSettings({ settings, setSettings, notify, incognito }) {
+  const sep = sepText(usePlatform())
   const [normal, setNormal] = useState(settings.outputFolder || '')
   const [hidden, setHidden] = useState(settings.privateFolder || '')
   const changed = normal.trim() !== (settings.outputFolder || '') || hidden.trim() !== (settings.privateFolder || '')
@@ -205,17 +207,17 @@ function FolderSettings({ settings, setSettings, notify, incognito }) {
       <div className="group-body">
         <label className="folder-row">
           <span>Normal renders</span>
-          <span className="mono dim">output\</span>
+          <span className="mono dim">output{sep}</span>
           <input value={normal} placeholder="straight into output" onChange={(e) => setNormal(e.target.value)} />
         </label>
         <label className="folder-row">
           <span>Incognito renders</span>
-          <span className="mono dim">output\</span>
+          <span className="mono dim">output{sep}</span>
           <input value={hidden} placeholder="IV Private" onChange={(e) => setHidden(e.target.value)} />
         </label>
         <p className="small dim">
-          Incognito’s pictures, videos and sounds you add also go into input\{hidden.trim() || 'IV Private'}. Use a folder name, or a path such as
-          Studio\Private; it always stays inside ComfyUI’s folders.{incognito ? ' You’re in Incognito now.' : ''}
+          Incognito’s pictures, videos and sounds you add also go into input{sep}{hidden.trim() || 'IV Private'}. Use a folder name, or a path such as
+          Studio{sep}Private; it always stays inside ComfyUI’s folders.{incognito ? ' You’re in Incognito now.' : ''}
         </p>
         <button className="btn btn-small" disabled={!changed} onClick={save}>
           Save folders
