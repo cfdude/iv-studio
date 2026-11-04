@@ -1,5 +1,5 @@
 // Characterization: src/service/music.js status() and the two song graphs, against the fake ComfyUI.
-// Pins CURRENT behaviour: VRAM is only read from a cuda device, so Apple Silicon (mps) reports vramGb null today.
+// vramGb comes from the one GPU rule (cuda, else mps), so Apple Silicon reports its unified memory.
 //   node --test test/unit/music-vram.test.mjs
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -47,8 +47,18 @@ describe('Music.status VRAM', () => {
     assert.equal((await music.status()).vramGb, 24)
   })
 
-  test('mps reports no VRAM today: vramGb is null', async () => {
+  test('mps reports its unified memory: 64', async () => {
     fake.setDevices('mps')
+    assert.equal((await music.status()).vramGb, 64)
+  })
+
+  test('a cpu device first and an mps device second reads the mps one', async () => {
+    fake.setDevices([{ name: 'cpu', type: 'cpu' }, { name: 'mps', type: 'mps', vram_total: 32 * 1024 ** 3 }])
+    assert.equal((await music.status()).vramGb, 32)
+  })
+
+  test('cpu only: vramGb is null', async () => {
+    fake.setDevices([{ name: 'cpu', type: 'cpu' }])
     assert.equal((await music.status()).vramGb, null)
   })
 

@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { comboOptions } from './setup.js'
+import { findGpu, gpuMemoryGb } from './gpu.js'
 
 export const MUSIC_ENGINES = [
   {
@@ -103,7 +104,7 @@ export class Music {
     } catch (err) {
       return { error: err.message, ready: false, engines: MUSIC_ENGINES.map((e) => ({ ...e, ready: false, missing: [] })) }
     }
-    const gpu = stats.devices?.find((d) => d.type === 'cuda')
+    const gpu = findGpu(stats.devices)
     const engines = MUSIC_ENGINES.map((e) => {
       const nodes = e.id === 'minimax' ? ['MiniMaxMusic3TextEncode', 'EmptyMiniMaxMusic3LatentAudio'] : ['TextEncodeAceStepAudio1.5', 'EmptyAceStep1.5LatentAudio']
       const files = {}
@@ -121,7 +122,7 @@ export class Music {
       const missingNodes = nodes.filter((n) => !info[n])
       return { ...e, ready: !missing.length && !missingNodes.length, missing, missingNodes, files }
     })
-    return { ready: engines.some((e) => e.ready), engines, vramGb: gpu ? Math.round(gpu.vram_total / 1024 ** 3) : null }
+    return { ready: engines.some((e) => e.ready), engines, vramGb: gpu ? Math.round(gpuMemoryGb(gpu)) : null }
   }
 
   // Queues one song. Returns the song record; it fills in as the job runs (see list()).
