@@ -8,7 +8,7 @@ import { harnessStatus } from '../service/harness'
 import { pasteMessage, skillMarkdown, readGuide } from '../service/agent'
 import { Cloud, GPUS } from '../service/cloud'
 import { RunPod, GPUS as RUNPOD_GPUS } from '../service/runpod'
-import { comfyUp, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launchersIn, startApp, waitUp } from '../service/comfylauncher'
+import { comfyUp, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launcherTypes, launchersIn, notComfyFolderMessage, startApp, waitUp } from '../service/comfylauncher'
 import { randomBytes } from 'node:crypto'
 import { Edits, FORMATS, LOUDNESS } from '../service/edits'
 import { EditGen } from '../service/editgen'
@@ -913,7 +913,7 @@ app.whenReady().then(() => {
     return { chosen: s.comfyLauncher || null, using: launcherOf(s), folder, inFolder: folder ? launchersIn(folder) : [], found: findLaunchers(), autoStart: s.comfyAutoStart !== false, local: isLocalUrl(s.comfyUrl) && s.target !== 'cloud', starting: !!comfyStarting }
   })
   handle('comfy:chooseLauncher', async () => {
-    const filters = process.platform === 'win32' ? [{ name: 'Shortcut, .bat or ComfyUI.exe', extensions: ['lnk', 'bat', 'cmd', 'exe'] }] : [{ name: 'Shell script or main.py', extensions: ['sh', 'py', 'AppImage'] }]
+    const filters = [launcherTypes(process.platform)]
     const r = await dialog.showOpenDialog(win, { title: 'Start ComfyUI with', properties: ['openFile'], filters })
     if (r.canceled || !r.filePaths[0]) return null
     writeSettings({ comfyLauncher: r.filePaths[0] }, BASE)
@@ -924,7 +924,7 @@ app.whenReady().then(() => {
     const r = await dialog.showOpenDialog(win, { title: 'Your ComfyUI folder', properties: ['openDirectory'] })
     if (r.canceled || !r.filePaths[0]) return null
     const dir = r.filePaths[0]
-    if (!isComfyFolder(dir)) throw new Error(process.platform === 'win32' ? 'That folder doesn’t look like ComfyUI. Pick the folder that holds ComfyUI (its main.py, or run_nvidia_gpu.bat and the ComfyUI folder), or ComfyUI.exe’s folder.' : 'That folder doesn’t look like ComfyUI. Pick the folder that holds its main.py.')
+    if (!isComfyFolder(dir)) throw new Error(notComfyFolderMessage(process.platform))
     writeSettings({ comfyFolder: dir, comfyLauncher: '' }, BASE)
     return dir
   })

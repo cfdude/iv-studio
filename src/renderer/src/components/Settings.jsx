@@ -4,7 +4,7 @@ import { UpdateSettings } from './Update'
 import Hero from './Hero'
 import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
-import { sepText } from '../../../shared/platform'
+import { comfyLauncherHelp, sepText } from '../../../shared/platform'
 import { usePlatform } from '../platform'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
@@ -571,9 +571,7 @@ function ComfyLauncher({ settings, setSettings, notify, recheck, comfyUp }) {
         Start ComfyUI when IV Studio opens, if it isn’t running already
       </label>
       <p className="small dim">
-        {platform === 'linux'
-          ? 'A .sh script beside ComfyUI, or its main.py run with its own venv’s Python, so ComfyUI starts with your own settings and keeps running after IV Studio closes. Its output goes to comfyui.log in IV Studio’s data folder.'
-          : 'The same shortcut or .bat you’d double-click, so ComfyUI starts with your own settings in its own window, and keeps running after IV Studio closes.'}
+        {comfyLauncherHelp(platform)}
       </p>
     </div>
   )

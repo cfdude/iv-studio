@@ -22,6 +22,15 @@ export const editsFolderText = (platform) => `${rendersFolderText(platform)}${se
 export const keyStoreMissingText = (platform) =>
   platform === 'darwin' ? 'The Mac Keychain is not available, so the key cannot be stored safely.' : platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : `No system keyring (${secretStoreName(platform)}) is available, so the key cannot be stored safely.`
 
+// The Settings -> ComfyUI help under the launcher picker. Windows keeps today's text (and is what an unknown
+// platform shows, as before); Linux keeps its own; a Mac names Comfy Desktop.app and ComfyUI's main.py.
+export const comfyLauncherHelp = (platform) =>
+  platform === 'darwin'
+    ? 'Comfy Desktop.app, or a .sh script or main.py in your ComfyUI folder, so ComfyUI starts the way you’d start it yourself and keeps running after IV Studio closes. A ComfyUI folder’s main.py runs with its own venv’s Python, and its output goes to comfyui.log in IV Studio’s data folder.'
+    : platform === 'linux'
+      ? 'A .sh script beside ComfyUI, or its main.py run with its own venv’s Python, so ComfyUI starts with your own settings and keeps running after IV Studio closes. Its output goes to comfyui.log in IV Studio’s data folder.'
+      : 'The same shortcut or .bat you’d double-click, so ComfyUI starts with your own settings in its own window, and keeps running after IV Studio closes.'
+
 // ---------- Filled in by later tasks (minimal behaviour for now) ----------
 // Task 7.3: the editor's key-to-action mapping: 'undo' | 'redo' | 'splitAll' | 'prevMarker' | 'none' | 'pass'.
 // This is the modifier branch of the editor's onKey, in the same order as it always ran: the mapped

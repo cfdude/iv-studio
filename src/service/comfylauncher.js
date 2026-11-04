@@ -21,6 +21,12 @@ export function launcherTypes(platform = process.platform) {
   return { name: 'Shell script or main.py', extensions: ['sh', 'py', 'AppImage'] }
 }
 
+// What Settings says when the folder picked isn't a ComfyUI one (Windows can also have a portable install's .bat).
+export const notComfyFolderMessage = (platform = process.platform) =>
+  platform === 'win32'
+    ? 'That folder doesn’t look like ComfyUI. Pick the folder that holds ComfyUI (its main.py, or run_nvidia_gpu.bat and the ComfyUI folder), or ComfyUI.exe’s folder.'
+    : 'That folder doesn’t look like ComfyUI. Pick the folder that holds its main.py.'
+
 // Only a ComfyUI on this PC can be started from here.
 export function isLocalUrl(url) {
   try {
