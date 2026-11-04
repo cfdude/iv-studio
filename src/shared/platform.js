@@ -37,8 +37,11 @@ export function editorKeyAction(e, platform) {
 export const macMenuTemplate = () => [{ role: 'appMenu' }, { role: 'fileMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]
 // What to install on this platform: the template on a Mac, null (no menu, as today) everywhere else.
 export const menuTemplateFor = (platform) => (platform === 'darwin' ? macMenuTemplate() : null)
-// Task 7.2: extra BrowserWindow options for a platform, merged over today's.
-export const windowOptions = () => ({})
+// Extra BrowserWindow options for a platform, merged over the common ones. Windows and Linux add nothing.
+// A Mac keeps its window buttons (hidden title bar style) and puts them mid-way down the 40 px bar; the page
+// pads its title bar to clear them (styles.css, under data-platform="darwin"). Electron's typings only say
+// titleBarOverlay "enables" the titlebar-area CSS variables, not that content moves, and the page uses none.
+export const windowOptions = (platform) => (platform === 'darwin' ? { trafficLightPosition: { x: 16, y: 12 } } : {})
 
 // ---------- Updates ----------
 // Which update UI to show, from the update status (or the whole state): 'show' | 'none'. 'off' (updates held

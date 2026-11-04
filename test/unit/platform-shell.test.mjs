@@ -81,6 +81,29 @@ describe('macMenuTemplate', () => {
   })
 })
 
+describe('windowOptions', () => {
+  test('win32 and linux add nothing, so today’s options stay byte-identical', () => {
+    const base = { titleBarStyle: 'hidden', titleBarOverlay: { color: '#000', symbolColor: '#fff', height: 40 } }
+    for (const p of ['win32', 'linux']) {
+      assert.deepEqual(shared.windowOptions(p), {})
+      assert.equal(JSON.stringify({ ...base, ...shared.windowOptions(p) }), JSON.stringify(base))
+    }
+  })
+  test('darwin adds only trafficLightPosition, centred in the 40 px title bar', () => {
+    const o = shared.windowOptions('darwin')
+    assert.deepEqual(Object.keys(o), ['trafficLightPosition'])
+    const { x, y } = o.trafficLightPosition
+    assert.ok(Number.isInteger(x) && x >= 0)
+    // The buttons are about 16 px tall, so y puts them mid-bar.
+    assert.ok(y >= 8 && y + 16 <= 32)
+  })
+  test('index.js merges it over the window options, after the title bar settings', () => {
+    const src = fs.readFileSync('src/main/index.js', 'utf8')
+    const at = (re) => src.search(re)
+    assert.ok(at(/titleBarOverlay:/) > 0 && at(/\.\.\.windowOptions\(process\.platform\)/) > at(/titleBarOverlay:/))
+  })
+})
+
 describe('updates switch', () => {
   test('darwin is off by default; win32 and linux are on', () => {
     assert.equal(shared.MAC_UPDATES, false)

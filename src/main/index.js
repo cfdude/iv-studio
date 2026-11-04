@@ -19,7 +19,7 @@ import { Reframes } from '../service/reframe'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState } from './updater'
-import { menuTemplateFor } from '../shared/platform'
+import { menuTemplateFor, windowOptions } from '../shared/platform'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { ModelInstaller } from '../service/models'
@@ -181,6 +181,7 @@ function createWindow() {
     icon: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'icon.png'),
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: BG, symbolColor: '#f1ede5', height: 40 },
+    ...windowOptions(process.platform),
     webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
   })
   win.webContents.on('will-navigate', (e, url) => {

@@ -59,10 +59,3 @@ describe('wording helpers', () => {
     assert.equal(shared.fileManagerName('linux'), 'your file manager')
   })
 })
-
-// Stubs: later tasks fill these in (7.2). They pin only the minimal behaviour for now.
-describe('stubs for later tasks', () => {
-  test('windowOptions adds nothing until task 7.2', () => {
-    for (const p of ['darwin', 'win32', 'linux']) assert.deepEqual(shared.windowOptions(p), {})
-  })
-})
