@@ -10,7 +10,15 @@ import path from 'node:path'
 
 const LAUNCHABLE = /\.(lnk|bat|cmd|exe)$/i
 const LINUX_LAUNCHABLE = /\.(sh|py|AppImage)$/i
-export const launchable = (platform = process.platform) => (platform === 'win32' ? LAUNCHABLE : LINUX_LAUNCHABLE)
+const MAC_LAUNCHABLE = /\.(app|sh|py)$/i
+export const launchable = (platform = process.platform) => (platform === 'win32' ? LAUNCHABLE : platform === 'darwin' ? MAC_LAUNCHABLE : LINUX_LAUNCHABLE)
+
+// The file picker's filter for the launcher (Settings → ComfyUI), per platform.
+export function launcherTypes(platform = process.platform) {
+  if (platform === 'win32') return { name: 'Shortcut, .bat or ComfyUI.exe', extensions: ['lnk', 'bat', 'cmd', 'exe'] }
+  if (platform === 'darwin') return { name: 'Comfy Desktop.app, a shell script or main.py', extensions: ['app', 'sh', 'py'] }
+  return { name: 'Shell script or main.py', extensions: ['sh', 'py', 'AppImage'] }
+}
 
 // Only a ComfyUI on this PC can be started from here.
 export function isLocalUrl(url) {
@@ -108,7 +116,8 @@ export function launchersIn(dir, platform = process.platform) {
 export function launch(file, { platform = process.platform, logFile = path.join(os.tmpdir(), 'iv-studio-comfyui.log') } = {}) {
   if (!file || !fs.existsSync(file)) throw new Error('That ComfyUI launcher no longer exists. Pick it again in Settings → ComfyUI.')
   if (platform !== 'win32') {
-    if (!LINUX_LAUNCHABLE.test(file)) throw new Error('Pick a .sh script or ComfyUI’s main.py to start ComfyUI with.')
+    if (platform === 'darwin' && !MAC_LAUNCHABLE.test(file)) throw new Error('Pick Comfy Desktop.app, a .sh script or ComfyUI’s main.py to start ComfyUI with.')
+    if (platform !== 'darwin' && !LINUX_LAUNCHABLE.test(file)) throw new Error('Pick a .sh script or ComfyUI’s main.py to start ComfyUI with.')
     const [cmd, args] = linuxCommand(file)
     const log = fs.openSync(logFile, 'a')
     spawn(cmd, args, { cwd: path.dirname(file), detached: true, stdio: ['ignore', log, log] }).unref()
