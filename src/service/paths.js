@@ -1,10 +1,14 @@
 // Where IV Studio keeps its data and finds its bundled resources, for both the app and the MCP server.
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
-export function dataDir() {
-  if (process.env.IV_STUDIO_DATA) return process.env.IV_STUDIO_DATA
-  const base = process.env.APPDATA || path.join(process.env.HOME || '.', '.config')
+// A Mac keeps it in ~/Library/Application Support (Electron's own default for the app's name), found with
+// os.homedir() so the MCP server, a plain Node process, gets the same folder. Windows and Linux are unchanged.
+export function dataDir({ platform = process.platform, home = os.homedir(), env = process.env } = {}) {
+  if (env.IV_STUDIO_DATA) return env.IV_STUDIO_DATA
+  if (platform === 'darwin') return path.join(home, 'Library', 'Application Support', 'IV Studio')
+  const base = env.APPDATA || path.join(env.HOME || '.', '.config')
   return path.join(base, 'IV Studio')
 }
 

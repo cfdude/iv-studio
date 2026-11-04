@@ -26,6 +26,7 @@ import { Cutouts } from '../service/cutout'
 import { Reframes } from '../service/reframe'
 import { MediaTools } from '../service/media'
 import { comfyFolders, contentDir, dataDir, readSettings, resourcesDir, writerOf, writeSettings } from '../service/paths'
+import { mcpVideosDir } from '../service/platform'
 import { ASPECTS, FRAME_GEN_FPS, MODES } from '../service/plan'
 import { RETAKE_MODES, SHOT_SECONDS } from '../service/sequence'
 import { Studio } from '../service/studio'
@@ -48,7 +49,7 @@ const DATA = contentDir(BASE)
 const studio = new Studio({ dataDir: DATA, resourcesDir: resourcesDir(), comfyUrl: readSettings(BASE).comfyUrl, models: readSettings(BASE).models })
 const server = new McpServer({ name: 'iv-studio', version: '0.1.0' }, { instructions: INSTRUCTIONS })
 // Where the app puts downloads and exports (Electron's videos folder; this process has no Electron app).
-const VIDEOS = INCOGNITO ? path.join(DATA, 'videos') : path.join(process.env.USERPROFILE || os.homedir(), 'Videos', 'IV Studio')
+const VIDEOS = INCOGNITO ? path.join(DATA, 'videos') : mcpVideosDir()
 // Packaged, the ffmpeg binaries sit outside the asar archive.
 const unpacked = (p) => p.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
 

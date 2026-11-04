@@ -19,6 +19,13 @@ const exists = (p) => {
 // Where renders go on a Mac, for the app and the MCP server alike.
 export const macVideosDir = ({ home = os.homedir() } = {}) => path.join(home, 'Movies', 'IV Studio')
 
+// The folder the MCP server saves exports to (it has no Electron app): ~/Movies/IV Studio on a Mac, otherwise
+// <USERPROFILE or home>/Videos/IV Studio, as it always was. The app keeps app.getPath('videos').
+export function mcpVideosDir(o) {
+  const { platform, home, env } = opts(o)
+  return platform === 'darwin' ? macVideosDir({ home }) : path.join(env.USERPROFILE || home, 'Videos', 'IV Studio')
+}
+
 // The Applications folders a Mac app can be in: /Applications (under root), then ~/Applications.
 const appFolders = ({ home, root }) => [path.join(root, 'Applications'), path.join(home, 'Applications')]
 
