@@ -166,3 +166,15 @@ export async function waitUp(url, { timeoutMs = 6 * 60 * 1000, every = 2000 } = 
   }
   throw new Error('ComfyUI didn’t answer within 6 minutes. Check its window for errors.')
 }
+
+// macOS: opens an app bundle through the system (so it runs as its own process and outlives IV Studio), then
+// waits for ComfyUI to answer at url. Comfy Desktop may open with its server stopped, or serve on another port,
+// so a silent wait gets its own message. spawn and waitUp are injected so a test never opens anything.
+export async function startApp(appPath, { spawn: run = spawn, waitUp: wait = waitUp, url, timeoutMs = 3 * 60 * 1000 } = {}) {
+  run('open', [appPath], { detached: true, stdio: 'ignore' }).unref()
+  try {
+    return await wait(url, { timeoutMs })
+  } catch {
+    throw new Error(`Comfy Desktop opened, but nothing answered at ${url} within 3 minutes. Start ComfyUI’s server in Comfy Desktop, or set the address Comfy Desktop shows in Settings → ComfyUI.`)
+  }
+}

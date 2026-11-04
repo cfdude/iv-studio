@@ -4,8 +4,9 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { after, describe, test } from 'node:test'
-import { findLaunchers, launch, launchable, launcherTypes } from '../../src/service/comfylauncher.js'
+import { after, before, describe, test } from 'node:test'
+import { startFakeComfy } from '../fakes/comfyui.mjs'
+import { findLaunchers, launch, launchable, launcherTypes, startApp } from '../../src/service/comfylauncher.js'
 
 const touch = (p) => (fs.mkdirSync(path.dirname(p), { recursive: true }), fs.writeFileSync(p, ''))
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-launcher-darwin-'))
@@ -82,3 +83,41 @@ describe('finding launchers on a Mac', () => {
   })
 })
 
+describe('startApp', () => {
+  const fakeSpawn = () => {
+    const calls = []
+    const spawn = (...args) => (calls.push(args), { unref: () => calls.push('unref') })
+    return { calls, spawn }
+  }
+  test('opens the app through the system, detached, and reports running once ComfyUI answers', async () => {
+    const fake = await startFakeComfy({ devices: 'mps', os: 'darwin' })
+    try {
+      const { calls, spawn } = fakeSpawn()
+      const up = await startApp('/Applications/Comfy Desktop.app', { spawn, url: fake.url, timeoutMs: 5000 })
+      assert.deepEqual(calls[0], ['open', ['/Applications/Comfy Desktop.app'], { detached: true, stdio: 'ignore' }])
+      assert.equal(calls[1], 'unref')
+      assert.equal(typeof up.seconds, 'number')
+    } finally {
+      await fake.close()
+    }
+  })
+  test('uses the injected wait when given', async () => {
+    const { spawn } = fakeSpawn()
+    const seen = []
+    const up = await startApp('/x.app', { spawn, url: 'http://127.0.0.1:1', waitUp: async (u, o) => (seen.push([u, o.timeoutMs]), { seconds: 4 }) })
+    assert.deepEqual(up, { seconds: 4 })
+    assert.deepEqual(seen, [['http://127.0.0.1:1', 180000]])
+  })
+  test('nothing answers: the message names the address and both remedies', async () => {
+    const fake = await startFakeComfy()
+    const url = fake.url
+    await fake.close()
+    const { spawn } = fakeSpawn()
+    await assert.rejects(startApp('/Applications/Comfy Desktop.app', { spawn, url, timeoutMs: 300 }), (e) => {
+      assert.ok(e.message.includes(url), 'names the address')
+      assert.match(e.message, /start ComfyUI.s server in Comfy Desktop/i)
+      assert.match(e.message, /address Comfy Desktop shows in Settings/i)
+      return true
+    })
+  })
+})
