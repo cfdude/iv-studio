@@ -899,7 +899,7 @@ app.whenReady().then(() => {
       if (!file) throw new Error('No ComfyUI launcher found. Pick one in Settings → ComfyUI.')
       send('comfy:state', { state: 'starting', detail: path.basename(file) })
       try {
-        const up = /\.app$/i.test(file) ? await startApp(file, { url: s.comfyUrl }) : (launchComfy(file, { logFile: path.join(DATA, 'comfyui.log') }), await waitUp(s.comfyUrl))
+        const up = process.platform === 'darwin' && /\.app$/i.test(file) ? await startApp(file, { url: s.comfyUrl }) : (launchComfy(file, { logFile: path.join(DATA, 'comfyui.log') }), await waitUp(s.comfyUrl))
         send('comfy:state', { state: 'up', detail: `ComfyUI started in ${up.seconds} s.` })
         return up
       } catch (err) {

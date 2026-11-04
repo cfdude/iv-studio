@@ -302,7 +302,8 @@ export class Studio {
   async enhanceFinal({ jobId, engine = 'seedvr2', resolution = 1080, scale = 1 }) {
     if (this.comfy.remote) throw new Error('Enhance runs on this PC\'s ComfyUI only.')
     if (engine !== 'dlss') {
-      const refusal = seedvr2Refusal((await this.capabilities()).gpuKind)
+      // A ComfyUI that can't be read falls through to the checks below, as before.
+      const refusal = seedvr2Refusal((await this.capabilities().catch(() => null))?.gpuKind)
       if (refusal) throw new Error(refusal)
     }
     const source = this.getJob(jobId)

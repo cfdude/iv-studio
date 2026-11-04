@@ -556,7 +556,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
               </button>
             ))}
           </div>
-          <button className="btn btn-small" disabled={!edit.clips.length} onClick={doSplit} title={`Split at the playhead (S);every track: ${modChord(platform, 'K')}`}>
+          <button className="btn btn-small" disabled={!edit.clips.length} onClick={doSplit} title={`Split at the playhead (S); every track: ${modChord(platform, 'K')}`}>
             Split
           </button>
           <button className="btn btn-small" disabled={!selected} onClick={() => doDelete(false)} title="Delete">

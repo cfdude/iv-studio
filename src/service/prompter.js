@@ -261,7 +261,7 @@ export async function ollamaStatus() {
 
 // `o` is { platform, home, root, env }, for tests; a Mac also looks inside Ollama.app and in the Homebrew folders.
 export function ollamaExe(o = {}) {
-  const { platform = process.platform, home = os.homedir(), root = '', env = process.env } = o
+  const { platform = process.platform, home = os.homedir(), root = path.sep, env = process.env } = o
   if (platform === 'darwin') return findOllama({ platform, home, root, env }) || onPath('ollama', env, home, { platform, root })
   if (platform !== 'win32') return onPath('ollama', env, home)
   const local = env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe')

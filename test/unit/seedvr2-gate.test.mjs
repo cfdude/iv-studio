@@ -54,6 +54,10 @@ describe('enhanceFinal', () => {
   test('cuda gets past the gate', async () => {
     await assert.rejects(Studio.prototype.enhanceFinal.call(stub([cuda]), { jobId: 'j', engine: 'seedvr2' }), { message: STOP })
   })
+  test('a ComfyUI that can\'t be read falls through to the usual checks', async () => {
+    const down = { ...stub([mps]), capabilities: async () => { throw new Error('fetch failed') } }
+    await assert.rejects(Studio.prototype.enhanceFinal.call(down, { jobId: 'j', engine: 'seedvr2' }), { message: STOP })
+  })
   test('DLSS enhance is not gated', async () => {
     await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps]), { jobId: 'j', engine: 'dlss' }), { message: STOP })
   })

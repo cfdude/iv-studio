@@ -137,3 +137,17 @@ describe('updates switch', () => {
     assert.equal(shared.updateView({ status: 'dev' }), 'show')
   })
 })
+
+describe('launcher start routing', () => {
+  test('only darwin sends a .app launcher to startApp', () => {
+    const src = fs.readFileSync('src/main/index.js', 'utf8')
+    assert.match(src, /process\.platform === 'darwin' && \/\\\.app\$\/i\.test\(file\) \? await startApp/)
+  })
+})
+
+describe('editor tooltips', () => {
+  test('the Split tooltip keeps its space after the semicolon', () => {
+    const src = fs.readFileSync('src/renderer/src/components/edit/Editor.jsx', 'utf8')
+    assert.match(src, /\(S\); every track: \$\{modChord\(platform, 'K'\)\}/)
+  })
+})

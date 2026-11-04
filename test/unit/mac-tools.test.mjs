@@ -142,3 +142,22 @@ describe('voice setup', () => {
     })
   }
 })
+
+describe('ollamaExe defaults', () => {
+  test('with no root, darwin looks in /Applications, not a folder relative to the working directory', () => {
+    // A decoy Ollama.app under the working directory is only found if the default root is relative.
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ollama-cwd-'))
+    const decoy = path.join(cwd, 'Applications', 'Ollama.app', 'Contents', 'Resources', 'ollama')
+    fs.mkdirSync(path.dirname(decoy), { recursive: true })
+    fs.writeFileSync(decoy, '', { mode: 0o755 })
+    const before = process.cwd()
+    try {
+      process.chdir(cwd)
+      const found = ollamaExe({ platform: 'darwin', home: cwd, env: { PATH: '' } })
+      assert.ok(!found || path.isAbsolute(found), String(found))
+    } finally {
+      process.chdir(before)
+      fs.rmSync(cwd, { recursive: true, force: true })
+    }
+  })
+})
