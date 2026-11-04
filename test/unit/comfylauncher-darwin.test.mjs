@@ -5,8 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { after, describe, test } from 'node:test'
-
-import { launch, launchable, launcherTypes } from '../../src/service/comfylauncher.js'
+import { findLaunchers, launch, launchable, launcherTypes } from '../../src/service/comfylauncher.js'
 
 const touch = (p) => (fs.mkdirSync(path.dirname(p), { recursive: true }), fs.writeFileSync(p, ''))
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-launcher-darwin-'))
@@ -36,6 +35,50 @@ describe('what a Mac accepts as a launcher', () => {
     const txt = path.join(root, 'a.txt')
     touch(txt)
     assert.throws(() => launch(txt, { platform: 'darwin' }), (e) => /\.app/.test(e.message) && /\.sh/.test(e.message) && /\.py/.test(e.message) && !/\.bat|\.exe|AppImage/.test(e.message))
+  })
+})
+
+describe('finding launchers on a Mac', () => {
+  test('Rob’s layout: the app first, then the Comfy Desktop install folder’s main.py', () => {
+    const { root, home, env } = fresh()
+    fs.mkdirSync(path.join(root, 'Applications', 'Comfy Desktop.app'), { recursive: true })
+    const main = path.join(home, 'ComfyUI-Installs', 'ComfyUI', 'ComfyUI', 'main.py')
+    touch(main)
+    touch(path.join(path.dirname(main), '.venv', 'bin', 'python'))
+    const found = findLaunchers({ platform: 'darwin', home, root, env })
+    assert.deepEqual(found.map((f) => [f.path, f.label]), [
+      [path.join(root, 'Applications', 'Comfy Desktop.app'), 'Comfy Desktop (app)'],
+      [main, 'main.py']
+    ])
+  })
+  test('no app bundle: no app candidate, folders still offered', () => {
+    const { root, home, env } = fresh()
+    const main = path.join(home, 'ComfyUI-Installs', 'ComfyUI', 'ComfyUI', 'main.py')
+    touch(main)
+    assert.deepEqual(findLaunchers({ platform: 'darwin', home, root, env }).map((f) => f.path), [main])
+  })
+  test('an unrelated "comfy" folder with no main.py is not offered', () => {
+    const { root, home, env } = fresh()
+    touch(path.join(home, 'ComfyUI-Installs', 'comfy-notes', 'readme.txt'))
+    touch(path.join(home, 'comfy-stuff', 'readme.txt'))
+    assert.deepEqual(findLaunchers({ platform: 'darwin', home, root, env }), [])
+  })
+  test('~/ComfyUI-Installs is searched on a Mac only', () => {
+    const { root, home, env } = fresh()
+    touch(path.join(home, 'ComfyUI-Installs', 'ComfyUI', 'ComfyUI', 'main.py'))
+    assert.equal(findLaunchers({ platform: 'linux', home, root, env }).length, 0)
+  })
+  test('with no root given, /Applications means the real /Applications, not a relative folder', () => {
+    const { home, env } = fresh()
+    const cwd = process.cwd()
+    const work = fs.mkdtempSync(path.join(tmp, 'cwd-'))
+    fs.mkdirSync(path.join(work, 'Applications', 'Comfy Desktop.app'), { recursive: true })
+    process.chdir(work)
+    try {
+      assert.ok(!findLaunchers({ platform: 'darwin', home, env }).some((f) => f.path.startsWith('Applications')))
+    } finally {
+      process.chdir(cwd)
+    }
   })
 })
 

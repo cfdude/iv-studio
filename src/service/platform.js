@@ -7,7 +7,7 @@ import path from 'node:path'
 
 export * from '../shared/platform.js'
 
-const opts = (o = {}) => ({ platform: o.platform ?? process.platform, home: o.home ?? os.homedir(), root: o.root ?? '', env: o.env ?? process.env })
+const opts = (o = {}) => ({ platform: o.platform ?? process.platform, home: o.home ?? os.homedir(), root: o.root ?? path.sep, env: o.env ?? process.env })
 const exists = (p) => {
   try {
     return fs.existsSync(p)
