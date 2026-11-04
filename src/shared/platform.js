@@ -32,8 +32,11 @@ export function editorKeyAction(e, platform) {
   if (e.ctrlKey || e.altKey || e.metaKey) return 'none'
   return 'pass'
 }
-// Task 7.1: the application menu template for macOS.
-export const macMenuTemplate = () => []
+// The application menu for macOS: the app, File (Close Window, Cmd+W), Edit (Cmd+C/V/X/A/Z) and Window
+// (Cmd+M) menus, all from Electron's own roles.
+export const macMenuTemplate = () => [{ role: 'appMenu' }, { role: 'fileMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]
+// What to install on this platform: the template on a Mac, null (no menu, as today) everywhere else.
+export const menuTemplateFor = (platform) => (platform === 'darwin' ? macMenuTemplate() : null)
 // Task 7.2: extra BrowserWindow options for a platform, merged over today's.
 export const windowOptions = () => ({})
 

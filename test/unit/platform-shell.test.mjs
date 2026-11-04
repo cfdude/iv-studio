@@ -65,6 +65,22 @@ describe('editorKeyAction', () => {
   })
 })
 
+describe('macMenuTemplate', () => {
+  test('lists the four required roles in order', () => {
+    assert.deepEqual(shared.macMenuTemplate().map((i) => i.role), ['appMenu', 'fileMenu', 'editMenu', 'windowMenu'])
+  })
+  test('menuTemplateFor: the template on darwin, null on win32 and linux', () => {
+    assert.deepEqual(shared.menuTemplateFor('darwin'), shared.macMenuTemplate())
+    assert.equal(shared.menuTemplateFor('win32'), null)
+    assert.equal(shared.menuTemplateFor('linux'), null)
+  })
+  test('index.js installs it through menuTemplateFor, so only darwin gets a menu', () => {
+    const src = fs.readFileSync('src/main/index.js', 'utf8')
+    assert.match(src, /menuTemplateFor\(process\.platform\)/)
+    assert.match(src, /setApplicationMenu\(/)
+  })
+})
+
 describe('updates switch', () => {
   test('darwin is off by default; win32 and linux are on', () => {
     assert.equal(shared.MAC_UPDATES, false)
