@@ -2,7 +2,7 @@
 //   node --test test/unit/gpu.test.mjs
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
-import { findGpu, gpuDetail, gpuLabel, gpuMemoryGb, lowMemoryAdvice, nonGpuDetail } from '../../src/service/gpu.js'
+import { findGpu, gpuDetail, gpuLabel, gpuMemoryGb, lowMemoryAdvice, nonGpuDetail, statsReadout } from '../../src/service/gpu.js'
 
 const GB = 1024 ** 3
 const cpu = { name: 'cpu', type: 'cpu' }
@@ -61,5 +61,22 @@ describe('nonGpuDetail', () => {
   test('empty and missing lists', () => {
     assert.equal(nonGpuDetail([]), 'No GPU reported')
     assert.equal(nonGpuDetail(undefined), 'No GPU reported')
+  })
+})
+
+describe('statsReadout', () => {
+  test('mixed devices use the mps one and say Apple GPU', () => {
+    assert.deepEqual(statsReadout({ devices: [cpu, mps] }).gpu, { name: 'Apple GPU', total: mps.vram_total, free: mps.vram_free, comfyHeld: mps.torch_vram_total })
+  })
+  test('cuda gives the card name', () => {
+    const g = statsReadout({ devices: [cpu, cuda] }).gpu
+    assert.equal(g.name, 'NVIDIA GeForce RTX 4090')
+    assert.equal(g.total, cuda.vram_total)
+  })
+  test('cpu-only, xpu-only, no devices and no stats give gpu null', () => {
+    assert.equal(statsReadout({ devices: [cpu] }).gpu, null)
+    assert.equal(statsReadout({ devices: [xpu] }).gpu, null)
+    assert.equal(statsReadout({ devices: [] }).gpu, null)
+    assert.equal(statsReadout(null).gpu, null)
   })
 })

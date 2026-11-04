@@ -36,6 +36,7 @@ import { ACE_KEYS, Music, MUSIC_DEFAULTS, MUSIC_ENGINES } from '../service/music
 import { Images } from '../service/images'
 import { Civitai, CIVITAI_SITES, LORA_SORTS, LORA_TAGS } from '../service/civitai'
 import { Comfy } from '../service/comfy'
+import { statsReadout } from '../service/gpu'
 
 if (process.env.IV_STUDIO_USER_DATA) app.setPath('userData', process.env.IV_STUDIO_USER_DATA)
 if (!app.requestSingleInstanceLock()) app.quit()
@@ -998,11 +999,7 @@ app.whenReady().then(() => {
   handle('system:stats', async () => {
     if (readSettings(BASE).target === 'cloud') return null
     const st = await studio.comfy.systemStats().catch(() => null)
-    const d = st?.devices?.[0]
-    return {
-      ram: { total: os.totalmem(), free: os.freemem() },
-      gpu: d ? { name: String(d.name).replace(/^cuda:\d+\s*/, '').replace(/\s*:.*$/, ''), total: d.vram_total, free: d.vram_free, comfyHeld: d.torch_vram_total } : null
-    }
+    return { ram: { total: os.totalmem(), free: os.freemem() }, ...statsReadout(st) }
   })
   // @ mentions: the cast (characters) and places a prompt can name, and the places themselves
   handle('cast:list', () => studio.cast.members())

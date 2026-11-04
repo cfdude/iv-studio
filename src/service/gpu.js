@@ -47,3 +47,9 @@ export function nonGpuDetail(devices) {
   if (!other) return 'cpu (not a GPU)'
   return `${other.name || other.type} (not supported yet)`
 }
+
+// The title bar's GPU segment from /system_stats: null without a cuda or mps device.
+export function statsReadout(stats) {
+  const d = findGpu(stats?.devices)
+  return { gpu: d ? { name: gpuLabel(d), total: d.vram_total, free: d.vram_free, comfyHeld: d.torch_vram_total } : null }
+}
