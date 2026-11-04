@@ -14,6 +14,7 @@ import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
 import { Cloud } from './cloud.js'
+import { findBrowser as findMacBrowser } from './platform.js'
 
 export const ENGINE = {
   name: 'OpenKatana',
@@ -41,7 +42,9 @@ const readJson = (file, fallback) => {
   }
 }
 
-export function findBrowser(platform = process.platform, env = process.env) {
+// `where` ({ home, root }) points the Mac bundle search at a temp tree in tests.
+export function findBrowser(platform = process.platform, env = process.env, where = {}) {
+  if (platform === 'darwin') return findMacBrowser({ platform, env, ...where })
   if (platform === 'win32') {
     const pf = [env['ProgramFiles(x86)'], env.ProgramFiles, env.LOCALAPPDATA].filter(Boolean)
     const rel = ['Microsoft/Edge/Application/msedge.exe', 'Google/Chrome/Application/chrome.exe']
@@ -81,7 +84,7 @@ export class Shinobi {
   installed = () => fs.existsSync(this.python) && readJson(this.marker(), {}).commit === ENGINE.commit
   faceModelsReady = () => FACE_MODELS.files.every((f) => fs.existsSync(path.join(this.faceDir, f)))
 
-  // Edge ships with Windows; Chrome works too. On Linux, Chrome, Chromium or Edge. The engine drives it headless to
+  // Edge ships with Windows; Chrome works too. On Linux, Chrome, Chromium or Edge. On a Mac, Chrome, Edge, Chromium or Brave in /Applications. The engine drives it headless to
   // draw each frame (previs and website capture use the same one).
   browser() {
     return findBrowser()
