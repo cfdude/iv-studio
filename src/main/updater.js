@@ -5,8 +5,8 @@
 // installs on quit, so a test can't replace the installed app.
 import { app } from 'electron'
 import electronUpdater from 'electron-updater'
+import { updatesEnabled } from '../shared/platform'
 
-const { autoUpdater } = electronUpdater
 const SIX_HOURS = 6 * 60 * 60 * 1000
 const TEST_FEED = process.env.IV_STUDIO_UPDATE_FEED
 
@@ -19,12 +19,20 @@ export function initUpdater(onChange) {
     onChange(state)
   }
 
+  // Held back on this platform (a Mac build while MAC_UPDATES is off): never touch the update library.
+  if (!updatesEnabled(process.platform)) {
+    set({ status: 'off' })
+    return { check: async () => state, install: () => false }
+  }
+
   // Development builds have no app-update.yml; only packaged builds check.
   if (!app.isPackaged) {
     set({ status: 'dev' })
     return { check: async () => state, install: () => false }
   }
 
+  // Only here, so a build that doesn't update never builds electron-updater's platform updater.
+  const { autoUpdater } = electronUpdater
   if (TEST_FEED) autoUpdater.setFeedURL({ provider: 'generic', url: TEST_FEED })
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = !TEST_FEED

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { updateView } from '../../../shared/platform'
 
 // IV Studio's own updates: the main process checks GitHub on launch and every six hours and downloads a
 // new version in the background. These show where it's at, and install it with one click.
@@ -16,6 +17,8 @@ const install = (notify) => window.ivstudio.update.install().catch((err) => noti
 // In the sidebar's foot, in place of the version number.
 export function UpdateButton({ notify }) {
   const u = useUpdate()
+  // With updates off the foot keeps the version number and no update control.
+  if (updateView(u) === 'none') return <span>v{u?.version}</span>
   if (u?.status === 'ready')
     return (
       <button className="nav-update ready" onClick={() => install(notify)} title={`IV Studio ${u.available} is downloaded. Restart to install it; anything open is saved.`}>
@@ -36,7 +39,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : null)
 export function UpdateSettings({ notify }) {
   const u = useUpdate()
   const [checking, setChecking] = useState(false)
-  if (!u) return null
+  if (!u || updateView(u) === 'none') return null
   const line = {
     dev: 'This is a development copy; the installed app checks for updates.',
     idle: 'Checks GitHub for a new version on launch and every six hours.',

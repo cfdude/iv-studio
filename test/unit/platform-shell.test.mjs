@@ -1,6 +1,7 @@
 // Mac app shell helpers in src/shared/platform.js: editor keys, menu, window options, updates switch.
 //   node --test test/unit/platform-shell.test.mjs
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import { describe, test } from 'node:test'
 import * as shared from '../../src/shared/platform.js'
 
@@ -61,5 +62,39 @@ describe('editorKeyAction', () => {
       assert.equal(shared.editorKeyAction(key('j'), p), 'pass')
       assert.equal(shared.editorKeyAction(key('ArrowLeft', { shiftKey: true }), p), 'pass')
     }
+  })
+})
+
+describe('updates switch', () => {
+  test('darwin is off by default; win32 and linux are on', () => {
+    assert.equal(shared.MAC_UPDATES, false)
+    assert.equal(shared.updatesEnabled('darwin'), false)
+    assert.equal(shared.updatesEnabled('win32'), true)
+    assert.equal(shared.updatesEnabled('linux'), true)
+  })
+  test('with the switch on, darwin follows the same decision as the others', () => {
+    assert.equal(shared.updatesEnabled('darwin', true), true)
+    assert.equal(shared.updatesEnabled('win32', true), true)
+  })
+  test('updater.js has no module-level autoUpdater, and gates before it is built', () => {
+    const src = fs.readFileSync('src/main/updater.js', 'utf8')
+    const lines = src.split('\n')
+    const uses = lines.map((l, i) => [i, l]).filter(([, l]) => /autoUpdater/.test(l) && !/^\s*\/\//.test(l))
+    assert.ok(uses.length > 0)
+    for (const [, l] of uses) assert.match(l, /^\s+/, `module-level use: ${l}`)
+    const init = lines.findIndex((l) => /export function initUpdater/.test(l))
+    const gate = lines.findIndex((l) => /updatesEnabled\(/.test(l))
+    const first = uses[0][0]
+    assert.ok(init < gate && gate < first, 'the updatesEnabled gate must come before the first autoUpdater use')
+    assert.match(src, /status: 'off'/)
+  })
+  test('updateView: off shows nothing, everything else is unchanged', () => {
+    assert.equal(shared.updateView('off'), 'none')
+    assert.equal(shared.updateView({ status: 'off' }), 'none')
+    for (const s of ['dev', 'idle', 'checking', 'current', 'downloading', 'ready', 'error', undefined]) {
+      assert.equal(shared.updateView(s), 'show', String(s))
+    }
+    assert.equal(shared.updateView(null), 'show')
+    assert.equal(shared.updateView({ status: 'dev' }), 'show')
   })
 })

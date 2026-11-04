@@ -60,21 +60,12 @@ describe('wording helpers', () => {
   })
 })
 
-// Stubs: later tasks fill these in (7.1, 7.2, 7.3, 8.1). They pin only the minimal behaviour for now.
+// Stubs: later tasks fill these in (7.1, 7.2). They pin only the minimal behaviour for now.
 describe('stubs for later tasks', () => {
   test('macMenuTemplate is an empty template until task 7.1', () => {
     assert.deepEqual(shared.macMenuTemplate(), [])
   })
   test('windowOptions adds nothing until task 7.2', () => {
     for (const p of ['darwin', 'win32', 'linux']) assert.deepEqual(shared.windowOptions(p), {})
-  })
-  test('updateView shows the update section until task 8.1', () => {
-    assert.equal(shared.updateView({ status: 'idle' }), 'show')
-  })
-  test('MAC_UPDATES is off, and updatesEnabled follows it only on darwin', () => {
-    assert.equal(shared.MAC_UPDATES, false)
-    assert.equal(shared.updatesEnabled('darwin'), false)
-    assert.equal(shared.updatesEnabled('win32'), true)
-    assert.equal(shared.updatesEnabled('linux'), true)
   })
 })

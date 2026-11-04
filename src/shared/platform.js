@@ -36,8 +36,13 @@ export function editorKeyAction(e, platform) {
 export const macMenuTemplate = () => []
 // Task 7.2: extra BrowserWindow options for a platform, merged over today's.
 export const windowOptions = () => ({})
-// Task 8.1: which update UI to show: 'show' | 'none'.
-export const updateView = () => 'show'
-// Task 8.1: the one switch for Mac updates. Task 8.1 makes darwin follow it; today only darwin is held off.
+
+// ---------- Updates ----------
+// Which update UI to show, from the update status (or the whole state): 'show' | 'none'. 'off' (updates held
+// back on this build) shows nothing; every other status, 'dev' included, shows what it showed before.
+export const updateView = (state) => ((state && typeof state === 'object' ? state.status : state) === 'off' ? 'none' : 'show')
+// The one switch for Mac updates. While it is false a Mac build never checks for, downloads or installs
+// updates. A working Mac feed also needs a zip target and a Developer ID signature (see the README).
 export const MAC_UPDATES = false
-export const updatesEnabled = (platform) => platform !== 'darwin' || MAC_UPDATES
+// The second argument exists only so a test can try the switch on.
+export const updatesEnabled = (platform, macUpdates = MAC_UPDATES) => platform !== 'darwin' || macUpdates
