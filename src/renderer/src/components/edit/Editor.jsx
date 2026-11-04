@@ -7,6 +7,7 @@ import Timeline from './Timeline'
 import { ContextMenu, GenDialog, PickDialog } from './Generate'
 import { ask } from '../Confirm'
 import Help from '../Help'
+import { editorKeyAction, modChord } from '../../../../shared/platform'
 import { FRAME, clipEnd, clipFor, clipLength, describeChange, editLength, editPoints, insert, newId, nextTrackId, overwrite, remove, split, timecode, titleClip, tracksOf, videoLayers } from './model'
 
 // Panel sizes, remembered between sessions: bin and effect-controls widths, the source monitor's share
@@ -30,6 +31,11 @@ function useLayout() {
     })
   return [layout, set]
 }
+// TEMPORARY platform source for the editor shortcuts and the title bar (tasks 7.2 and 7.3). Task 3.3 adds the
+// one real renderer platform source (from app:info) and must replace this and every caller of it:
+// rg -n "tempPlatform" src/renderer. It reads the browser's own answer, which is enough for the three
+// platforms but is the kind of check 3.3 removes.
+export const tempPlatform = () => (/Mac/i.test(navigator.userAgent) ? 'darwin' : /Windows/i.test(navigator.userAgent) ? 'win32' : 'linux')
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 // the frame shape of each export format, for Reframe
 const SHAPE_OF = { '1080p': '16:9', '4k': '16:9', vertical: '9:16', square: '1:1' }
@@ -67,6 +73,7 @@ const fitFades = (c) => {
 // the timeline below, every border draggable. A full-screen workspace hides IV Studio's own sidebar.
 // An agent edits the same file through the MCP server: its changes appear here with a one-click undo.
 export default function EditEditor({ editId, notify, go, focus, setFocus, characters = [] }) {
+  const platform = tempPlatform() // TEMPORARY, see tempPlatform (task 3.3 replaces it)
   const [meta, setMeta] = useState(null)
   const [edit, setEdit] = useState(null)
   const [gens, setGens] = useState([]) // new footage on its way (src/service/editgen.js)
@@ -275,13 +282,14 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
     const lower = k.toLowerCase()
     const src = panel === 'source' && source.current?.loaded()
     let done = true
+    const action = editorKeyAction(e, platform)
     if (k === 'F11' || k === '`') toggleFocus()
     else if (k === 'Escape' && focus) toggleFocus(false)
-    else if (e.ctrlKey && lower === 'z') (e.shiftKey ? redo : undo)()
-    else if (e.ctrlKey && lower === 'y') redo()
-    else if (e.ctrlKey && lower === 'k') splitAll()
-    else if (e.ctrlKey && e.shiftKey && lower === 'm') jumpMarker(-1)
-    else if (e.ctrlKey || e.altKey || e.metaKey) done = false
+    else if (action === 'undo') undo()
+    else if (action === 'redo') redo()
+    else if (action === 'splitAll') splitAll()
+    else if (action === 'prevMarker') jumpMarker(-1)
+    else if (action === 'none') done = false
     else if (k === ',') place('insert')
     else if (k === '.') place('overwrite')
     else if (src && k === ' ') source.current.toggle()
@@ -524,6 +532,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
             <span className="mono label">Effect controls</span>
           </header>
           <Inspector
+            platform={platform}
             clip={selClip}
             media={edit.media}
             meta={meta}
@@ -552,7 +561,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
               </button>
             ))}
           </div>
-          <button className="btn btn-small" disabled={!edit.clips.length} onClick={doSplit} title="Split at the playhead (S); every track: Ctrl+K">
+          <button className="btn btn-small" disabled={!edit.clips.length} onClick={doSplit} title={`Split at the playhead (S);every track: ${modChord(platform, 'K')}`}>
             Split
           </button>
           <button className="btn btn-small" disabled={!selected} onClick={() => doDelete(false)} title="Delete">
@@ -565,10 +574,10 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
             Marker
           </button>
           <span className="ed-sep" />
-          <button className="btn btn-small" disabled={!hist.past.length} onClick={undo} title="Undo (Ctrl+Z)">
+          <button className="btn btn-small" disabled={!hist.past.length} onClick={undo} title={`Undo (${modChord(platform, 'Z')})`}>
             Undo
           </button>
-          <button className="btn btn-small" disabled={!hist.future.length} onClick={redo} title="Redo (Ctrl+Y)">
+          <button className="btn btn-small" disabled={!hist.future.length} onClick={redo} title={`Redo (${modChord(platform, 'Y')})`}>
             Redo
           </button>
           <span className="ed-sep" />

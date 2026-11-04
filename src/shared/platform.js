@@ -6,6 +6,8 @@
 // Cmd on a Mac, Ctrl everywhere else.
 export const modKey = (e, platform) => (platform === 'darwin' ? !!e.metaKey : !!e.ctrlKey)
 export const modLabel = (platform) => (platform === 'darwin' ? '⌘' : 'Ctrl')
+// A shortcut hint: '⌘K' on a Mac, 'Ctrl+K' elsewhere.
+export const modChord = (platform, key) => (platform === 'darwin' ? `⌘${key}` : `Ctrl+${key}`)
 
 // ---------- Wording ----------
 export const dataFolderText = (platform) => (platform === 'darwin' ? '~/Library/Application Support/IV Studio' : platform === 'win32' ? '%APPDATA%\\IV Studio' : '~/.config/IV Studio')
@@ -16,7 +18,20 @@ export const fileManagerName = (platform) => (platform === 'darwin' ? 'Finder' :
 
 // ---------- Filled in by later tasks (minimal behaviour for now) ----------
 // Task 7.3: the editor's key-to-action mapping: 'undo' | 'redo' | 'splitAll' | 'prevMarker' | 'none' | 'pass'.
-export const editorKeyAction = () => 'pass'
+// This is the modifier branch of the editor's onKey, in the same order as it always ran: the mapped
+// combos first (the platform's modifier only; Alt was never checked there), then the guard that
+// stops every OTHER Ctrl/Alt/Meta combination (Cmd+Q/W/M/C included) reaching the tool keys.
+// 'pass' means no modifier is down, so the editor goes on to its plain keys.
+export function editorKeyAction(e, platform) {
+  const lower = String(e.key).toLowerCase()
+  const mod = modKey(e, platform)
+  if (mod && lower === 'z') return e.shiftKey ? 'redo' : 'undo'
+  if (mod && lower === 'y') return 'redo'
+  if (mod && lower === 'k') return 'splitAll'
+  if (mod && e.shiftKey && lower === 'm') return 'prevMarker'
+  if (e.ctrlKey || e.altKey || e.metaKey) return 'none'
+  return 'pass'
+}
 // Task 7.1: the application menu template for macOS.
 export const macMenuTemplate = () => []
 // Task 7.2: extra BrowserWindow options for a platform, merged over today's.

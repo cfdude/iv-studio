@@ -62,9 +62,6 @@ describe('wording helpers', () => {
 
 // Stubs: later tasks fill these in (7.1, 7.2, 7.3, 8.1). They pin only the minimal behaviour for now.
 describe('stubs for later tasks', () => {
-  test('editorKeyAction passes every key through until task 7.3', () => {
-    for (const p of ['darwin', 'win32', 'linux']) assert.equal(shared.editorKeyAction({ key: 'z', metaKey: true, ctrlKey: true }, p), 'pass')
-  })
   test('macMenuTemplate is an empty template until task 7.1', () => {
     assert.deepEqual(shared.macMenuTemplate(), [])
   })

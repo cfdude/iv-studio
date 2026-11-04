@@ -1,4 +1,5 @@
 import { clipKind, clipLength, timecode } from './model'
+import { modChord } from '../../../../shared/platform'
 
 function Num({ label, value, onChange, step = 0.1, min = 0, max }) {
   return (
@@ -9,7 +10,7 @@ function Num({ label, value, onChange, step = 0.1, min = 0, max }) {
   )
 }
 
-const SHORTCUTS = [
+const shortcuts = (platform) => [
   ['Space', 'play / pause'],
   ['J K L', 'shuttle back, stop, forward (again: faster)'],
   ['← →', 'one frame (Shift: 1 s)'],
@@ -17,17 +18,17 @@ const SHORTCUTS = [
   ['I O', 'mark In / Out in the source'],
   [', .', 'insert / overwrite from the source'],
   ['V C B N', 'select, razor, ripple trim, rolling edit'],
-  ['S, Ctrl+K', 'split selected / split every track'],
+  [`S, ${modChord(platform, 'K')}`, 'split selected / split every track'],
   ['Q W', 'ripple trim the clip start / end to the playhead'],
   ['Del, Shift+Del', 'delete, ripple delete'],
   ['M, Shift+M', 'add marker, next marker'],
   ['\\  =  −', 'fit, zoom in, zoom out'],
   ['F11, Esc', 'full screen workspace, back'],
-  ['Ctrl+Z, Ctrl+Y', 'undo, redo']
+  [`${modChord(platform, 'Z')}, ${modChord(platform, 'Y')}`, 'undo, redo']
 ]
 
 // Effect controls: the selected clip's settings, or (nothing selected) the edit's format, markers and keys.
-export default function Inspector({ clip, media, meta, settings, markers, selMarker, onClip, onSettings, onMarkers, onSeek }) {
+export default function Inspector({ platform, clip, media, meta, settings, markers, selMarker, onClip, onSettings, onMarkers, onSeek }) {
   if (!clip)
     return (
       <div className="ed-insp">
@@ -77,7 +78,7 @@ export default function Inspector({ clip, media, meta, settings, markers, selMar
         ))}
         <p className="mono label ed-insp-gap">Keys</p>
         <dl className="ed-keys small">
-          {SHORTCUTS.map(([k, v]) => (
+          {shortcuts(platform).map(([k, v]) => (
             <div key={k}>
               <dt className="mono">{k}</dt>
               <dd className="dim">{v}</dd>
