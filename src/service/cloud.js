@@ -10,12 +10,22 @@ import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
 
 const WIN = process.platform === 'win32'
-// uv's own release builds, checked against the SHA-256 uv publishes next to each. The Linux one unpacks into a folder.
+// uv's own release builds, checked against the SHA-256 uv publishes next to each. The tar.gz ones unpack into a folder.
+export const UV_VERSION = '0.13.0'
+const UV_BASE = `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}`
 export const UV_BUILDS = {
-  win32: { url: 'https://github.com/astral-sh/uv/releases/download/0.13.0/uv-x86_64-pc-windows-msvc.zip', sha256: '088962f9e7b7bd9ea740c04c650b2a21c8928c345bd99ac24350dc924dba656c', file: 'uv.zip' },
-  linux: { url: 'https://github.com/astral-sh/uv/releases/download/0.13.0/uv-x86_64-unknown-linux-gnu.tar.gz', sha256: '1468ebd5a5541121837c5a2817b9972ba6090fa6caa3d142620850a47fb75154', file: 'uv.tar.gz', strip: 1 }
+  'win32-x64': { url: `${UV_BASE}/uv-x86_64-pc-windows-msvc.zip`, sha256: '088962f9e7b7bd9ea740c04c650b2a21c8928c345bd99ac24350dc924dba656c', file: 'uv.zip' },
+  'linux-x64': { url: `${UV_BASE}/uv-x86_64-unknown-linux-gnu.tar.gz`, sha256: '1468ebd5a5541121837c5a2817b9972ba6090fa6caa3d142620850a47fb75154', file: 'uv.tar.gz', strip: 1 },
+  // Windows on Arm runs the x64 build under emulation, as it always has.
+  'win32-arm64': { url: `${UV_BASE}/uv-x86_64-pc-windows-msvc.zip`, sha256: '088962f9e7b7bd9ea740c04c650b2a21c8928c345bd99ac24350dc924dba656c', file: 'uv.zip' },
+  'darwin-arm64': { url: `${UV_BASE}/uv-aarch64-apple-darwin.tar.gz`, sha256: 'a9c1b29002cf3c83f07fa9cd8a887a3be0107d90e23189721221e7257db8e3d6', file: 'uv.tar.gz', strip: 1 }
 }
-export const UV = { version: '0.13.0', ...(UV_BUILDS[process.platform] || UV_BUILDS.linux) }
+// Chosen when an install is attempted, not when this file loads, so importing it never fails.
+export const uvBuildFor = (platform, arch) => {
+  const build = UV_BUILDS[`${platform}-${arch}`]
+  if (!build) throw new Error(`IV Studio can't install its Python tools on ${platform}-${arch} yet.`)
+  return build
+}
 // A venv keeps its programs in Scripts\ (Windows) or bin/.
 export const venvBin = (venv, name) => path.join(venv, WIN ? 'Scripts' : 'bin', WIN ? `${name}.exe` : name)
 export const MODAL_VERSION = '1.6.2'
@@ -28,7 +38,9 @@ export const GPUS = [
 ]
 
 export class Cloud {
-  constructor({ dataDir, resourcesDir, onLog }) {
+  constructor({ dataDir, resourcesDir, onLog, platform = process.platform, arch = process.arch }) {
+    this.platform = platform
+    this.arch = arch
     this.dir = path.join(dataDir, 'cloud')
     this.resourcesDir = resourcesDir
     this.onLog = onLog || (() => {})
@@ -62,6 +74,7 @@ export class Cloud {
   async ensureUv() {
     fs.mkdirSync(path.join(this.dir, 'uv'), { recursive: true })
     if (!fs.existsSync(this.uvExe)) {
+      const UV = uvBuildFor(this.platform, this.arch)
       this.onLog('Downloading uv (Python manager)…')
       const zip = path.join(this.dir, UV.file)
       const res = await fetch(UV.url)
