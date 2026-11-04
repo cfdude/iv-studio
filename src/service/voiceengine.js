@@ -18,6 +18,8 @@ export const VOICE_SETUP = {
     { name: 'Whisper large-v3 turbo', by: 'OpenAI', licence: 'MIT', url: 'https://huggingface.co/openai/whisper-large-v3-turbo' }
   ]
 }
+// Said on a Mac, where the voice engine's PyTorch (CUDA) and models are not set up yet.
+export const MAC_VOICES_LATER = 'Voices on Mac come in a later release.'
 const VERSION = 1 // bump when VOICE_PACKAGES or the models change, so setup runs again
 
 const readJson = (file, fallback) => {
@@ -30,7 +32,8 @@ const readJson = (file, fallback) => {
 
 export class VoiceEngine {
   // beforeLoad: called before the worker starts, to make room on the GPU (see Voices).
-  constructor({ dataDir, resourcesDir, onLog, beforeLoad }) {
+  constructor({ dataDir, resourcesDir, onLog, beforeLoad, platform = process.platform }) {
+    this.platform = platform
     this.beforeLoad = beforeLoad || (async () => {})
     this.dir = path.join(dataDir, 'voiceengine')
     this.resourcesDir = resourcesDir
@@ -58,7 +61,8 @@ export class VoiceEngine {
   installed = () => fs.existsSync(this.python) && readJson(this.marker(), {}).version === VERSION
 
   status() {
-    return { installed: this.installed(), installing: !!this.installing, running: !!this.proc, setup: VOICE_SETUP }
+    const unavailable = this.platform === 'darwin' ? MAC_VOICES_LATER : undefined
+    return { installed: this.installed(), installing: !!this.installing, running: !!this.proc, setup: VOICE_SETUP, ...(unavailable && { unavailable }) }
   }
 
   env() {
@@ -67,6 +71,7 @@ export class VoiceEngine {
 
   // Once, about 12 GB: Python 3.12, PyTorch for CUDA and VoxCPM, then both models.
   install() {
+    if (this.platform === 'darwin') return Promise.reject(new Error(MAC_VOICES_LATER)) // before any download
     if (this.installed()) return Promise.resolve(this.status())
     if (!this.installing)
       this.installing = (async () => {

@@ -55,6 +55,13 @@ export function EngineStatus({ status, check, notify }) {
         ))}
       </p>
     )
+  if (status.unavailable)
+    return (
+      <div className="voice-engine off">
+        <p className="mono pink">● Voices aren't available yet</p>
+        <p className="small dim">{status.unavailable}</p>
+      </div>
+    )
   const working = busy || status.installing
   return (
     <div className="voice-engine off">

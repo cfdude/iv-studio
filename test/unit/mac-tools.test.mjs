@@ -9,6 +9,7 @@ import { after, before, describe, test } from 'node:test'
 import { onPath } from '../../src/service/harness.js'
 import { ollamaExe } from '../../src/service/prompter.js'
 import { findBrowser } from '../../src/service/shinobi.js'
+import { VoiceEngine } from '../../src/service/voiceengine.js'
 
 let tmp
 let n = 0
@@ -111,4 +112,33 @@ describe('ollamaExe', () => {
     const exe = touch(path.join(local, 'Programs', 'Ollama', 'ollama.exe'))
     assert.equal(ollamaExe({ platform: 'win32', home: dir(), root: dir(), env }), exe)
   })
+})
+
+describe('voice setup', () => {
+  const make = (platform) => {
+    const e = new VoiceEngine({ dataDir: dir(), resourcesDir: dir(), onLog: () => {}, platform })
+    let calls = 0
+    e.cloud = { ensureUv: async () => calls++, uvEnv: () => ({}), exec: async () => calls++, uvExe: 'uv' }
+    e.runScript = async () => calls++
+    return { e, calls: () => calls }
+  }
+  test('darwin: says voices come later and downloads nothing', async () => {
+    const { e, calls } = make('darwin')
+    assert.match(e.status().unavailable, /later release/)
+    await assert.rejects(() => e.install(), /Voices on Mac come in a later release/)
+    assert.equal(calls(), 0)
+    assert.equal(e.installing, null)
+  })
+  for (const p of ['linux', 'win32']) {
+    test(`${p}: setup runs as before`, async () => {
+      const { e, calls } = make(p)
+      assert.equal(e.status().unavailable, undefined)
+      fs.mkdirSync(path.join(e.venv, 'bin'), { recursive: true })
+      fs.mkdirSync(path.join(e.venv, 'Scripts'), { recursive: true })
+      touch(path.join(e.venv, 'bin', 'python'))
+      touch(path.join(e.venv, 'Scripts', 'python.exe'))
+      await e.install()
+      assert.equal(calls(), 3)
+    })
+  }
 })
