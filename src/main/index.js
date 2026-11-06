@@ -755,6 +755,8 @@ app.whenReady().then(() => {
     (waking ||= (async () => {
       const r = readSettings(BASE).runpod || {}
       if (!r.volumeId) throw new Error('Set up RunPod on the Cloud page first.')
+      // Without a readable token a new pod would be open to anyone, and an old one could not be reached: set up again.
+      if (!runpodToken()) throw new Error('IV Studio can no longer read the RunPod access token it saved. Set up RunPod again on the Cloud page.')
       const current = r.url && (await runpod.health(r.url))
       if (current?.stage === 'ready') return r.url
       let url = current ? r.url : (await runpod.pods())[0]?.url
