@@ -5,6 +5,7 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { comfyFolders, dataDir, incognitoDir, readSettings, resourcesDir, writerOf, writeSettings } from '../service/paths'
 import { harnessStatus } from '../service/harness'
+import { projectSettings, secretStates } from '../service/secrets'
 import { pasteMessage, skillMarkdown, readGuide } from '../service/agent'
 import { Cloud, GPUS } from '../service/cloud'
 import { RunPod, GPUS as RUNPOD_GPUS } from '../service/runpod'
@@ -300,10 +301,9 @@ app.whenReady().then(() => {
   })()
   handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, dataDir: DATA, mcp: mcpCommand(), testCopy: TEST_COPY, incognito: INCOGNITO, links }))
   // The window never sees the Comfy.org or Civitai key, only whether one is saved.
-  const publicSettings = (s) => {
-    const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, ...rest } = s
-    return { ...rest, hasComfyKey: !!comfyApiKey, hasCloudToken: !!cloudToken, hasCivitaiKey: !!civitaiKey, hasRunpodKey: !!runpodKey }
-  }
+  // A saved key the Keychain can't open counts as not saved (and is listed as unreadable); see service/secrets.js.
+  const publicSettings = (s) => projectSettings(s, safeStorage, process.platform)
+  const secretNow = () => secretStates(readSettings(BASE), safeStorage, process.platform)
   const comfyKey = () => unseal(readSettings(BASE).comfyApiKey)
   handle('settings:get', () => publicSettings(readSettings(BASE)))
   handle('settings:setComfyKey', (key) => {
@@ -401,7 +401,7 @@ app.whenReady().then(() => {
   handle('images:toEdit', async (file, name, editId = null) => putOnEdit(file, name, editId, 'iv'))
   // ---------- LoRAs: Civitai's H3 LoRAs and the ones on this PC ----------
   civitai = new Civitai({ dataDir: DATA, comfy: new Comfy(readSettings(BASE).comfyUrl), key: () => unseal(readSettings(BASE).civitaiKey), mature: () => !!readSettings(BASE).civitaiMature, onProgress: (u) => send('loras:progress', u) })
-  handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: !!readSettings(BASE).civitaiKey }))
+  handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: publicSettings(readSettings(BASE)).hasCivitaiKey }))
   handle('loras:search', (opts) => civitai.search(opts))
   handle('loras:model', (id) => civitai.model(id))
   handle('loras:download', (opts) => civitai.download(opts))
@@ -681,17 +681,18 @@ app.whenReady().then(() => {
   handle('cloud:status', async () => {
     const s = readSettings(BASE)
     const { url, podId, ...rp } = s.runpod || {}
+    const have = secretNow()
     return {
       provider: s.cloudProvider || 'modal',
       toolkit: cloud.toolkitReady(),
       workspace: s.cloudProvider === 'runpod' ? null : await cloud.workspace(),
       cloud: s.cloud,
-      runpod: { ...rp, hasKey: !!s.runpodKey, ready: !!(rp.modelsAt && s.runpodToken) },
+      runpod: { ...rp, hasKey: have.runpodKey === 'ok', ready: !!(rp.modelsAt && have.runpodToken === 'ok') },
       target: s.target,
       gpus: GPUS,
       runpodGpus: RUNPOD_GPUS,
       busy: cloudBusy,
-      hasToken: !!s.cloudToken
+      hasToken: have.cloudToken === 'ok'
     }
   })
   handle('cloud:provider', (p) => {
@@ -815,8 +816,9 @@ app.whenReady().then(() => {
   )
   handle('cloud:use', (target) => {
     const s = readSettings(BASE)
-    if (target === 'cloud' && s.cloudProvider === 'runpod' && !(s.runpod?.modelsAt && s.runpodToken)) throw new Error('Set up RunPod first.')
-    if (target === 'cloud' && s.cloudProvider !== 'runpod' && !(s.cloud?.url && s.cloudToken)) throw new Error('Set up the cloud first.')
+    const have = secretNow()
+    if (target === 'cloud' && s.cloudProvider === 'runpod' && !(s.runpod?.modelsAt && have.runpodToken === 'ok')) throw new Error('Set up RunPod first.')
+    if (target === 'cloud' && s.cloudProvider !== 'runpod' && !(s.cloud?.url && have.cloudToken === 'ok')) throw new Error('Set up the cloud first.')
     writeSettings({ target: target === 'cloud' ? 'cloud' : 'local' }, BASE)
     makeStudio()
     return target
@@ -825,7 +827,7 @@ app.whenReady().then(() => {
   handle('cloud:usage', async () => {
     const s = readSettings(BASE)
     if (provider() === 'runpod') {
-      const running = s.runpodKey ? await runpod.pods() : []
+      const running = secretNow().runpodKey === 'ok' ? await runpod.pods() : []
       const gpu = RUNPOD_GPUS.find((g) => g.id === (running[0]?.gpu || s.runpod?.gpu)) || RUNPOD_GPUS[0]
       return { gpu: gpu.label.split(' · ')[0], perHour: running[0]?.perHour || gpu.perHour, running: running.map((p) => ({ id: p.id, startedAt: Date.parse(p.startedAt) })) }
     }
@@ -858,7 +860,7 @@ app.whenReady().then(() => {
       }
     }
   })
-  handle('prompts:status', async () => ({ ...(await ollamaStatus()), engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: !!readSettings(BASE).comfyApiKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: harnessStatus() }))
+  handle('prompts:status', async () => ({ ...(await ollamaStatus()), engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: publicSettings(readSettings(BASE)).hasComfyKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: harnessStatus() }))
   handle('prompts:write', (request) => {
     const s = readSettings(BASE)
     const w = writerOf(request?.engine ? { ...s, promptEngine: request.engine } : s)

@@ -22,6 +22,14 @@ export const editsFolderText = (platform) => `${rendersFolderText(platform)}${se
 export const keyStoreMissingText = (platform) =>
   platform === 'darwin' ? 'The Mac Keychain is not available, so the key cannot be stored safely.' : platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : `No system keyring (${secretStoreName(platform)}) is available, so the key cannot be stored safely.`
 
+// Said on a Mac when the Keychain refuses IV Studio access to its saved keys (Deny was pressed, or nobody answered).
+// Re-entering a key can't work until access is allowed, so this replaces any "enter it again" text. Plain Allow
+// asks for the password on every launch; Always Allow stops that.
+export const keychainRefusedText = (platform) =>
+  platform === 'darwin'
+    ? 'The Mac Keychain isn’t letting IV Studio open its saved keys. Open Keychain Access and allow IV Studio, or quit and start IV Studio again and, when your Mac asks, press Always Allow (plain Allow asks again every time you start).'
+    : keyStoreMissingText(platform)
+
 // The Settings -> ComfyUI help under the launcher picker. Windows keeps today's text (and is what an unknown
 // platform shows, as before); Linux keeps its own; a Mac names Comfy Desktop.app and ComfyUI's main.py.
 export const comfyLauncherHelp = (platform) =>

@@ -29,3 +29,47 @@ export const secretRemedy = (name) => {
   if (!r) throw new Error(`Unknown saved secret: ${name}`)
   return { ...r }
 }
+
+// ---------- What the window is told (task 6.3) ----------
+// `store` is Electron's safeStorage (decryptString + isEncryptionAvailable). One state per secret:
+//   'absent' | 'ok' | 'unreadable' | 'refused'
+// 'refused' is only ever a Mac whose Keychain access was denied: isEncryptionAvailable() is false, the sealed
+// value stays on disk, and nothing can be read or re-saved until the user allows access. Elsewhere an
+// unavailable store behaves as it always did: a saved value counts as saved (and is not opened here).
+const storeAvailable = (store) => {
+  try {
+    return !!store.isEncryptionAvailable()
+  } catch {
+    return false
+  }
+}
+
+export const secretStates = (settings, store, platform) => {
+  const available = storeAvailable(store)
+  const states = {}
+  for (const name of SECRET_NAMES) {
+    const sealed = settings?.[name]
+    if (!sealed) states[name] = 'absent'
+    else if (!available) states[name] = platform === 'darwin' ? 'refused' : 'ok'
+    else states[name] = readSecret(store, sealed).state
+  }
+  return states
+}
+
+// The settings the window gets: the secrets themselves never leave, only whether each is usable.
+// `unreadable` lists saved secrets that can't be opened (re-enter, or set the cloud GPU up again).
+// `secretStoreRefused` is true on a Mac whose Keychain access was denied: Settings then shows only the
+// allow-in-Keychain text, with no remedies and no key entry.
+export const projectSettings = (settings, store, platform) => {
+  const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, ...rest } = settings
+  const states = secretStates(settings, store, platform)
+  return {
+    ...rest,
+    hasComfyKey: states.comfyApiKey === 'ok',
+    hasCloudToken: states.cloudToken === 'ok',
+    hasCivitaiKey: states.civitaiKey === 'ok',
+    hasRunpodKey: states.runpodKey === 'ok',
+    unreadable: SECRET_NAMES.filter((n) => states[n] === 'unreadable'),
+    secretStoreRefused: platform === 'darwin' && !storeAvailable(store)
+  }
+}

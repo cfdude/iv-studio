@@ -4,7 +4,8 @@ import { UpdateSettings } from './Update'
 import Hero from './Hero'
 import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
-import { comfyLauncherHelp, sepText } from '../../../shared/platform'
+import { comfyLauncherHelp, keychainRefusedText, sepText } from '../../../shared/platform'
+import { secretRemedy } from '../../../service/secrets'
 import { usePlatform } from '../platform'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
@@ -113,6 +114,23 @@ function HarnessWriter({ engine, settings, harness, save }) {
 
 // Prompt writer: which engine writes prompts, the free local model, and the Comfy.org key for Context IR.
 // Civitai: the person's own API key (for downloading LoRAs) and the opt-in for mature LoRAs.
+// Saved keys the Mac Keychain (or the system) won't open, and what to do about each. On a Mac whose Keychain
+// refused access there is nothing to re-enter yet, so only the allow-in-Keychain text shows (design D8).
+function SecretNotice({ settings }) {
+  if (settings.secretStoreRefused) return <p className="notice">{keychainRefusedText('darwin')}</p>
+  const names = settings.unreadable || []
+  if (!names.length) return null
+  return (
+    <>
+      {names.map((name) => (
+        <p key={name} className="notice">
+          {secretRemedy(name).text}
+        </p>
+      ))}
+    </>
+  )
+}
+
 function CivitaiSettings({ settings, setSettings, notify }) {
   const [key, setKey] = useState('')
   async function saveKey(k) {
@@ -142,7 +160,9 @@ function CivitaiSettings({ settings, setSettings, notify }) {
         <p className="dim small">Where the LoRAs page finds LoRAs to download.</p>
       </div>
       <div className="group-body">
-        {settings.hasCivitaiKey ? (
+        {settings.secretStoreRefused ? (
+          <p className="small dim">{keychainRefusedText('darwin')}</p>
+        ) : settings.hasCivitaiKey ? (
           <p className="small">
             A Civitai API key is saved (encrypted on this PC).{' '}
             <button className="link-btn" onClick={() => saveKey('')}>
@@ -360,7 +380,9 @@ function WriterSettings({ settings, setSettings, notify }) {
             <p className="small dim">
               MiniMax's own prompt rewriter: it writes in the exact format H3 was trained on and looks at your reference media. Paid through your Comfy.org account, {status?.contextIrPrice || 'a few cents a prompt'}. It runs through ComfyUI.
             </p>
-            {settings.hasComfyKey ? (
+            {settings.secretStoreRefused ? (
+              <p className="small dim">{keychainRefusedText('darwin')}</p>
+            ) : settings.hasComfyKey ? (
               <p className="small">
                 A Comfy.org API key is saved (encrypted on this PC).{' '}
                 <button className="link-btn" onClick={() => saveKey('')}>
@@ -602,6 +624,8 @@ export default function Settings({ info, recheck, notify, go, setup }) {
     <div className="settings">
       <Hero art="settings" title="Settings" kicker="Infinite Variance" />
       <SettingsTabs tab="settings" go={go} setup={setup} />
+
+      <SecretNotice settings={settings} />
 
       <section className="group">
         <div className="group-head">
