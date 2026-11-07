@@ -1,4 +1,4 @@
-import { keyStoreMissingText } from '../shared/platform.js'
+import { keychainRefusedText } from '../shared/platform.js'
 
 // Saved secrets (design D8). A secret that was never saved is different from one that was saved and
 // can't be opened now (for example after the app's signing identity changed), and Settings tells the
@@ -49,7 +49,7 @@ const storeAvailable = (store) => {
 // Why nothing may be sealed right now, or null when the store can seal. Checked first in a step that changes
 // something remote (a deploy that makes a new token), so a refusal can't leave the old token out of step.
 // Linux's built-in-password fallback still seals, so it is not blocked here.
-export const sealBlockedText = (store, platform) => (storeAvailable(store) ? null : keyStoreMissingText(platform))
+export const sealBlockedText = (store, platform) => (storeAvailable(store) ? null : keychainRefusedText(platform))
 
 export const secretStates =(settings, store, platform) => {
   const available = storeAvailable(store)

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { sealBlockedText } from '../../src/service/secrets.js'
-import { keyStoreMissingText } from '../../src/shared/platform.js'
+import { keychainRefusedText, keyStoreMissingText, runpodTokenMissingText } from '../../src/shared/platform.js'
 
 const store = (available) => ({ isEncryptionAvailable: () => available })
 
@@ -12,7 +12,7 @@ describe('sealBlockedText', () => {
     for (const p of ['darwin', 'win32', 'linux']) assert.equal(sealBlockedText(store(true), p), null)
   })
   test('an unavailable store blocks, with the platform text', () => {
-    for (const p of ['darwin', 'win32', 'linux']) assert.equal(sealBlockedText(store(false), p), keyStoreMissingText(p))
+    for (const p of ['win32', 'linux']) assert.equal(sealBlockedText(store(false), p), keyStoreMissingText(p))
   })
   test('a store that throws counts as unavailable', () => {
     const bad = {
@@ -21,5 +21,22 @@ describe('sealBlockedText', () => {
       }
     }
     assert.equal(sealBlockedText(bad, 'win32'), keyStoreMissingText('win32'))
+  })
+})
+
+describe('words on a refused Keychain', () => {
+  test('sealBlockedText on a Mac names the Keychain remedy', () => {
+    assert.equal(sealBlockedText(store(false), 'darwin'), keychainRefusedText('darwin'))
+  })
+  test('a missing RunPod token on a refused Mac says allow the Keychain, not set up again', () => {
+    const t = runpodTokenMissingText('darwin', false)
+    assert.equal(t, keychainRefusedText('darwin'))
+    assert.ok(!/set up runpod again/i.test(t))
+  })
+  test('an unreadable token with the store available keeps the set-up-again text', () => {
+    for (const p of ['darwin', 'win32', 'linux']) assert.match(runpodTokenMissingText(p, true), /Set up RunPod again/)
+  })
+  test('Windows and Linux keep the set-up-again text', () => {
+    for (const p of ['win32', 'linux']) assert.match(runpodTokenMissingText(p, false), /Set up RunPod again/)
   })
 })

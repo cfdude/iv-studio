@@ -30,6 +30,13 @@ export const keychainRefusedText = (platform) =>
     ? 'The Mac Keychain isn’t letting IV Studio open its saved keys. Open Keychain Access and allow IV Studio, or quit and start IV Studio again and, when your Mac asks, press Always Allow (plain Allow asks again every time you start).'
     : keyStoreMissingText(platform)
 
+// Said when a saved RunPod access token can't be used. On a Mac whose Keychain refuses access, setting up
+// again can't work, so it says what to allow; otherwise it keeps the set-up-again text.
+export const runpodTokenMissingText = (platform, storeAvailable) =>
+  platform === 'darwin' && !storeAvailable
+    ? keychainRefusedText(platform)
+    : 'IV Studio can no longer read the RunPod access token it saved. Set up RunPod again on the Cloud page.'
+
 // The Settings -> ComfyUI help under the launcher picker. Windows keeps today's text (and is what an unknown
 // platform shows, as before); Linux keeps its own; a Mac names Comfy Desktop.app and ComfyUI's main.py.
 export const comfyLauncherHelp = (platform) =>

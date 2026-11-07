@@ -20,7 +20,7 @@ import { Reframes } from '../service/reframe'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState } from './updater'
-import { keyStoreMissingText, menuTemplateFor, windowOptions } from '../shared/platform'
+import { keychainRefusedText, menuTemplateFor, runpodTokenMissingText, windowOptions } from '../shared/platform'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { ModelInstaller } from '../service/models'
@@ -242,7 +242,8 @@ function handle(channel, fn) {
   })
 }
 
-const KEY_STORE_MISSING = keyStoreMissingText(process.platform)
+// keychainRefusedText is the Mac wording for a store that won't open; on Windows and Linux it is the old missing-store text.
+const KEY_STORE_MISSING = keychainRefusedText(process.platform)
 
 // On Linux without a keyring Electron falls back to a fixed built-in password ('basic_text'), which isn't safe.
 const keysSafe = () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text')
@@ -762,7 +763,7 @@ app.whenReady().then(() => {
       const r = readSettings(BASE).runpod || {}
       if (!r.volumeId) throw new Error('Set up RunPod on the Cloud page first.')
       // Without a readable token a new pod would be open to anyone, and an old one could not be reached: set up again.
-      if (!runpodToken()) throw new Error('IV Studio can no longer read the RunPod access token it saved. Set up RunPod again on the Cloud page.')
+      if (!runpodToken()) throw new Error(runpodTokenMissingText(process.platform, safeStorage.isEncryptionAvailable()))
       const current = r.url && (await runpod.health(r.url))
       if (current?.stage === 'ready') return r.url
       let url = current ? r.url : (await runpod.pods())[0]?.url
