@@ -24,15 +24,24 @@ describe('editorKeyAction', () => {
     assert.equal(shared.editorKeyAction(key('M', { metaKey: true, shiftKey: true }), 'darwin'), 'prevMarker')
   })
   test('darwin: every other Cmd combination runs nothing', () => {
-    for (const k of ['c', 'q', 'w', 'a', 'v', 'x', 'h', 'm', 's', 'j', 'l', ',', '.']) {
+    for (const k of ['c', 'q', 'w', 'v', 'x', 'h', 'm', 's', 'j', 'l', ',', '.']) {
       assert.equal(shared.editorKeyAction(key(k, { metaKey: true }), 'darwin'), 'none', `Cmd+${k}`)
     }
+  })
+  test('darwin: Cmd+A is stopped so the menu cannot select the page text', () => {
+    assert.equal(shared.editorKeyAction(key('a', { metaKey: true }), 'darwin'), 'stop')
+    assert.equal(shared.editorKeyAction(key('A', { metaKey: true }), 'darwin'), 'stop')
+    assert.equal(shared.editorKeyAction(key('A', { metaKey: true, shiftKey: true }), 'darwin'), 'none')
+    assert.equal(shared.editorKeyAction(key('a', { ctrlKey: true }), 'darwin'), 'none')
   })
   test('darwin: Ctrl is not the modifier, and still hits the guard', () => {
     assert.equal(shared.editorKeyAction(key('z', { ctrlKey: true }), 'darwin'), 'none')
     assert.equal(shared.editorKeyAction(key('k', { ctrlKey: true }), 'darwin'), 'none')
   })
   for (const p of ['win32', 'linux']) {
+    test(`${p}: Ctrl+A keeps today's behaviour`, () => {
+      assert.equal(shared.editorKeyAction(key('a', { ctrlKey: true }), p), 'none')
+    })
     test(`${p}: Ctrl maps to the editor actions`, () => {
       assert.equal(shared.editorKeyAction(key('z', { ctrlKey: true }), p), 'undo')
       assert.equal(shared.editorKeyAction(key('Z', { ctrlKey: true, shiftKey: true }), p), 'redo')

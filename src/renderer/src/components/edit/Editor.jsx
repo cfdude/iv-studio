@@ -285,6 +285,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
     else if (action === 'redo') redo()
     else if (action === 'splitAll') splitAll()
     else if (action === 'prevMarker') jumpMarker(-1)
+    else if (action === 'stop') done = true
     else if (action === 'none') done = false
     else if (k === ',') place('insert')
     else if (k === '.') place('overwrite')

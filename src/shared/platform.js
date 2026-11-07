@@ -40,10 +40,11 @@ export const comfyLauncherHelp = (platform) =>
       : 'The same shortcut or .bat you’d double-click, so ComfyUI starts with your own settings in its own window, and keeps running after IV Studio closes.'
 
 // ---------- Filled in by later tasks (minimal behaviour for now) ----------
-// Task 7.3: the editor's key-to-action mapping: 'undo' | 'redo' | 'splitAll' | 'prevMarker' | 'none' | 'pass'.
+// Task 7.3: the editor's key-to-action mapping: 'undo' | 'redo' | 'splitAll' | 'prevMarker' | 'stop' | 'none' | 'pass'.
 // This is the modifier branch of the editor's onKey, in the same order as it always ran: the mapped
 // combos first (the platform's modifier only; Alt was never checked there), then the guard that
 // stops every OTHER Ctrl/Alt/Meta combination (Cmd+Q/W/M/C included) reaching the tool keys.
+// 'stop' runs nothing but keeps the key from the menu: on a Mac, Select All would highlight the whole page.
 // 'pass' means no modifier is down, so the editor goes on to its plain keys.
 export function editorKeyAction(e, platform) {
   const lower = String(e.key).toLowerCase()
@@ -52,6 +53,7 @@ export function editorKeyAction(e, platform) {
   if (mod && lower === 'y') return 'redo'
   if (mod && lower === 'k') return 'splitAll'
   if (mod && e.shiftKey && lower === 'm') return 'prevMarker'
+  if (platform === 'darwin' && e.metaKey && !e.shiftKey && !e.altKey && !e.ctrlKey && lower === 'a') return 'stop'
   if (e.ctrlKey || e.altKey || e.metaKey) return 'none'
   return 'pass'
 }
