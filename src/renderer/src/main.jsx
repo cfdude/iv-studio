@@ -9,9 +9,15 @@ import '@fontsource/jetbrains-mono/400.css'
 import './styles.css'
 import './studio.css'
 import App from './App'
+import { loadPlatform } from './platform'
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
+// The platform comes from the main process (app:info) before the first render, and loadPlatform sets
+// data-platform on the document root, so the Mac title bar is padded from the first paint (no jump). It
+// never rejects: if app:info fails the platform is unknown and the window still opens.
+loadPlatform().then(() =>
+  createRoot(document.getElementById('root')).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  )
 )

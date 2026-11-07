@@ -199,6 +199,27 @@ by hand once.
   <img src="docs/images/setup.png" alt="Settings → Setup" width="100%">
 </p>
 
+### macOS
+
+IV Studio builds for Macs with Apple silicon (M1 or newer). There is no download on the releases page for it
+yet: you build the disk image yourself.
+
+1. On an Apple silicon Mac, run `npm ci`, then `npm run dist:mac`. The build needs an Apple silicon Mac
+   (`dist:mac` stops early if the bundled FFmpeg isn't arm64). It writes `dist/IV-Studio-<version>-arm64.dmg`.
+2. Open the `.dmg` and drag **IV Studio** into **Applications**.
+3. **The first time you open it,** right-click **IV Studio** in Applications and choose **Open**, then **Open**
+   again. If macOS still refuses, clear the quarantine flag and open it again:
+   `xattr -dr com.apple.quarantine "/Applications/IV Studio.app"`.
+4. Install and start [ComfyUI Desktop](https://www.comfy.org/download). IV Studio needs it on the same Mac; it
+   can start it for you.
+
+What's different: builds are signed with an ad-hoc signature, not an Apple developer certificate, and are
+**not notarized**, which is why macOS asks you to confirm the first open. The Mac build never checks for
+updates. Rebuild to get a new version. The switch is the `MAC_UPDATES` constant in `src/shared/platform.js`;
+a working Mac update feed would also need a `zip` target in the build and a Developer ID signature, because
+macOS won't update an ad-hoc signed app. The Mac FFmpeg is for personal builds only until a redistributable build
+replaces it (tracked separately); see `THIRD_PARTY_NOTICES.md`.
+
 ## Dashboard
 
 IV Studio opens on the **Dashboard**: one-click starts for a shot, a picture, a longer scene, an edit, a song,

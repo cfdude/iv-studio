@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import Hero from './Hero'
 import { ask } from './Confirm'
+import { rendersFolderText } from '../../../shared/platform'
+import { secretRemedy } from '../../../service/secrets'
+import { usePlatform } from '../platform'
 
 // The title-bar meter while rendering in the cloud: GPU time and its estimated cost since IV Studio opened,
 // ticking while a GPU is up. Modal is asked every 30 s which containers run; each one counts from its own
@@ -128,6 +131,14 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
           </p>
         ) : (
           <>
+            {st.removable?.includes('runpodKey') && (
+              <p className="small dim">
+                The saved RunPod key can’t be used.{' '}
+                <button className="link-btn" disabled={!!busy} onClick={() => saveKey('')}>
+                  Remove it
+                </button>
+              </p>
+            )}
             <div className="key-form">
               <input type="password" value={key} placeholder="RunPod API key (rpa_…)" onChange={(e) => setKey(e.target.value)} autoComplete="off" />
               <button className="btn btn-small" disabled={!!busy || !key.trim()} onClick={() => saveKey(key.trim())}>
@@ -197,6 +208,7 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
 
 // Cloud mode on the user's own Modal or RunPod account: pick one, set it up, then switch.
 export default function Cloud({ notify, recheck, setup, info }) {
+  const platform = usePlatform()
   const [st, setSt] = useState(null)
   const [gpu, setGpu] = useState('L40S')
   const [idle, setIdle] = useState(300)
@@ -255,7 +267,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
   if (!st) return null
   const chosen = st.gpus.find((g) => g.id === gpu)
   const runpod = st.provider === 'runpod'
-  const setUpDone = runpod ? !!st.runpod?.ready : !!(st.cloud?.url && st.cloud?.modelsAt)
+  const setUpDone = runpod ? !!st.runpod?.ready : !!(st.cloud?.url && st.cloud?.modelsAt && st.hasToken)
   const onCloud = st.target === 'cloud'
 
   return (
@@ -265,6 +277,15 @@ export default function Cloud({ notify, recheck, setup, info }) {
         No strong graphics card? Render on a cloud GPU in your own RunPod or Modal account.
         <span className="lede-small dim">Pick one. Either way the GPU bills by the second only while it’s up, and shuts itself off when you stop. IV Studio sets everything up.</span>
       </p>
+
+      {['cloudToken', 'runpodToken'].filter((n) => st.removable?.includes(n)).map((n) => (
+        <p key={n} className="notice">
+          {secretRemedy(n).text} ({n === 'cloudToken' ? 'Modal' : 'RunPod'}) You can also remove the saved sign-in; your account, storage and any running GPU stay as they are.{' '}
+          <button className="link-btn" disabled={!!busy} onClick={() => run('Removing the sign-in', () => window.ivstudio.cloud.clearToken(n))}>
+            Remove it
+          </button>
+        </p>
+      ))}
 
       <div className="cloud-switch">
         <span className="row-label">Cloud</span>
@@ -391,7 +412,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
         </div>
         <div className="group-body">
           <p className="small dim">
-            Everything in Create, Sequences and the prompt writer works the same on Modal and RunPod. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps) instead. Finished videos download to Videos\IV Studio when you open them.
+            Everything in Create, Sequences and the prompt writer works the same on Modal and RunPod. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps) instead. Finished videos download to {rendersFolderText(platform)} when you open them.
           </p>
         </div>
       </section>

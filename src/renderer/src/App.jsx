@@ -21,6 +21,8 @@ import MediaLibrary from './components/MediaLibrary'
 import Dashboard from './components/Dashboard'
 import Learn from './components/Learn'
 import { unseenNews } from './learn'
+import { sepText } from '../../shared/platform'
+import { usePlatform } from './platform'
 import { ProjectPage, ProjectsList } from './components/Projects'
 import RenderQueue from './components/RenderQueue'
 import { LorasPage } from './components/Loras'
@@ -65,6 +67,7 @@ const savedSection = () => {
 }
 
 export default function App() {
+  const platform = usePlatform()
   const [section, setSection] = useState(savedSection)
   // Create makes a video (a shot) or an image; the choice is remembered
   const [createKind, setCreateKind] = useState(() => {
@@ -281,7 +284,7 @@ export default function App() {
     const ok = await ask(
       incognito
         ? { title: 'Leave Incognito?', message: 'IV Studio restarts into your normal shots, edits, songs and voices. Everything made in Incognito stays where it is, hidden, until you switch back. Its renders are also cleared from ComfyUI’s history.', confirm: 'Leave Incognito' }
-        : { title: 'Go Incognito?', message: 'IV Studio restarts into a separate, private space. Shots, sequences, edits, songs, voices, characters and exports made there never show in the normal app, and nothing normal shows there. Your characters and voices come along; settings and models are shared. Renders save into the Incognito folder in Settings → Folders (output\\IV Private unless you change it).', confirm: 'Go Incognito' }
+        : { title: 'Go Incognito?', message: 'IV Studio restarts into a separate, private space. Shots, sequences, edits, songs, voices, characters and exports made there never show in the normal app, and nothing normal shows there. Your characters and voices come along; settings and models are shared. Renders save into the Incognito folder in Settings → Folders (output' + sepText(platform) + 'IV Private unless you change it).', confirm: 'Go Incognito' }
     )
     if (!ok) return
     try {

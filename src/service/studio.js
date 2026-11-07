@@ -10,6 +10,7 @@ import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
 import { planFinish, planPreviews } from './plan.js'
 import { adaptGraph, capabilities, withLivePreview } from './remote.js'
+import { seedvr2Refusal } from './gpu.js'
 import { Cast, resolveMentions } from './cast.js'
 import { contextIrGraph, fromContextIr, writeHarness, writeLocal, writeStoryLocal } from './prompter.js'
 import { renderOutGraph, retakeGraph, SAVES, SEQUENCE_DEFAULTS, takeGraph, validateSequence } from './sequence.js'
@@ -234,6 +235,7 @@ export class Studio {
     if (finish.fps && !caps.fps.includes(finish.fps)) throw new Error(`This ComfyUI can make ${caps.fps.filter(Boolean).join(', ') || 'no other'} fps.`)
     if (finish.upscale2x && !caps.upscale2x && finish.enhancer !== 'seedvr2') throw new Error('This ComfyUI has no 2x upscaler.')
     if (finish.enhancer === 'seedvr2' && this.comfy.remote) throw new Error('SeedVR2 runs on this PC\'s ComfyUI only; the cloud finishes with its own upscaler.')
+    if (finish.enhancer === 'seedvr2' && seedvr2Refusal(caps.gpuKind)) throw new Error(seedvr2Refusal(caps.gpuKind))
     const plan = planFinish(source.plan, finish)
     plan.values['80'] = source.name
     return this.submit({ kind: 'finish', project: this.getProject(source.projectId), plan, name: source.name, parent: source.id, previewPlan: source.plan })
@@ -299,6 +301,11 @@ export class Studio {
   // engine dlss: DLSS 5 with the finish's own settings (noise reduction Default 0.8), at scale 1 or 2.
   async enhanceFinal({ jobId, engine = 'seedvr2', resolution = 1080, scale = 1 }) {
     if (this.comfy.remote) throw new Error('Enhance runs on this PC\'s ComfyUI only.')
+    if (engine !== 'dlss') {
+      // A ComfyUI that can't be read falls through to the checks below, as before.
+      const refusal = seedvr2Refusal((await this.capabilities().catch(() => null))?.gpuKind)
+      if (refusal) throw new Error(refusal)
+    }
     const source = this.getJob(jobId)
     const out = source.outputs.find((o) => o.kind === 'final') || source.outputs.find((o) => o.kind === 'master')
     if (!out?.path || !fs.existsSync(out.path)) throw new Error('That render has no finished video on this PC to enhance.')

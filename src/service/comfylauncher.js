@@ -7,10 +7,25 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { comfyBundles } from './platform.js'
 
 const LAUNCHABLE = /\.(lnk|bat|cmd|exe)$/i
 const LINUX_LAUNCHABLE = /\.(sh|py|AppImage)$/i
-export const launchable = (platform = process.platform) => (platform === 'win32' ? LAUNCHABLE : LINUX_LAUNCHABLE)
+const MAC_LAUNCHABLE = /\.(app|sh|py)$/i
+export const launchable = (platform = process.platform) => (platform === 'win32' ? LAUNCHABLE : platform === 'darwin' ? MAC_LAUNCHABLE : LINUX_LAUNCHABLE)
+
+// The file picker's filter for the launcher (Settings → ComfyUI), per platform.
+export function launcherTypes(platform = process.platform) {
+  if (platform === 'win32') return { name: 'Shortcut, .bat or ComfyUI.exe', extensions: ['lnk', 'bat', 'cmd', 'exe'] }
+  if (platform === 'darwin') return { name: 'Comfy Desktop.app, a shell script or main.py', extensions: ['app', 'sh', 'py'] }
+  return { name: 'Shell script or main.py', extensions: ['sh', 'py', 'AppImage'] }
+}
+
+// What Settings says when the folder picked isn't a ComfyUI one (Windows can also have a portable install's .bat).
+export const notComfyFolderMessage = (platform = process.platform) =>
+  platform === 'win32'
+    ? 'That folder doesn’t look like ComfyUI. Pick the folder that holds ComfyUI (its main.py, or run_nvidia_gpu.bat and the ComfyUI folder), or ComfyUI.exe’s folder.'
+    : 'That folder doesn’t look like ComfyUI. Pick the folder that holds its main.py.'
 
 // Only a ComfyUI on this PC can be started from here.
 export function isLocalUrl(url) {
@@ -31,15 +46,18 @@ const list = (dir) => {
 
 // The launchers on this PC, best first: shortcuts on the desktop or in the Start menu (how most people
 // start it, with their own flags), the ComfyUI Desktop app, then portable installs' run_nvidia_gpu.bat.
-export function findLaunchers({ env = process.env, drives = ['C', 'D', 'E', 'F', 'G', 'H'], platform = process.platform, home: homeDir } = {}) {
+export function findLaunchers({ env = process.env, drives = ['C', 'D', 'E', 'F', 'G', 'H'], platform = process.platform, home: homeDir, root: rootDir } = {}) {
   const found = []
-  const add = (p, kind) => {
-    if (fs.existsSync(p) && !found.some((f) => f.path.toLowerCase() === p.toLowerCase())) found.push({ path: p, kind, label: path.basename(p) })
+  const add = (p, kind, label = path.basename(p)) => {
+    if (fs.existsSync(p) && !found.some((f) => f.path.toLowerCase() === p.toLowerCase())) found.push({ path: p, kind, label })
   }
   if (platform !== 'win32') {
     // ComfyUI folders in the home folder, Downloads or /opt, one level down: their best launcher each
     const home = homeDir || env.HOME || os.homedir()
-    for (const root of [home, path.join(home, 'Downloads'), path.join(home, 'ai'), '/opt']) {
+    // On a Mac the Comfy Desktop app comes first, and its standalone install tree (~/ComfyUI-Installs) is searched too
+    if (platform === 'darwin') for (const b of comfyBundles({ platform, home, root: rootDir, env })) add(b.path, 'app', b.label)
+    const roots = [home, path.join(home, 'Downloads'), path.join(home, 'ai'), '/opt', ...(platform === 'darwin' ? [path.join(home, 'ComfyUI-Installs')] : [])]
+    for (const root of roots) {
       for (const e of list(root)) {
         if (!e.isDirectory() || !/comfy/i.test(e.name)) continue
         const dir = path.join(root, e.name)
@@ -108,7 +126,8 @@ export function launchersIn(dir, platform = process.platform) {
 export function launch(file, { platform = process.platform, logFile = path.join(os.tmpdir(), 'iv-studio-comfyui.log') } = {}) {
   if (!file || !fs.existsSync(file)) throw new Error('That ComfyUI launcher no longer exists. Pick it again in Settings → ComfyUI.')
   if (platform !== 'win32') {
-    if (!LINUX_LAUNCHABLE.test(file)) throw new Error('Pick a .sh script or ComfyUI’s main.py to start ComfyUI with.')
+    if (platform === 'darwin' && !MAC_LAUNCHABLE.test(file)) throw new Error('Pick Comfy Desktop.app, a .sh script or ComfyUI’s main.py to start ComfyUI with.')
+    if (platform !== 'darwin' && !LINUX_LAUNCHABLE.test(file)) throw new Error('Pick a .sh script or ComfyUI’s main.py to start ComfyUI with.')
     const [cmd, args] = linuxCommand(file)
     const log = fs.openSync(logFile, 'a')
     spawn(cmd, args, { cwd: path.dirname(file), detached: true, stdio: ['ignore', log, log] }).unref()
@@ -152,4 +171,16 @@ export async function waitUp(url, { timeoutMs = 6 * 60 * 1000, every = 2000 } = 
     await new Promise((r) => setTimeout(r, every))
   }
   throw new Error('ComfyUI didn’t answer within 6 minutes. Check its window for errors.')
+}
+
+// macOS: opens an app bundle through the system (so it runs as its own process and outlives IV Studio), then
+// waits for ComfyUI to answer at url. Comfy Desktop may open with its server stopped, or serve on another port,
+// so a silent wait gets its own message. spawn and waitUp are injected so a test never opens anything.
+export async function startApp(appPath, { spawn: run = spawn, waitUp: wait = waitUp, url, timeoutMs = 3 * 60 * 1000 } = {}) {
+  run('open', [appPath], { detached: true, stdio: 'ignore' }).unref()
+  try {
+    return await wait(url, { timeoutMs })
+  } catch {
+    throw new Error(`Comfy Desktop opened, but nothing answered at ${url} within 3 minutes. Start ComfyUI’s server in Comfy Desktop, or set the address Comfy Desktop shows in Settings → ComfyUI.`)
+  }
 }

@@ -1,5 +1,6 @@
 // Readiness check: is ComfyUI up, is there a capable GPU, are the node packs and models IV Studio needs there?
 // Everything is read from ComfyUI itself (/system_stats and /object_info), so it works with any install.
+import { findGpu, gpuDetail, gpuMemoryGb, lowMemoryAdvice, nonGpuDetail } from './gpu.js'
 
 const TEMPLATE_SKIP = new Set(['PixaromaGroupSwitch', 'PixaromaLabel', 'MarkdownNote', 'Note'])
 
@@ -20,14 +21,15 @@ export async function checkSetup({ comfy, template, manifest, characters }) {
     return { ready: false, items }
   }
 
-  const gpu = stats.devices?.find((d) => d.type === 'cuda') || stats.devices?.[0]
-  const vramGb = gpu ? gpu.vram_total / 1024 ** 3 : 0
+  const gpu = findGpu(stats.devices)
+  const vramGb = gpuMemoryGb(gpu)
   items.push({
     id: 'gpu',
     label: 'GPU',
-    status: !gpu || gpu.type !== 'cuda' ? 'missing' : vramGb < 15 ? 'warn' : 'ok',
-    detail: gpu ? `${gpu.name.replace(/^cuda:\d+ /, '').replace(/ : \w+$/, '')} · ${vramGb.toFixed(0)} GB` : 'No GPU reported',
-    fix: vramGb && vramGb < 15 ? 'Under 16 GB of VRAM: keep previews at 0.4 MP and finals at or below 1.5 MP.' : undefined
+    // A cuda card that reports no memory still warns (as before); an Apple GPU that reports none is not judged.
+    status: !gpu ? 'missing' : (gpu.type === 'cuda' || vramGb) && vramGb < 15 ? 'warn' : 'ok',
+    detail: gpu ? gpuDetail(gpu) : nonGpuDetail(stats.devices),
+    fix: gpu ? lowMemoryAdvice(gpu) : undefined
   })
 
   const info = await comfy.objectInfo()

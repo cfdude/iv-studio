@@ -1,5 +1,5 @@
 // Characterization: what src/service/setup.js says about the GPU today, against the fake ComfyUI.
-// These pin CURRENT behaviour. Supporting Apple Silicon (mps) changes some of it on purpose, and the matching test then flips.
+// Cuda behaviour is pinned as it was; Apple Silicon (mps) counts as a GPU (gpu-readiness spec).
 //   node --test test/unit/setup-gpu.test.mjs
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -40,12 +40,47 @@ describe('checkSetup GPU item', () => {
 
   const blocking = (r) => r.items.filter((i) => i.status === 'missing').map((i) => i.id)
 
-  test('mps is rejected today (Apple Silicon ComfyUI reports mps; this flips when it is supported)', async () => {
+  test('Apple GPU (mps) with 64 GB is ok and does not block', async () => {
     const r = await gpuItem('mps')
+    assert.equal(r.gpu.status, 'ok')
+    assert.equal(r.gpu.detail, 'Apple GPU · 64 GB unified memory')
+    assert.equal(r.gpu.fix, undefined)
+    assert.ok(!blocking(r).includes('gpu'))
+  })
+
+  test('Apple GPU with 8 GB warns, with the memory advice', async () => {
+    const { gpu } = await gpuItem([{ name: 'mps', type: 'mps', index: null, vram_total: 8 * 1024 ** 3 }])
+    assert.equal(gpu.status, 'warn')
+    assert.equal(gpu.fix, 'Under 16 GB of memory: keep previews at 0.4 MP and finals at or below 1.5 MP.')
+  })
+
+  test('cuda reporting no memory at all is a warning, as it always was', async () => {
+    const { gpu } = await gpuItem([{ name: 'cuda:0 NVIDIA GeForce RTX 3060 : cudaMallocAsync', type: 'cuda', vram_total: 0 }])
+    assert.equal(gpu.status, 'warn')
+  })
+
+  test('cuda 12 GB warns, with the VRAM advice', async () => {
+    const { gpu } = await gpuItem([{ name: 'cuda:0 NVIDIA GeForce RTX 3060 : cudaMallocAsync', type: 'cuda', vram_total: 12 * 1024 ** 3 }])
+    assert.equal(gpu.fix, 'Under 16 GB of VRAM: keep previews at 0.4 MP and finals at or below 1.5 MP.')
+  })
+
+  test('cpu-only ComfyUI is missing and blocks, with "cpu (not a GPU)"', async () => {
+    const r = await gpuItem([{ name: 'cpu', type: 'cpu' }])
     assert.equal(r.gpu.status, 'missing')
-    assert.equal(r.gpu.detail, 'mps · 64 GB')
-    // 'missing' blocks, so the GPU item is one of the reasons setup is not ready
+    assert.equal(r.gpu.detail, 'cpu (not a GPU)')
     assert.ok(blocking(r).includes('gpu'))
+  })
+
+  test('another accelerator type is missing, named "not supported yet"', async () => {
+    const { gpu } = await gpuItem([{ name: 'xpu:0 Intel Arc', type: 'xpu' }])
+    assert.equal(gpu.status, 'missing')
+    assert.equal(gpu.detail, 'xpu:0 Intel Arc (not supported yet)')
+  })
+
+  test('a cpu device first and an mps device second uses the mps one', async () => {
+    const { gpu } = await gpuItem([{ name: 'cpu', type: 'cpu' }, { name: 'mps', type: 'mps', vram_total: 32 * 1024 ** 3 }])
+    assert.equal(gpu.status, 'ok')
+    assert.equal(gpu.detail, 'Apple GPU · 32 GB unified memory')
   })
 
   test('cuda does not block on the GPU item', async () => {

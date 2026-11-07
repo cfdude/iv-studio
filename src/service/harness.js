@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { toolDirs } from './platform.js'
 
 export const HARNESSES = { claude: 'Claude Code', codex: 'Codex' }
 
@@ -36,13 +37,15 @@ function newestCodex(local) {
 }
 
 // A program on PATH or in the places Linux installers put it (an app started from the desktop often gets a short PATH).
-export function onPath(name, env = process.env, home = os.homedir()) {
-  const dirs = [...String(env.PATH || '').split(':'), path.join(home, '.local', 'bin'), path.join(home, '.npm-global', 'bin'), path.join(home, '.bun', 'bin'), path.join(home, '.volta', 'bin'), '/usr/local/bin', '/usr/bin']
+// On a Mac the Homebrew folders are searched too (an app started from Finder doesn't get the shell's PATH).
+// `where` ({ platform, root }) is for tests; root is put in front of those Mac folders.
+export function onPath(name, env = process.env, home = os.homedir(), where = {}) {
+  const dirs = [...String(env.PATH || '').split(':'), path.join(home, '.local', 'bin'), path.join(home, '.npm-global', 'bin'), path.join(home, '.bun', 'bin'), path.join(home, '.volta', 'bin'), '/usr/local/bin', '/usr/bin', ...toolDirs({ platform: where.platform, root: where.root })]
   return firstExisting(dirs.filter(Boolean).map((d) => path.join(d, name)))
 }
 
 export function findHarnesses(env = process.env, home = os.homedir(), platform = process.platform) {
-  if (platform !== 'win32') return { claude: firstExisting([path.join(home, '.claude', 'local', 'claude')]) || onPath('claude', env, home), codex: onPath('codex', env, home) }
+  if (platform !== 'win32') return { claude: firstExisting([path.join(home, '.claude', 'local', 'claude')]) || onPath('claude', env, home, { platform }), codex: onPath('codex', env, home, { platform }) }
   const local = env.LOCALAPPDATA || path.join(home, 'AppData', 'Local')
   const roaming = env.APPDATA || path.join(home, 'AppData', 'Roaming')
   return {

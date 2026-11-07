@@ -27,7 +27,9 @@ from pathlib import Path
 import aiohttp
 from aiohttp import WSMsgType, web
 
-TOKEN = os.environ["IV_TOKEN"]
+TOKEN = os.environ.get("IV_TOKEN", "")
+if not TOKEN:
+    raise SystemExit("IV_TOKEN is empty: the gate will not start without a token.")
 UPSTREAM = os.environ.get("IV_UPSTREAM", "http://127.0.0.1:8188")  # settable for tests
 HOP = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailers", "transfer-encoding", "upgrade", "host", "content-length", "content-encoding"}
 RUNPOD = os.environ.get("IV_PLATFORM") == "runpod"
@@ -41,6 +43,8 @@ started = time.time()
 
 
 def allowed(req):
+    if not TOKEN:
+        return False
     bearer = req.headers.get("Authorization", "")
     given = bearer[7:] if bearer.startswith("Bearer ") else req.query.get("iv_token", "")
     return hmac.compare_digest(given.encode(), TOKEN.encode())

@@ -6,6 +6,7 @@
 //   claude, codex - the person's own Claude Code or Codex (harness.js), with the same rules and guide.
 // The character is written as its first name for the writer and turned back into {char} afterwards.
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
@@ -13,6 +14,7 @@ import { DIRECTING, DIRECTING_SOURCE } from './directing.js'
 import { loadGuide } from './h3guide.js'
 import { harnessJson, onPath } from './harness.js'
 import { FIRST_FRAME_LINE, firstLastLine, lintPrompt, withLine } from './lint.js'
+import { findOllama } from './platform.js'
 import { isPrevis } from './staging.js'
 
 // The bundled ffmpeg, outside the asar in a packaged app (as in main and the MCP server).
@@ -257,9 +259,12 @@ export async function ollamaStatus() {
   }
 }
 
-function ollamaExe() {
-  if (process.platform !== 'win32') return onPath('ollama')
-  const local = process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe')
+// `o` is { platform, home, root, env }, for tests; a Mac also looks inside Ollama.app and in the Homebrew folders.
+export function ollamaExe(o = {}) {
+  const { platform = process.platform, home = os.homedir(), root = path.sep, env = process.env } = o
+  if (platform === 'darwin') return findOllama({ platform, home, root, env }) || onPath('ollama', env, home, { platform, root })
+  if (platform !== 'win32') return onPath('ollama', env, home)
+  const local = env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe')
   return local && fs.existsSync(local) ? local : null
 }
 

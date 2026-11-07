@@ -4,6 +4,9 @@ import { UpdateSettings } from './Update'
 import Hero from './Hero'
 import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
+import { comfyLauncherHelp, keychainRefusedText, sepText } from '../../../shared/platform'
+import { secretRemedy } from '../../../service/secrets'
+import { usePlatform } from '../platform'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
 const GB = (b) => `${(b / 1e9).toFixed(1)} GB`
@@ -111,6 +114,36 @@ function HarnessWriter({ engine, settings, harness, save }) {
 
 // Prompt writer: which engine writes prompts, the free local model, and the Comfy.org key for Context IR.
 // Civitai: the person's own API key (for downloading LoRAs) and the opt-in for mature LoRAs.
+// Saved keys the Mac Keychain (or the system) won't open, and what to do about each. On a Mac whose Keychain
+// refused access there is nothing to re-enter yet, so the allow-in-Keychain text shows (design D8), with Remove.
+function SecretNotice({ settings }) {
+  if (settings.secretStoreRefused) return <p className="notice">{keychainRefusedText('darwin')}</p>
+  const names = settings.unreadable || []
+  if (!names.length) return null
+  return (
+    <>
+      {names.map((name) => (
+        <p key={name} className="notice">
+          {secretRemedy(name).text}
+        </p>
+      ))}
+    </>
+  )
+}
+
+// "Remove it" for a saved key that can't be opened, or that a refused Keychain hides. Clearing needs no encryption.
+function RemoveSaved({ name, settings, onRemove }) {
+  if (!settings.removable?.includes(name)) return null
+  return (
+    <p className="small dim">
+      The saved key can’t be used.{' '}
+      <button className="link-btn" onClick={onRemove}>
+        Remove it
+      </button>
+    </p>
+  )
+}
+
 function CivitaiSettings({ settings, setSettings, notify }) {
   const [key, setKey] = useState('')
   async function saveKey(k) {
@@ -140,7 +173,12 @@ function CivitaiSettings({ settings, setSettings, notify }) {
         <p className="dim small">Where the LoRAs page finds LoRAs to download.</p>
       </div>
       <div className="group-body">
-        {settings.hasCivitaiKey ? (
+        {settings.secretStoreRefused ? (
+          <>
+            <p className="small dim">{keychainRefusedText('darwin')}</p>
+            <RemoveSaved name="civitaiKey" settings={settings} onRemove={() => saveKey('')} />
+          </>
+        ) : settings.hasCivitaiKey ? (
           <p className="small">
             A Civitai API key is saved (encrypted on this PC).{' '}
             <button className="link-btn" onClick={() => saveKey('')}>
@@ -149,6 +187,7 @@ function CivitaiSettings({ settings, setSettings, notify }) {
           </p>
         ) : (
           <>
+            <RemoveSaved name="civitaiKey" settings={settings} onRemove={() => saveKey('')} />
             <div className="key-form">
               <input type="password" value={key} placeholder="Civitai API key" onChange={(e) => setKey(e.target.value)} autoComplete="off" />
               <button className="btn btn-small" disabled={!key.trim()} onClick={() => saveKey(key)}>
@@ -181,6 +220,7 @@ function CivitaiSettings({ settings, setSettings, notify }) {
 
 // Folders: where in ComfyUI's output folder renders save, normally and in Incognito.
 function FolderSettings({ settings, setSettings, notify, incognito }) {
+  const sep = sepText(usePlatform())
   const [normal, setNormal] = useState(settings.outputFolder || '')
   const [hidden, setHidden] = useState(settings.privateFolder || '')
   const changed = normal.trim() !== (settings.outputFolder || '') || hidden.trim() !== (settings.privateFolder || '')
@@ -204,17 +244,17 @@ function FolderSettings({ settings, setSettings, notify, incognito }) {
       <div className="group-body">
         <label className="folder-row">
           <span>Normal renders</span>
-          <span className="mono dim">output\</span>
+          <span className="mono dim">output{sep}</span>
           <input value={normal} placeholder="straight into output" onChange={(e) => setNormal(e.target.value)} />
         </label>
         <label className="folder-row">
           <span>Incognito renders</span>
-          <span className="mono dim">output\</span>
+          <span className="mono dim">output{sep}</span>
           <input value={hidden} placeholder="IV Private" onChange={(e) => setHidden(e.target.value)} />
         </label>
         <p className="small dim">
-          Incognito’s pictures, videos and sounds you add also go into input\{hidden.trim() || 'IV Private'}. Use a folder name, or a path such as
-          Studio\Private; it always stays inside ComfyUI’s folders.{incognito ? ' You’re in Incognito now.' : ''}
+          Incognito’s pictures, videos and sounds you add also go into input{sep}{hidden.trim() || 'IV Private'}. Use a folder name, or a path such as
+          Studio{sep}Private; it always stays inside ComfyUI’s folders.{incognito ? ' You’re in Incognito now.' : ''}
         </p>
         <button className="btn btn-small" disabled={!changed} onClick={save}>
           Save folders
@@ -357,7 +397,12 @@ function WriterSettings({ settings, setSettings, notify }) {
             <p className="small dim">
               MiniMax's own prompt rewriter: it writes in the exact format H3 was trained on and looks at your reference media. Paid through your Comfy.org account, {status?.contextIrPrice || 'a few cents a prompt'}. It runs through ComfyUI.
             </p>
-            {settings.hasComfyKey ? (
+            {settings.secretStoreRefused ? (
+              <>
+                <p className="small dim">{keychainRefusedText('darwin')}</p>
+                <RemoveSaved name="comfyApiKey" settings={settings} onRemove={() => saveKey('')} />
+              </>
+            ) : settings.hasComfyKey ? (
               <p className="small">
                 A Comfy.org API key is saved (encrypted on this PC).{' '}
                 <button className="link-btn" onClick={() => saveKey('')}>
@@ -366,6 +411,7 @@ function WriterSettings({ settings, setSettings, notify }) {
               </p>
             ) : (
               <>
+                <RemoveSaved name="comfyApiKey" settings={settings} onRemove={() => saveKey('')} />
                 <div className="key-form">
                   <input type="password" value={key} placeholder="Comfy.org API key (comfyui-…)" onChange={(e) => setKey(e.target.value)} autoComplete="off" />
                   <button className="btn btn-small" disabled={!key.trim()} onClick={() => saveKey(key)}>
@@ -495,6 +541,7 @@ export function SettingsTabs({ tab, go, setup }) {
 
 // How IV Studio starts ComfyUI: the person's own launcher (found or picked) and whether to start it on open.
 function ComfyLauncher({ settings, setSettings, notify, recheck, comfyUp }) {
+  const platform = usePlatform()
   const [l, setL] = useState(null)
   const load = () => window.ivstudio.comfy.launcher().then(setL).catch(() => {})
   useEffect(() => {
@@ -567,9 +614,7 @@ function ComfyLauncher({ settings, setSettings, notify, recheck, comfyUp }) {
         Start ComfyUI when IV Studio opens, if it isn’t running already
       </label>
       <p className="small dim">
-        {navigator.userAgent.includes('Linux')
-          ? 'A .sh script beside ComfyUI, or its main.py run with its own venv’s Python, so ComfyUI starts with your own settings and keeps running after IV Studio closes. Its output goes to comfyui.log in IV Studio’s data folder.'
-          : 'The same shortcut or .bat you’d double-click, so ComfyUI starts with your own settings in its own window, and keeps running after IV Studio closes.'}
+        {comfyLauncherHelp(platform)}
       </p>
     </div>
   )
@@ -600,6 +645,8 @@ export default function Settings({ info, recheck, notify, go, setup }) {
     <div className="settings">
       <Hero art="settings" title="Settings" kicker="Infinite Variance" />
       <SettingsTabs tab="settings" go={go} setup={setup} />
+
+      <SecretNotice settings={settings} />
 
       <section className="group">
         <div className="group-head">

@@ -5,10 +5,11 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { comfyFolders, dataDir, incognitoDir, readSettings, resourcesDir, writerOf, writeSettings } from '../service/paths'
 import { harnessStatus } from '../service/harness'
+import { projectSettings, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
 import { pasteMessage, skillMarkdown, readGuide } from '../service/agent'
 import { Cloud, GPUS } from '../service/cloud'
 import { RunPod, GPUS as RUNPOD_GPUS } from '../service/runpod'
-import { comfyUp, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launchersIn, waitUp } from '../service/comfylauncher'
+import { comfyUp, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launcherTypes, launchersIn, notComfyFolderMessage, startApp, waitUp } from '../service/comfylauncher'
 import { randomBytes } from 'node:crypto'
 import { Edits, FORMATS, LOUDNESS } from '../service/edits'
 import { EditGen } from '../service/editgen'
@@ -19,6 +20,7 @@ import { Reframes } from '../service/reframe'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState } from './updater'
+import { keychainRefusedText, menuTemplateFor, runpodTokenMissingText, windowOptions } from '../shared/platform'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { ModelInstaller } from '../service/models'
@@ -36,6 +38,7 @@ import { ACE_KEYS, Music, MUSIC_DEFAULTS, MUSIC_ENGINES } from '../service/music
 import { Images } from '../service/images'
 import { Civitai, CIVITAI_SITES, LORA_SORTS, LORA_TAGS } from '../service/civitai'
 import { Comfy } from '../service/comfy'
+import { statsReadout } from '../service/gpu'
 
 if (process.env.IV_STUDIO_USER_DATA) app.setPath('userData', process.env.IV_STUDIO_USER_DATA)
 if (!app.requestSingleInstanceLock()) app.quit()
@@ -179,6 +182,7 @@ function createWindow() {
     icon: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'icon.png'),
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: BG, symbolColor: '#f1ede5', height: 40 },
+    ...windowOptions(process.platform),
     webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
   })
   win.webContents.on('will-navigate', (e, url) => {
@@ -238,7 +242,8 @@ function handle(channel, fn) {
   })
 }
 
-const KEY_STORE_MISSING = process.platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : 'No system keyring (GNOME Keyring or KWallet) is available, so the key cannot be stored safely.'
+// keychainRefusedText is the Mac wording for a store that won't open; on Windows and Linux it is the old missing-store text.
+const KEY_STORE_MISSING = keychainRefusedText(process.platform)
 
 // On Linux without a keyring Electron falls back to a fixed built-in password ('basic_text'), which isn't safe.
 const keysSafe = () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text')
@@ -277,7 +282,8 @@ function mcpCommand() {
 }
 
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(null)
+  const menuTemplate = menuTemplateFor(process.platform) // a Mac gets the standard menu; Windows and Linux none
+  Menu.setApplicationMenu(menuTemplate ? Menu.buildFromTemplate(menuTemplate) : null)
   makeStudio()
   protocol.handle('ivfile', serveFile)
   protocol.handle('ivmedia', (req) => {
@@ -296,10 +302,9 @@ app.whenReady().then(() => {
   })()
   handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, dataDir: DATA, mcp: mcpCommand(), testCopy: TEST_COPY, incognito: INCOGNITO, links }))
   // The window never sees the Comfy.org or Civitai key, only whether one is saved.
-  const publicSettings = (s) => {
-    const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, ...rest } = s
-    return { ...rest, hasComfyKey: !!comfyApiKey, hasCloudToken: !!cloudToken, hasCivitaiKey: !!civitaiKey, hasRunpodKey: !!runpodKey }
-  }
+  // A saved key the Keychain can't open counts as not saved (and is listed as unreadable); see service/secrets.js.
+  const publicSettings = (s) => projectSettings(s, safeStorage, process.platform)
+  const secretNow = () => secretStates(readSettings(BASE), safeStorage, process.platform)
   const comfyKey = () => unseal(readSettings(BASE).comfyApiKey)
   handle('settings:get', () => publicSettings(readSettings(BASE)))
   handle('settings:setComfyKey', (key) => {
@@ -397,7 +402,7 @@ app.whenReady().then(() => {
   handle('images:toEdit', async (file, name, editId = null) => putOnEdit(file, name, editId, 'iv'))
   // ---------- LoRAs: Civitai's H3 LoRAs and the ones on this PC ----------
   civitai = new Civitai({ dataDir: DATA, comfy: new Comfy(readSettings(BASE).comfyUrl), key: () => unseal(readSettings(BASE).civitaiKey), mature: () => !!readSettings(BASE).civitaiMature, onProgress: (u) => send('loras:progress', u) })
-  handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: !!readSettings(BASE).civitaiKey }))
+  handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: publicSettings(readSettings(BASE)).hasCivitaiKey }))
   handle('loras:search', (opts) => civitai.search(opts))
   handle('loras:model', (id) => civitai.model(id))
   handle('loras:download', (opts) => civitai.download(opts))
@@ -677,18 +682,26 @@ app.whenReady().then(() => {
   handle('cloud:status', async () => {
     const s = readSettings(BASE)
     const { url, podId, ...rp } = s.runpod || {}
+    const have = secretNow()
     return {
       provider: s.cloudProvider || 'modal',
       toolkit: cloud.toolkitReady(),
       workspace: s.cloudProvider === 'runpod' ? null : await cloud.workspace(),
       cloud: s.cloud,
-      runpod: { ...rp, hasKey: !!s.runpodKey, ready: !!(rp.modelsAt && s.runpodToken) },
+      runpod: { ...rp, hasKey: have.runpodKey === 'ok', ready: !!(rp.modelsAt && have.runpodToken === 'ok') },
       target: s.target,
       gpus: GPUS,
       runpodGpus: RUNPOD_GPUS,
       busy: cloudBusy,
-      hasToken: !!s.cloudToken
+      hasToken: have.cloudToken === 'ok',
+      removable: removableSecrets(have)
     }
+  })
+  // Drops a cloud sign-in that can't be opened. Writes only that one field: running pods, the volume and the
+  // deployed app are left exactly as they are.
+  handle('cloud:clearToken', (name) => {
+    writeSettings(tokenClearPatch(name, secretNow()), BASE)
+    return true
   })
   handle('cloud:provider', (p) => {
     if (readSettings(BASE).target === 'cloud') throw new Error('Switch rendering to My PC first.')
@@ -697,14 +710,20 @@ app.whenReady().then(() => {
   })
   handle('cloud:install', () => cloudTask('installing the cloud tools', () => cloud.installToolkit()))
   handle('cloud:signIn', () => cloudTask('signing in to Modal', async () => (await cloud.signIn(), cloud.workspace())))
-  handle('cloud:deploy', ({ gpu, idleSeconds }) =>
-    cloudTask('setting up the cloud', async () => {
+  // Refuse before any remote change: a deploy makes a new token, and one that can't be kept would leave the old one out of step.
+  const requireSealable = () => {
+    const why = sealBlockedText(safeStorage, process.platform)
+    if (why) throw new Error(why)
+  }
+  handle('cloud:deploy', ({ gpu, idleSeconds }) => {
+    requireSealable()
+    return cloudTask('setting up the cloud', async () => {
       const { url, token } = await cloud.deploy({ gpu, idleSeconds })
       writeSettings({ cloudToken: seal(token) }, BASE)
       saveCloud({ url, gpu, idleSeconds, workspace: await cloud.workspace(), deployedAt: new Date().toISOString() })
       return readSettings(BASE).cloud
     })
-  )
+  })
   handle('cloud:fetchModels', () =>
     cloudTask('downloading the models', async () => {
       await cloud.fetchModels()
@@ -750,6 +769,8 @@ app.whenReady().then(() => {
     (waking ||= (async () => {
       const r = readSettings(BASE).runpod || {}
       if (!r.volumeId) throw new Error('Set up RunPod on the Cloud page first.')
+      // Without a readable token a new pod would be open to anyone, and an old one could not be reached: set up again.
+      if (!runpodToken()) throw new Error(runpodTokenMissingText(process.platform, safeStorage.isEncryptionAvailable()))
       const current = r.url && (await runpod.health(r.url))
       if (current?.stage === 'ready') return r.url
       let url = current ? r.url : (await runpod.pods())[0]?.url
@@ -786,8 +807,9 @@ app.whenReady().then(() => {
   }
   // Set up (and Set up again): the volume, a pod that installs ComfyUI and downloads the models onto it, then
   // the characters. A new gate token each time, so pods started with the old one are shut down first.
-  handle('cloud:runpodSetUp', ({ gpu, idleSeconds }) =>
-    cloudTask('setting up RunPod', async () => {
+  handle('cloud:runpodSetUp', ({ gpu, idleSeconds }) => {
+    requireSealable()
+    return cloudTask('setting up RunPod', async () => {
       const s = readSettings(BASE)
       if (s.target === 'cloud') throw new Error('Switch rendering to My PC first.')
       await runpod.stopAll()
@@ -808,11 +830,12 @@ app.whenReady().then(() => {
       send('cloud:log', `Ready. ${done.length} character file${done.length === 1 ? '' : 's'} uploaded. The GPU shuts itself off after ${Math.round(idleSeconds / 60)} idle minutes.`)
       return readSettings(BASE).runpod
     })
-  )
+  })
   handle('cloud:use', (target) => {
     const s = readSettings(BASE)
-    if (target === 'cloud' && s.cloudProvider === 'runpod' && !(s.runpod?.modelsAt && s.runpodToken)) throw new Error('Set up RunPod first.')
-    if (target === 'cloud' && s.cloudProvider !== 'runpod' && !(s.cloud?.url && s.cloudToken)) throw new Error('Set up the cloud first.')
+    const have = secretNow()
+    if (target === 'cloud' && s.cloudProvider === 'runpod' && !(s.runpod?.modelsAt && have.runpodToken === 'ok')) throw new Error('Set up RunPod first.')
+    if (target === 'cloud' && s.cloudProvider !== 'runpod' && !(s.cloud?.url && have.cloudToken === 'ok')) throw new Error('Set up the cloud first.')
     writeSettings({ target: target === 'cloud' ? 'cloud' : 'local' }, BASE)
     makeStudio()
     return target
@@ -821,7 +844,7 @@ app.whenReady().then(() => {
   handle('cloud:usage', async () => {
     const s = readSettings(BASE)
     if (provider() === 'runpod') {
-      const running = s.runpodKey ? await runpod.pods() : []
+      const running = secretNow().runpodKey === 'ok' ? await runpod.pods() : []
       const gpu = RUNPOD_GPUS.find((g) => g.id === (running[0]?.gpu || s.runpod?.gpu)) || RUNPOD_GPUS[0]
       return { gpu: gpu.label.split(' · ')[0], perHour: running[0]?.perHour || gpu.perHour, running: running.map((p) => ({ id: p.id, startedAt: Date.parse(p.startedAt) })) }
     }
@@ -854,7 +877,7 @@ app.whenReady().then(() => {
       }
     }
   })
-  handle('prompts:status', async () => ({ ...(await ollamaStatus()), engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: !!readSettings(BASE).comfyApiKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: harnessStatus() }))
+  handle('prompts:status', async () => ({ ...(await ollamaStatus()), engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: publicSettings(readSettings(BASE)).hasComfyKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: harnessStatus() }))
   handle('prompts:write', (request) => {
     const s = readSettings(BASE)
     const w = writerOf(request?.engine ? { ...s, promptEngine: request.engine } : s)
@@ -895,8 +918,7 @@ app.whenReady().then(() => {
       if (!file) throw new Error('No ComfyUI launcher found. Pick one in Settings → ComfyUI.')
       send('comfy:state', { state: 'starting', detail: path.basename(file) })
       try {
-        launchComfy(file, { logFile: path.join(DATA, 'comfyui.log') })
-        const up = await waitUp(s.comfyUrl)
+        const up = process.platform === 'darwin' && /\.app$/i.test(file) ? await startApp(file, { url: s.comfyUrl }) : (launchComfy(file, { logFile: path.join(DATA, 'comfyui.log') }), await waitUp(s.comfyUrl))
         send('comfy:state', { state: 'up', detail: `ComfyUI started in ${up.seconds} s.` })
         return up
       } catch (err) {
@@ -910,7 +932,7 @@ app.whenReady().then(() => {
     return { chosen: s.comfyLauncher || null, using: launcherOf(s), folder, inFolder: folder ? launchersIn(folder) : [], found: findLaunchers(), autoStart: s.comfyAutoStart !== false, local: isLocalUrl(s.comfyUrl) && s.target !== 'cloud', starting: !!comfyStarting }
   })
   handle('comfy:chooseLauncher', async () => {
-    const filters = process.platform === 'win32' ? [{ name: 'Shortcut, .bat or ComfyUI.exe', extensions: ['lnk', 'bat', 'cmd', 'exe'] }] : [{ name: 'Shell script or main.py', extensions: ['sh', 'py', 'AppImage'] }]
+    const filters = [launcherTypes(process.platform)]
     const r = await dialog.showOpenDialog(win, { title: 'Start ComfyUI with', properties: ['openFile'], filters })
     if (r.canceled || !r.filePaths[0]) return null
     writeSettings({ comfyLauncher: r.filePaths[0] }, BASE)
@@ -921,7 +943,7 @@ app.whenReady().then(() => {
     const r = await dialog.showOpenDialog(win, { title: 'Your ComfyUI folder', properties: ['openDirectory'] })
     if (r.canceled || !r.filePaths[0]) return null
     const dir = r.filePaths[0]
-    if (!isComfyFolder(dir)) throw new Error(process.platform === 'win32' ? 'That folder doesn’t look like ComfyUI. Pick the folder that holds ComfyUI (its main.py, or run_nvidia_gpu.bat and the ComfyUI folder), or ComfyUI.exe’s folder.' : 'That folder doesn’t look like ComfyUI. Pick the folder that holds its main.py.')
+    if (!isComfyFolder(dir)) throw new Error(notComfyFolderMessage(process.platform))
     writeSettings({ comfyFolder: dir, comfyLauncher: '' }, BASE)
     return dir
   })
@@ -998,11 +1020,7 @@ app.whenReady().then(() => {
   handle('system:stats', async () => {
     if (readSettings(BASE).target === 'cloud') return null
     const st = await studio.comfy.systemStats().catch(() => null)
-    const d = st?.devices?.[0]
-    return {
-      ram: { total: os.totalmem(), free: os.freemem() },
-      gpu: d ? { name: String(d.name).replace(/^cuda:\d+\s*/, '').replace(/\s*:.*$/, ''), total: d.vram_total, free: d.vram_free, comfyHeld: d.torch_vram_total } : null
-    }
+    return { ram: { total: os.totalmem(), free: os.freemem() }, ...statsReadout(st) }
   })
   // @ mentions: the cast (characters) and places a prompt can name, and the places themselves
   handle('cast:list', () => studio.cast.members())

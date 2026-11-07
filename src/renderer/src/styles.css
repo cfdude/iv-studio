@@ -114,6 +114,11 @@ kbd {
   border-bottom: 1px solid var(--line);
 }
 
+/* macOS: the window buttons sit at the left of the bar (main: windowOptions), so start the content past them. */
+:root[data-platform='darwin'] .titlebar {
+  padding-left: 84px;
+}
+
 .brand-mark {
   font: 600 13px/1 var(--display);
   border: 1px solid var(--paper);
