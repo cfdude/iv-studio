@@ -1,6 +1,7 @@
 // The guard that runs before anything is changed remotely or a new secret is sealed.
 //   node --test test/unit/secret-guard.test.mjs
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import { describe, test } from 'node:test'
 import { sealBlockedText } from '../../src/service/secrets.js'
 import { keychainRefusedText, keyStoreMissingText, runpodTokenMissingText } from '../../src/shared/platform.js'
@@ -38,5 +39,23 @@ describe('words on a refused Keychain', () => {
   })
   test('Windows and Linux keep the set-up-again text', () => {
     for (const p of ['win32', 'linux']) assert.match(runpodTokenMissingText(p, false), /Set up RunPod again/)
+  })
+})
+
+describe('wiring (source checks)', () => {
+  const main = fs.readFileSync('src/main/index.js', 'utf8')
+  for (const [channel, task] of [['cloud:deploy', 'setting up the cloud'], ['cloud:runpodSetUp', 'setting up RunPod']]) {
+    test(`${channel} refuses before any remote work`, () => {
+      const body = main.slice(main.indexOf(`handle('${channel}'`), main.indexOf(`cloudTask('${task}'`))
+      assert.ok(body.includes('requireSealable()'), 'guard comes before cloudTask')
+    })
+  }
+  test('cloud:clearToken only writes what tokenClearPatch allows', () => {
+    const start = main.indexOf("handle('cloud:clearToken'")
+    assert.ok(main.slice(start, main.indexOf('\n', start + 40)).includes('tokenClearPatch(name, secretNow())'))
+  })
+  test('the editor asks focusKey before toggling the workspace', () => {
+    const editor = fs.readFileSync('src/renderer/src/components/edit/Editor.jsx', 'utf8')
+    assert.ok(editor.includes('if (focusKey(e, platform)) toggleFocus()'))
   })
 })

@@ -115,7 +115,7 @@ function HarnessWriter({ engine, settings, harness, save }) {
 // Prompt writer: which engine writes prompts, the free local model, and the Comfy.org key for Context IR.
 // Civitai: the person's own API key (for downloading LoRAs) and the opt-in for mature LoRAs.
 // Saved keys the Mac Keychain (or the system) won't open, and what to do about each. On a Mac whose Keychain
-// refused access there is nothing to re-enter yet, so only the allow-in-Keychain text shows (design D8).
+// refused access there is nothing to re-enter yet, so the allow-in-Keychain text shows (design D8), with Remove.
 function SecretNotice({ settings }) {
   if (settings.secretStoreRefused) return <p className="notice">{keychainRefusedText('darwin')}</p>
   const names = settings.unreadable || []

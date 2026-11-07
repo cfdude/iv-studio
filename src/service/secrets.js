@@ -51,7 +51,7 @@ const storeAvailable = (store) => {
 // Linux's built-in-password fallback still seals, so it is not blocked here.
 export const sealBlockedText = (store, platform) => (storeAvailable(store) ? null : keychainRefusedText(platform))
 
-export const secretStates =(settings, store, platform) => {
+export const secretStates = (settings, store, platform) => {
   const available = storeAvailable(store)
   const states = {}
   for (const name of SECRET_NAMES) {
@@ -84,8 +84,8 @@ export const tokenClearPatch = (name, states) => {
 
 // The settings the window gets: the secrets themselves never leave, only whether each is usable.
 // `unreadable` lists saved secrets that can't be opened (re-enter, or set the cloud GPU up again).
-// `secretStoreRefused` is true on a Mac whose Keychain access was denied: Settings then shows only the
-// allow-in-Keychain text, with no remedies and no key entry.
+// `secretStoreRefused` is true on a Mac whose Keychain access was denied: Settings then shows the
+// allow-in-Keychain text and Remove, with no key entry.
 export const projectSettings = (settings, store, platform) => {
   const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, ...rest } = settings
   const states = secretStates(settings, store, platform)

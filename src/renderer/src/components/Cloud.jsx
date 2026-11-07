@@ -267,7 +267,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
   if (!st) return null
   const chosen = st.gpus.find((g) => g.id === gpu)
   const runpod = st.provider === 'runpod'
-  const setUpDone = runpod ? !!st.runpod?.ready : !!(st.cloud?.url && st.cloud?.modelsAt)
+  const setUpDone = runpod ? !!st.runpod?.ready : !!(st.cloud?.url && st.cloud?.modelsAt && st.hasToken)
   const onCloud = st.target === 'cloud'
 
   return (
