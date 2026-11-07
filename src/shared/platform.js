@@ -66,6 +66,9 @@ export function editorKeyAction(e, platform) {
   if (e.ctrlKey || e.altKey || e.metaKey) return 'none'
   return 'pass'
 }
+// Whether a key press toggles the editor's full-workspace view: F11 or the backtick. On a Mac, Cmd+backtick
+// cycles the app's windows, so it is left alone there. Windows and Linux act on the backtick as before.
+export const focusKey = (e, platform) => e.key === 'F11' || (e.key === '`' && !(platform === 'darwin' && e.metaKey))
 // The application menu for macOS: the app, File (Close Window, Cmd+W), Edit (Cmd+C/V/X/A/Z) and Window
 // (Cmd+M) menus, all from Electron's own roles.
 export const macMenuTemplate = () => [{ role: 'appMenu' }, { role: 'fileMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]

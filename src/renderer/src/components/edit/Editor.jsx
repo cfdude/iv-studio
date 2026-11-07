@@ -7,7 +7,7 @@ import Timeline from './Timeline'
 import { ContextMenu, GenDialog, PickDialog } from './Generate'
 import { ask } from '../Confirm'
 import Help from '../Help'
-import { editorKeyAction, modChord } from '../../../../shared/platform'
+import { editorKeyAction, focusKey, modChord } from '../../../../shared/platform'
 import { usePlatform } from '../../platform'
 import { FRAME, clipEnd, clipFor, clipLength, describeChange, editLength, editPoints, insert, newId, nextTrackId, overwrite, remove, split, timecode, titleClip, tracksOf, videoLayers } from './model'
 
@@ -279,7 +279,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
     const src = panel === 'source' && source.current?.loaded()
     let done = true
     const action = editorKeyAction(e, platform)
-    if (k === 'F11' || k === '`') toggleFocus()
+    if (focusKey(e, platform)) toggleFocus()
     else if (k === 'Escape' && focus) toggleFocus(false)
     else if (action === 'undo') undo()
     else if (action === 'redo') redo()

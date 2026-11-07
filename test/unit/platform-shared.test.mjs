@@ -21,6 +21,20 @@ describe('shared/platform.js is renderer-safe', () => {
   })
 })
 
+describe('focusKey', () => {
+  test('F11 and the backtick toggle the workspace; Cmd+backtick on a Mac is the window cycle', () => {
+    assert.equal(shared.focusKey({ key: 'F11' }, 'darwin'), true)
+    assert.equal(shared.focusKey({ key: '`' }, 'darwin'), true)
+    assert.equal(shared.focusKey({ key: '`', metaKey: true }, 'darwin'), false)
+    assert.equal(shared.focusKey({ key: '`', ctrlKey: true }, 'darwin'), true)
+    for (const p of ['win32', 'linux']) {
+      assert.equal(shared.focusKey({ key: '`', metaKey: true }, p), true)
+      assert.equal(shared.focusKey({ key: '`', ctrlKey: true }, p), true)
+      assert.equal(shared.focusKey({ key: 'a' }, p), false)
+    }
+  })
+})
+
 describe('modKey and modLabel', () => {
   test('darwin uses Cmd', () => {
     assert.equal(shared.modKey({ metaKey: true, ctrlKey: false }, 'darwin'), true)
