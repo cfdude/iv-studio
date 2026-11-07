@@ -10,6 +10,8 @@ export const modLabel = (platform) => (platform === 'darwin' ? '⌘' : 'Ctrl')
 export const modChord = (platform, key) => (platform === 'darwin' ? `⌘${key}` : `Ctrl+${key}`)
 
 // ---------- Wording ----------
+// What an MCP client is told about an edit that is open in the window.
+export const liveEditText = (platform) => `If the edit is open in the IV Studio window, it reloads there and the person can undo your change with ${modChord(platform, 'Z')}.`
 export const dataFolderText = (platform) => (platform === 'darwin' ? '~/Library/Application Support/IV Studio' : platform === 'win32' ? '%APPDATA%\\IV Studio' : '~/.config/IV Studio')
 // Windows and Linux keep today's text.
 export const rendersFolderText = (platform) => (platform === 'darwin' ? '~/Movies/IV Studio' : 'Videos\\IV Studio')

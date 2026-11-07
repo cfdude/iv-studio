@@ -27,6 +27,7 @@ import { Reframes } from '../service/reframe'
 import { MediaTools } from '../service/media'
 import { comfyFolders, contentDir, dataDir, readSettings, resourcesDir, writerOf, writeSettings } from '../service/paths'
 import { editsFolderText, mcpVideosDir, rendersFolderText } from '../service/platform'
+import { liveEditText } from '../shared/platform'
 import { ASPECTS, FRAME_GEN_FPS, MODES } from '../service/plan'
 import { RETAKE_MODES, SHOT_SECONDS } from '../service/sequence'
 import { Studio } from '../service/studio'
@@ -272,7 +273,7 @@ function describe(e) {
   return { id: e.id, name: e.name, settings: e.settings, seconds: +editLength(e).toFixed(3), media: Object.values(e.media).map(({ id, name, kind, duration, width, height, hasAudio, path: p }) => ({ id, name, kind, duration, width, height, hasAudio, path: p })), tracks, trackList: list.map(({ id, kind, label, hidden, locked, muted, solo }) => ({ id, kind, label, hidden: !!hidden, locked: !!locked, muted: !!muted, solo: !!solo })), markers: e.markers || [], exports: e.exports || [] }
 }
 
-const LIVE = 'If the edit is open in the IV Studio window, it reloads there and the person can undo your change with Ctrl+Z.'
+const LIVE = liveEditText(process.platform)
 const LIVE_FILM = 'The person sees it on the Projects page.'
 tool('list_edits', 'Edits (timelines in the Edit page), newest first.', {}, () => edits.list())
 tool('get_edit', 'An edit: its media (with ids), each track\'s clips in order (clip ids, start/end on the timeline, in/out in the media, fades, volume), settings, markers and past exports. Tracks: a higher V track is drawn over a lower one (V2 over V1); T1 holds titles; A tracks are sound; add_track adds more. trackList gives each track\'s state: hidden tracks are left out of the picture, muted ones out of the sound (and when any track is soloed, only soloed tracks are heard), and locked tracks can\'t be changed. Video clips play their own sound too unless muted.', { editId: z.string() }, ({ editId }) => describe(edits.get(editId)))
