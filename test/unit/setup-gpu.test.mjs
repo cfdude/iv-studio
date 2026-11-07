@@ -54,6 +54,11 @@ describe('checkSetup GPU item', () => {
     assert.equal(gpu.fix, 'Under 16 GB of memory: keep previews at 0.4 MP and finals at or below 1.5 MP.')
   })
 
+  test('cuda reporting no memory at all is a warning, as it always was', async () => {
+    const { gpu } = await gpuItem([{ name: 'cuda:0 NVIDIA GeForce RTX 3060 : cudaMallocAsync', type: 'cuda', vram_total: 0 }])
+    assert.equal(gpu.status, 'warn')
+  })
+
   test('cuda 12 GB warns, with the VRAM advice', async () => {
     const { gpu } = await gpuItem([{ name: 'cuda:0 NVIDIA GeForce RTX 3060 : cudaMallocAsync', type: 'cuda', vram_total: 12 * 1024 ** 3 }])
     assert.equal(gpu.fix, 'Under 16 GB of VRAM: keep previews at 0.4 MP and finals at or below 1.5 MP.')

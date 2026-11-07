@@ -26,7 +26,8 @@ export async function checkSetup({ comfy, template, manifest, characters }) {
   items.push({
     id: 'gpu',
     label: 'GPU',
-    status: !gpu ? 'missing' : vramGb && vramGb < 15 ? 'warn' : 'ok',
+    // A cuda card that reports no memory still warns (as before); an Apple GPU that reports none is not judged.
+    status: !gpu ? 'missing' : (gpu.type === 'cuda' || vramGb) && vramGb < 15 ? 'warn' : 'ok',
     detail: gpu ? gpuDetail(gpu) : nonGpuDetail(stats.devices),
     fix: gpu ? lowMemoryAdvice(gpu) : undefined
   })
