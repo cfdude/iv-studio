@@ -5,7 +5,7 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { comfyFolders, dataDir, incognitoDir, readSettings, resourcesDir, writerOf, writeSettings } from '../service/paths'
 import { harnessStatus } from '../service/harness'
-import { projectSettings, secretStates } from '../service/secrets'
+import { projectSettings, sealBlockedText, secretStates } from '../service/secrets'
 import { pasteMessage, skillMarkdown, readGuide } from '../service/agent'
 import { Cloud, GPUS } from '../service/cloud'
 import { RunPod, GPUS as RUNPOD_GPUS } from '../service/runpod'
@@ -702,14 +702,20 @@ app.whenReady().then(() => {
   })
   handle('cloud:install', () => cloudTask('installing the cloud tools', () => cloud.installToolkit()))
   handle('cloud:signIn', () => cloudTask('signing in to Modal', async () => (await cloud.signIn(), cloud.workspace())))
-  handle('cloud:deploy', ({ gpu, idleSeconds }) =>
-    cloudTask('setting up the cloud', async () => {
+  // Refuse before any remote change: a deploy makes a new token, and one that can't be kept would leave the old one out of step.
+  const requireSealable = () => {
+    const why = sealBlockedText(safeStorage, process.platform)
+    if (why) throw new Error(why)
+  }
+  handle('cloud:deploy', ({ gpu, idleSeconds }) => {
+    requireSealable()
+    return cloudTask('setting up the cloud', async () => {
       const { url, token } = await cloud.deploy({ gpu, idleSeconds })
       writeSettings({ cloudToken: seal(token) }, BASE)
       saveCloud({ url, gpu, idleSeconds, workspace: await cloud.workspace(), deployedAt: new Date().toISOString() })
       return readSettings(BASE).cloud
     })
-  )
+  })
   handle('cloud:fetchModels', () =>
     cloudTask('downloading the models', async () => {
       await cloud.fetchModels()
@@ -793,8 +799,9 @@ app.whenReady().then(() => {
   }
   // Set up (and Set up again): the volume, a pod that installs ComfyUI and downloads the models onto it, then
   // the characters. A new gate token each time, so pods started with the old one are shut down first.
-  handle('cloud:runpodSetUp', ({ gpu, idleSeconds }) =>
-    cloudTask('setting up RunPod', async () => {
+  handle('cloud:runpodSetUp', ({ gpu, idleSeconds }) => {
+    requireSealable()
+    return cloudTask('setting up RunPod', async () => {
       const s = readSettings(BASE)
       if (s.target === 'cloud') throw new Error('Switch rendering to My PC first.')
       await runpod.stopAll()
@@ -815,7 +822,7 @@ app.whenReady().then(() => {
       send('cloud:log', `Ready. ${done.length} character file${done.length === 1 ? '' : 's'} uploaded. The GPU shuts itself off after ${Math.round(idleSeconds / 60)} idle minutes.`)
       return readSettings(BASE).runpod
     })
-  )
+  })
   handle('cloud:use', (target) => {
     const s = readSettings(BASE)
     const have = secretNow()
