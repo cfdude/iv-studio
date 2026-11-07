@@ -63,6 +63,25 @@ export const secretStates =(settings, store, platform) => {
   return states
 }
 
+// The cloud sign-ins IV Studio made itself (the user never typed them).
+const TOKEN_NAMES = ['cloudToken', 'runpodToken']
+
+// Which saved secrets Settings and the Cloud page may offer to remove. An unreadable one is dead weight, and a
+// key on a refused Keychain can be cleared (clearing needs no encryption). A refused cloud sign-in is kept: it
+// may open again once access is allowed, and losing it would mean a full set-up.
+export const removableSecrets = (states) =>
+  SECRET_NAMES.filter((n) => states[n] === 'unreadable' || (states[n] === 'refused' && !TOKEN_NAMES.includes(n)))
+
+// What clearing one cloud sign-in writes: just that field, nothing remote. Only an unreadable one may be cleared.
+export const tokenClearPatch = (name, states) => {
+  if (!TOKEN_NAMES.includes(name)) throw new Error('That isn’t a cloud sign-in.')
+  const state = states?.[name] || 'absent'
+  if (state === 'absent') throw new Error('Nothing saved to remove.')
+  if (state === 'refused') throw new Error('IV Studio can’t tell whether this sign-in can be read until the Keychain allows it, so it was kept.')
+  if (state !== 'unreadable') throw new Error('That sign-in can be read, so it was kept.')
+  return { [name]: null }
+}
+
 // The settings the window gets: the secrets themselves never leave, only whether each is usable.
 // `unreadable` lists saved secrets that can't be opened (re-enter, or set the cloud GPU up again).
 // `secretStoreRefused` is true on a Mac whose Keychain access was denied: Settings then shows only the
@@ -77,6 +96,7 @@ export const projectSettings = (settings, store, platform) => {
     hasCivitaiKey: states.civitaiKey === 'ok',
     hasRunpodKey: states.runpodKey === 'ok',
     unreadable: SECRET_NAMES.filter((n) => states[n] === 'unreadable'),
+    removable: removableSecrets(states),
     secretStoreRefused: platform === 'darwin' && !storeAvailable(store)
   }
 }

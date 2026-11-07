@@ -131,6 +131,19 @@ function SecretNotice({ settings }) {
   )
 }
 
+// "Remove it" for a saved key that can't be opened, or that a refused Keychain hides. Clearing needs no encryption.
+function RemoveSaved({ name, settings, onRemove }) {
+  if (!settings.removable?.includes(name)) return null
+  return (
+    <p className="small dim">
+      The saved key can’t be used.{' '}
+      <button className="link-btn" onClick={onRemove}>
+        Remove it
+      </button>
+    </p>
+  )
+}
+
 function CivitaiSettings({ settings, setSettings, notify }) {
   const [key, setKey] = useState('')
   async function saveKey(k) {
@@ -161,7 +174,10 @@ function CivitaiSettings({ settings, setSettings, notify }) {
       </div>
       <div className="group-body">
         {settings.secretStoreRefused ? (
-          <p className="small dim">{keychainRefusedText('darwin')}</p>
+          <>
+            <p className="small dim">{keychainRefusedText('darwin')}</p>
+            <RemoveSaved name="civitaiKey" settings={settings} onRemove={() => saveKey('')} />
+          </>
         ) : settings.hasCivitaiKey ? (
           <p className="small">
             A Civitai API key is saved (encrypted on this PC).{' '}
@@ -171,6 +187,7 @@ function CivitaiSettings({ settings, setSettings, notify }) {
           </p>
         ) : (
           <>
+            <RemoveSaved name="civitaiKey" settings={settings} onRemove={() => saveKey('')} />
             <div className="key-form">
               <input type="password" value={key} placeholder="Civitai API key" onChange={(e) => setKey(e.target.value)} autoComplete="off" />
               <button className="btn btn-small" disabled={!key.trim()} onClick={() => saveKey(key)}>
@@ -381,7 +398,10 @@ function WriterSettings({ settings, setSettings, notify }) {
               MiniMax's own prompt rewriter: it writes in the exact format H3 was trained on and looks at your reference media. Paid through your Comfy.org account, {status?.contextIrPrice || 'a few cents a prompt'}. It runs through ComfyUI.
             </p>
             {settings.secretStoreRefused ? (
-              <p className="small dim">{keychainRefusedText('darwin')}</p>
+              <>
+                <p className="small dim">{keychainRefusedText('darwin')}</p>
+                <RemoveSaved name="comfyApiKey" settings={settings} onRemove={() => saveKey('')} />
+              </>
             ) : settings.hasComfyKey ? (
               <p className="small">
                 A Comfy.org API key is saved (encrypted on this PC).{' '}
@@ -391,6 +411,7 @@ function WriterSettings({ settings, setSettings, notify }) {
               </p>
             ) : (
               <>
+                <RemoveSaved name="comfyApiKey" settings={settings} onRemove={() => saveKey('')} />
                 <div className="key-form">
                   <input type="password" value={key} placeholder="Comfy.org API key (comfyui-…)" onChange={(e) => setKey(e.target.value)} autoComplete="off" />
                   <button className="btn btn-small" disabled={!key.trim()} onClick={() => saveKey(key)}>

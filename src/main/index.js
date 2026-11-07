@@ -5,7 +5,7 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { comfyFolders, dataDir, incognitoDir, readSettings, resourcesDir, writerOf, writeSettings } from '../service/paths'
 import { harnessStatus } from '../service/harness'
-import { projectSettings, sealBlockedText, secretStates } from '../service/secrets'
+import { projectSettings, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
 import { pasteMessage, skillMarkdown, readGuide } from '../service/agent'
 import { Cloud, GPUS } from '../service/cloud'
 import { RunPod, GPUS as RUNPOD_GPUS } from '../service/runpod'
@@ -693,8 +693,15 @@ app.whenReady().then(() => {
       gpus: GPUS,
       runpodGpus: RUNPOD_GPUS,
       busy: cloudBusy,
-      hasToken: have.cloudToken === 'ok'
+      hasToken: have.cloudToken === 'ok',
+      removable: removableSecrets(have)
     }
+  })
+  // Drops a cloud sign-in that can't be opened. Writes only that one field: running pods, the volume and the
+  // deployed app are left exactly as they are.
+  handle('cloud:clearToken', (name) => {
+    writeSettings(tokenClearPatch(name, secretNow()), BASE)
+    return true
   })
   handle('cloud:provider', (p) => {
     if (readSettings(BASE).target === 'cloud') throw new Error('Switch rendering to My PC first.')

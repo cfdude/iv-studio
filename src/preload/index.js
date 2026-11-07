@@ -167,6 +167,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     uploadCharacters: call('cloud:uploadCharacters'),
     provider: call('cloud:provider'),
     runpodKey: call('cloud:runpodKey'),
+    clearToken: call('cloud:clearToken'),
     runpodCatalog: call('cloud:runpodCatalog'),
     runpodSetUp: call('cloud:runpodSetUp'),
     use: call('cloud:use'),
