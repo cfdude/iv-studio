@@ -2,6 +2,7 @@
 // Everything is read from ComfyUI itself (/system_stats and /object_info), so it works with any install.
 
 import { findComfyElsewhere } from './comfylauncher.js'
+import { gpuCheck } from './gpu.js'
 
 // Why a ComfyUI request failed, as a Setup item's status, detail and fix:
 // - busy: ComfyUI took the connection but didn't answer in time (loading, rendering or short on memory); it's running,
@@ -73,17 +74,9 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
     return { ready: false, items }
   }
 
-  const gpu = stats.devices?.find((d) => d.type === 'cuda') || stats.devices?.[0]
-  const vramGb = gpu ? gpu.vram_total / 1024 ** 3 : 0
   // Comfy Cloud reports no devices: it runs each job on one of Comfy's own GPUs
   if (comfy.hosted) items.push({ id: 'gpu', label: 'GPU', status: 'ok', detail: `Comfy Cloud's GPUs${stats.system?.cloud_version ? ` · cloud ${stats.system.cloud_version}` : ''}` })
-  else items.push({
-    id: 'gpu',
-    label: 'GPU',
-    status: !gpu || gpu.type !== 'cuda' ? 'missing' : vramGb < 15 ? 'warn' : 'ok',
-    detail: gpu ? `${gpu.name.replace(/^cuda:\d+ /, '').replace(/ : \w+$/, '')} · ${vramGb.toFixed(0)} GB` : 'No GPU reported',
-    fix: vramGb && vramGb < 15 ? 'Under 16 GB of VRAM: keep previews at 0.4 MP and finals at or below 1.5 MP.' : undefined
-  })
+  else items.push({ id: 'gpu', label: 'GPU', ...gpuCheck(stats.devices) })
 
   const info = await comfy.objectInfo()
   const needed = [...new Set(Object.values(template).map((n) => n.class_type))].filter((c) => !TEMPLATE_SKIP.has(c))

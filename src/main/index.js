@@ -23,6 +23,7 @@ import { Reframes } from '../service/reframe'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState, MANUAL as UPDATE_MANUAL } from './updater'
+import { findGpu, statsReadout } from '../service/gpu'
 import { keyStoreMissingText, menuTemplateFor, runpodTokenMissingText } from '../shared/platform'
 import { projectSettings, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
 import { MediaTools } from '../service/media'
@@ -1556,17 +1557,13 @@ app.whenReady().then(() => {
     if (readSettings(BASE).target === 'cloud') return null
     // a short wait: the meter asks every few seconds, so a busy ComfyUI just skips a reading
     const st = await studio.comfy.systemStats({ timeout: 4000 }).catch(() => null)
-    const d = st?.devices?.[0]
-    return {
-      ram: { total: os.totalmem(), free: os.freemem() },
-      gpu: d ? { name: String(d.name).replace(/^cuda:\d+\s*/, '').replace(/\s*:.*$/, ''), total: d.vram_total, free: d.vram_free, comfyHeld: d.torch_vram_total } : null
-    }
+    return { ram: { total: os.totalmem(), free: os.freemem() }, ...statsReadout(st) }
   })
   // The title bar's Free memory: ComfyUI unloads its models and frees memory (between prompts, so a running render
   // carries on), IV Studio's voice engine stops, and Ollama lets go of a writer model. Returns what changed.
   handle('system:free', async () => {
     const vram = async () => {
-      const d = (await studio.comfy.systemStats({ timeout: 4000 }).catch(() => null))?.devices?.[0]
+      const d = findGpu((await studio.comfy.systemStats({ timeout: 4000 }).catch(() => null))?.devices)
       return d ? d.vram_total - d.vram_free : null
     }
     const before = { vram: await vram(), ram: os.totalmem() - os.freemem() }

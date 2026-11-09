@@ -14,6 +14,7 @@ import path from 'node:path'
 import { estimateKey } from './musickey.js'
 import { findBeats } from './reel.js'
 import { comboOptions } from './setup.js'
+import { findGpu, gpuMemoryGb } from './gpu.js'
 
 export const MUSIC_ENGINES = [
   {
@@ -150,7 +151,7 @@ export class Music {
     } catch (err) {
       return { error: err.message, ready: false, engines: MUSIC_ENGINES.map((e) => ({ ...e, ready: false, missing: [] })) }
     }
-    const gpu = stats.devices?.find((d) => d.type === 'cuda')
+    const gpu = findGpu(stats.devices)
     const engines = MUSIC_ENGINES.map((e) => {
       const nodes = e.id === 'minimax' ? ['MiniMaxMusic3TextEncode', 'EmptyMiniMaxMusic3LatentAudio'] : ['TextEncodeAceStepAudio1.5', 'EmptyAceStep1.5LatentAudio']
       const files = {}
@@ -171,7 +172,7 @@ export class Music {
       const remix = e.id === 'ace' ? { remixReady: ready && !!info.LoadAudio && !!info.VAEEncodeAudio } : {}
       return { ...e, ready, missing, missingNodes, files, ...remix }
     })
-    return { ready: engines.some((e) => e.ready), engines, vramGb: gpu ? Math.round(gpu.vram_total / 1024 ** 3) : null }
+    return { ready: engines.some((e) => e.ready), engines, vramGb: gpu ? Math.round(gpuMemoryGb(gpu)) : null }
   }
 
   // Queues one song. Returns the song record; it fills in as the job runs (see list()).
