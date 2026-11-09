@@ -38,6 +38,13 @@ export const macMenuTemplate = () => [{ role: 'appMenu' }, { role: 'fileMenu' },
 export const menuTemplateFor = (platform) => (platform === 'darwin' ? macMenuTemplate() : null)
 
 // ---------- Wording ----------
+// What an MCP client is told about an edit that is open in the window.
+export const liveEditText = (platform) => `If the edit is open in the IV Studio window, it reloads there and the person can undo your change with ${modChord(platform, 'Z')}.`
+// Where finished videos go by default; Windows and Linux keep today's text.
+export const rendersFolderText = (platform) => (platform === 'darwin' ? '~/Movies/IV Studio' : 'Videos\\IV Studio')
+// The folder separator in text shown to a person: '/' on a Mac, '\\' on Windows and Linux (which keep today's text).
+export const sepText = (platform) => (platform === 'darwin' ? '/' : '\\')
+export const editsFolderText = (platform) => `${rendersFolderText(platform)}${sepText(platform)}Edits`
 export const secretStoreName = (platform) => (platform === 'darwin' ? 'Keychain' : platform === 'win32' ? 'Windows encryption' : 'GNOME Keyring or KWallet')
 // Said when the system secret store can't hold a key.
 export const keyStoreMissingText = (platform) =>

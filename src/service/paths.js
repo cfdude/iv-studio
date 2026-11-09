@@ -175,6 +175,11 @@ export function normalizeComfyUrl(value) {
   return `${u.protocol}//${u.host}${u.pathname.replace(/\/+$/, '')}`
 }
 
+// The folder the MCP server saves finished videos under (it has no Electron app to ask). On a Mac that is
+// ~/Movies, where the app's own app.getPath('videos') points, so both put them in the same place.
+export const mcpVideosBase = ({ platform = process.platform, env = process.env, home = os.homedir() } = {}) =>
+  platform === 'darwin' ? path.join(home, 'Movies') : path.join(env.USERPROFILE || home, 'Videos')
+
 // Where finished videos go (edit and film exports, cloud renders brought home): Settings → Folders → Finished videos,
 // else Videos\IV Studio. Incognito keeps its own inside its data folder.
 export function videosFolderOf(settings, { incognito = false, dataDir: data = '', videos = path.join(os.homedir(), 'Videos') } = {}) {

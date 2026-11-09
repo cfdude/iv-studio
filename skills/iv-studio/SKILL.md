@@ -200,7 +200,8 @@ come from their face pictures (Reference mode) and are named in the prompt.
 - A track the person has locked refuses your changes: work on another track, or ask them. Markers
   are a good way to leave notes ("cut here", "music swells") for the person.
 - Check the cut with `grab_frame` (edit + timeline time), then `export_edit` and poll
-  `get_edit_export`. Exports go to `Videos\IV Studio\Edits`.
+  `get_edit_export`. When it's done, `get_edit_export` gives the file's path; `export_edit` also
+  says which folder exports go to on this computer.
 - If the edit is open in the app, it reloads there and an activity strip tells the person what you
   changed, with a one-click Undo.
 

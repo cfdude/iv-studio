@@ -3,6 +3,7 @@ import SetupProgress, { useSetupProgress } from './SetupProgress'
 import ModalAccount from './ModalAccount'
 import Hero from './Hero'
 import { ask } from './Confirm'
+import { rendersFolderText } from '../../../shared/platform'
 import { secretRemedy } from '../../../service/secrets'
 
 // The title-bar meter while rendering in the cloud: GPU time and its estimated cost since IV Studio opened,
@@ -529,7 +530,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
         </div>
         <div className="group-body">
           <p className="small dim">
-            On Comfy Cloud, what works depends on the nodes and models Comfy offers there (the check above lists it); pictures and music use ComfyUI’s own nodes. Everything in Create, Sequences and the prompt writer works the same on Modal and RunPod. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps) instead. Finished videos download to Videos\IV Studio when you open them.
+            On Comfy Cloud, what works depends on the nodes and models Comfy offers there (the check above lists it); pictures and music use ComfyUI’s own nodes. Everything in Create, Sequences and the prompt writer works the same on Modal and RunPod. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps) instead. Finished videos download to {rendersFolderText(info?.platform)} when you open them.
           </p>
         </div>
       </section>

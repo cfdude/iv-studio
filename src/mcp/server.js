@@ -10,6 +10,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
 import { INSTRUCTIONS, readGuide } from '../service/agent'
+import { editsFolderText, liveEditText, rendersFolderText } from '../shared/platform'
 import { GUIDE_SOURCE, loadGuide } from '../service/h3guide'
 import { blocking, lintPrompt } from '../service/lint'
 import { Ranker } from '../service/ranking'
@@ -26,7 +27,7 @@ import { Reels } from '../service/reel'
 import { Cutouts } from '../service/cutout'
 import { Reframes } from '../service/reframe'
 import { MediaTools } from '../service/media'
-import { comfyFolders, contentDir, dataLocation, readSettings, resourcesDir, videosFolderOf, writerOf, writeSettings } from '../service/paths'
+import { comfyFolders, contentDir, dataLocation, mcpVideosBase, readSettings, resourcesDir, videosFolderOf, writerOf, writeSettings } from '../service/paths'
 import { ASPECTS, FRAME_GEN_FPS, MODES } from '../service/plan'
 import { RETAKE_MODES, SHOT_SECONDS } from '../service/sequence'
 import { Studio } from '../service/studio'
@@ -67,7 +68,7 @@ setOllamaSource(() => readSettings(BASE).ollamaUrl)
 const studio = new Studio({ dataDir: DATA, resourcesDir: resourcesDir(), comfyUrl: readSettings(BASE).comfyUrl, models: readSettings(BASE).models })
 const server = new McpServer({ name: 'iv-studio', version: '0.1.0' }, { instructions: INSTRUCTIONS })
 // Where the app puts downloads and exports (Electron's videos folder; this process has no Electron app).
-const VIDEOS = () => videosFolderOf(readSettings(BASE), { incognito: INCOGNITO, dataDir: DATA, videos: path.join(process.env.USERPROFILE || os.homedir(), 'Videos') })
+const VIDEOS = () => videosFolderOf(readSettings(BASE), { incognito: INCOGNITO, dataDir: DATA, videos: mcpVideosBase() })
 // Packaged, the ffmpeg binaries sit outside the asar archive.
 const unpacked = (p) => p.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
 
@@ -299,7 +300,7 @@ function describe(e) {
   return { id: e.id, name: e.name, settings: e.settings, seconds: +editLength(e).toFixed(3), media: Object.values(e.media).map(({ id, name, kind, duration, width, height, hasAudio, path: p }) => ({ id, name, kind, duration, width, height, hasAudio, path: p })), tracks, trackList: list.map(({ id, kind, label, hidden, locked, muted, solo }) => ({ id, kind, label, hidden: !!hidden, locked: !!locked, muted: !!muted, solo: !!solo })), markers: e.markers || [], exports: e.exports || [] }
 }
 
-const LIVE = 'If the edit is open in the IV Studio window, it reloads there and the person can undo your change with Ctrl+Z.'
+const LIVE = liveEditText(process.platform)
 const LIVE_FILM = 'The person sees it on the Projects page.'
 tool('list_edits', 'Edits (timelines in the Edit page), newest first.', {}, () => edits.list())
 tool('get_edit', 'An edit: its media (with ids), each track\'s clips in order (clip ids, start/end on the timeline, in/out in the media, fades, volume), settings, markers and past exports. Tracks: a higher V track is drawn over a lower one (V2 over V1); T1 holds titles; A tracks are sound; add_track adds more. trackList gives each track\'s state: hidden tracks are left out of the picture, muted ones out of the sound (and when any track is soloed, only soloed tracks are heard), and locked tracks can\'t be changed. Video clips play their own sound too unless muted.', { editId: z.string() }, ({ editId }) => describe(edits.get(editId)))
@@ -318,7 +319,7 @@ tool('set_edit_settings', `Rename an edit or change its export format (${Object.
   return describe(edits.save(editId, { name, settings: { ...e.settings, ...(format && { format }), ...(fps && { fps }), ...(loudness && { loudness }) } }))
 })
 tool('delete_edit', 'Delete an edit (the timeline only: its media files and exported videos stay). Ask the person first.', { editId: z.string() }, ({ editId }) => edits.remove(editId))
-tool('add_media', `Add files to an edit's media bin: local video, picture or audio paths, and/or IV Studio renders by key (list_renders; cloud renders download to Videos\\IV Studio). Returns the new media ids. With append, each also goes on the end of V1 (video, pictures) or A1 (sound), in the order given. ${LIVE}`, {
+tool('add_media', `Add files to an edit's media bin: local video, picture or audio paths, and/or IV Studio renders by key (list_renders; cloud renders download to ${rendersFolderText(process.platform)}). Returns the new media ids. With append, each also goes on the end of V1 (video, pictures) or A1 (sound), in the order given. ${LIVE}`, {
   editId: z.string(),
   files: z.array(z.string()).optional().describe('Absolute paths on this PC'),
   renders: z.array(z.string()).optional().describe('Keys from list_renders'),
@@ -538,7 +539,7 @@ tool('make_reel', `Make a reel: pictures (and video clips), in order, cut to a s
   length: z.number().min(3).optional().describe('At most this many seconds'),
   name: z.string().default('Reel')
 }, (args) => reels.make(args))
-tool('export_edit', `Render the whole edit to one MP4 (H.264 + AAC) in Videos\\IV Studio\\Edits, or outDir. Returns at once; follow with get_edit_export. The export runs inside this MCP server, so it stops if the server stops.`, {
+tool('export_edit', `Render the whole edit to one MP4 (H.264 + AAC) in ${editsFolderText(process.platform)}, or outDir. Returns at once; follow with get_edit_export. The export runs inside this MCP server, so it stops if the server stops.`, {
   editId: z.string(),
   outDir: z.string().optional()
 }, ({ editId, outDir }) => {
