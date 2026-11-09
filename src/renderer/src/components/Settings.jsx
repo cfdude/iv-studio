@@ -6,6 +6,8 @@ import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
 import { SetCard, SetField, SetSwitch, Pill, SetPath, SetCode } from './SettingsKit'
 import { startTour } from '../tours'
+import { comfyLauncherHelp } from '../../../shared/platform'
+import { usePlatform } from '../platform'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
 const GB = (b) => `${(b / 1e9).toFixed(1)} GB`
@@ -153,7 +155,7 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
       notify(err.message)
     }
   }
-  const linux = navigator.userAgent.includes('Linux')
+  const platform = usePlatform()
   const inFolder = l?.inFolder?.some((f) => f.path === l.using)
   return (
     <SetCard
@@ -198,7 +200,7 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
               </select>
             </SetField>
           )}
-          <SetField label="Start it with" hint={linux ? 'A .sh script beside ComfyUI, or its main.py with its own venv’s Python. Its output goes to comfyui.log in IV Studio’s data folder.' : 'The same shortcut or .bat you’d double-click, so ComfyUI starts with your own settings in its own window.'}>
+          <SetField label="Start it with" hint={comfyLauncherHelp(platform)}>
             <div className="set-inline grow">
               <SetPath path={l.using} empty="No launcher found" />
               <button className="btn btn-small" onClick={choose}>

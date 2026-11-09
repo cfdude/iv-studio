@@ -7,6 +7,8 @@ import Timeline from './Timeline'
 import { ContextMenu, GenDialog, PickDialog } from './Generate'
 import { ask } from '../Confirm'
 import Help from '../Help'
+import { editorKeyAction, focusKey, modChord } from '../../../../shared/platform'
+import { usePlatform } from '../../platform'
 import { FRAME, clipEnd, clipFor, clipLength, describeChange, editLength, editPoints, insert, newId, nextTrackId, overwrite, remove, split, timecode, titleClip, tracksOf, videoLayers } from './model'
 
 // Panel sizes, remembered between sessions: bin and effect-controls widths, the source monitor's share
@@ -275,13 +277,15 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
     const lower = k.toLowerCase()
     const src = panel === 'source' && source.current?.loaded()
     let done = true
-    if (k === 'F11' || k === '`') toggleFocus()
+    const action = editorKeyAction(e, platform)
+    if (focusKey(e, platform)) toggleFocus()
     else if (k === 'Escape' && focus) toggleFocus(false)
-    else if (e.ctrlKey && lower === 'z') (e.shiftKey ? redo : undo)()
-    else if (e.ctrlKey && lower === 'y') redo()
-    else if (e.ctrlKey && lower === 'k') splitAll()
-    else if (e.ctrlKey && e.shiftKey && lower === 'm') jumpMarker(-1)
-    else if (e.ctrlKey || e.altKey || e.metaKey) done = false
+    else if (action === 'undo') undo()
+    else if (action === 'redo') redo()
+    else if (action === 'splitAll') splitAll()
+    else if (action === 'prevMarker') jumpMarker(-1)
+    else if (action === 'stop') done = true
+    else if (action === 'none') done = false
     else if (k === ',') place('insert')
     else if (k === '.') place('overwrite')
     else if (src && k === ' ') source.current.toggle()
@@ -553,7 +557,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
               </button>
             ))}
           </div>
-          <button className="btn btn-small" disabled={!edit.clips.length} onClick={doSplit} title="Split at the playhead (S); every track: Ctrl+K">
+          <button className="btn btn-small" disabled={!edit.clips.length} onClick={doSplit} title={`Split at the playhead (S); every track: ${modChord(platform, 'K')}`}>
             Split
           </button>
           <button className="btn btn-small" disabled={!selected} onClick={() => doDelete(false)} title="Delete">
@@ -566,10 +570,10 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
             Marker
           </button>
           <span className="ed-sep" />
-          <button className="btn btn-small" disabled={!hist.past.length} onClick={undo} title="Undo (Ctrl+Z)">
+          <button className="btn btn-small" disabled={!hist.past.length} onClick={undo} title={`Undo (${modChord(platform, 'Z')})`}>
             Undo
           </button>
-          <button className="btn btn-small" disabled={!hist.future.length} onClick={redo} title="Redo (Ctrl+Y)">
+          <button className="btn btn-small" disabled={!hist.future.length} onClick={redo} title={`Redo (${modChord(platform, 'Y')})`}>
             Redo
           </button>
           <span className="ed-sep" />

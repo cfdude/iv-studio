@@ -3,6 +3,8 @@ import Hero from './Hero'
 import { ask } from './Confirm'
 import { MediaEditor, MediaTile } from './MediaEditor'
 import { ListSearch, MoreMenu, Player, Track, VoiceAvatar } from './AudioKit'
+import { modChord } from '../../../shared/platform'
+import { usePlatform } from '../platform'
 
 const V = () => window.ivstudio.voices
 const KIND = { designed: 'Designed', clone: 'From a recording', ready: 'Ready-made' }
@@ -350,6 +352,7 @@ function CloneVoice({ notify, ready, onSaved }) {
 
 // Audio > Lines: say anything in any voice; every line is kept, ready to use in a shot or an edit.
 export function LinesPage({ notify, characters, sendToCreate }) {
+  const platform = usePlatform()
   const [status, check] = useVoiceEngine()
   const [voices, setVoices] = useState([])
   const [lines, setLines] = useState([])
@@ -426,7 +429,7 @@ export function LinesPage({ notify, characters, sendToCreate }) {
             <textarea className="composer-text" rows={4} value={text} placeholder={LINE_EXAMPLE} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && text.trim() && status?.ready && !busy && speak()} />
             <div className="composer-foot">
               <SeedField value={seed} onChange={setSeed} placeholder={String(voice?.seed ?? 41)} />
-              <span className="mono small dim">{est.words ? `${est.words} words · about ${est.seconds} s` : 'Ctrl+Enter speaks'}</span>
+              <span className="mono small dim">{est.words ? `${est.words} words · about ${est.seconds} s` : `${modChord(platform, 'Enter')} speaks`}</span>
               <button className="btn btn-primary" disabled={!status?.ready || busy || !text.trim()} onClick={speak}>
                 {busy ? 'Speaking… (up to a minute the first time)' : 'Speak'}
               </button>

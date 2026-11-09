@@ -23,6 +23,7 @@ import { Reframes } from '../service/reframe'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState, MANUAL as UPDATE_MANUAL } from './updater'
+import { menuTemplateFor } from '../shared/platform'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { ModelInstaller } from '../service/models'
@@ -381,7 +382,8 @@ function missingDataFolder() {
 }
 
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(null)
+  const menuTemplate = menuTemplateFor(process.platform) // a Mac gets the standard menu; Windows and Linux none
+  Menu.setApplicationMenu(menuTemplate ? Menu.buildFromTemplate(menuTemplate) : null)
   if (!missingDataFolder()) return
   makeStudio()
   protocol.handle('ivfile', serveFile)
