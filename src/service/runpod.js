@@ -135,6 +135,7 @@ export class RunPod {
   }
 
   podBody({ gpu, volume, token, idleSeconds }) {
+    if (typeof token !== 'string' || !token) throw new Error('A cloud GPU needs an access token. Set up RunPod again.')
     return {
       name: `${POD_PREFIX}-${Date.now().toString(36)}`,
       image: IMAGE,
@@ -162,6 +163,7 @@ export class RunPod {
 
   // Starts a pod on the chosen GPU, or the first of ours that's free in the volume's data center.
   async createPod({ gpu, volume, token, idleSeconds }) {
+    if (typeof token !== 'string' || !token) throw new Error('A cloud GPU needs an access token. Set up RunPod again.')
     const order = [gpu, ...GPUS.map((g) => g.id).filter((id) => id !== gpu)]
     let last
     for (const id of order) {
