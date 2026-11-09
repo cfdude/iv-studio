@@ -12,7 +12,7 @@ import { SetupProgress, about } from '../service/setupprogress'
 import { RunPod, GPUS as RUNPOD_GPUS } from '../service/runpod'
 import { MODEL_GROUPS, recommend, scanHardware } from '../service/hardware'
 import { comboOptions } from '../service/setup'
-import { comfyHome, comfyUp, findComfyElsewhere, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launcherFor, launchersIn, waitUp } from '../service/comfylauncher'
+import { comfyHome, comfyUp, findComfyElsewhere, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launcherFor, launchersIn, startApp, waitUp } from '../service/comfylauncher'
 import { randomBytes } from 'node:crypto'
 import { Edits, FORMATS, LOUDNESS } from '../service/edits'
 import { EditGen } from '../service/editgen'
@@ -1338,8 +1338,7 @@ app.whenReady().then(() => {
       if (!file) throw new Error('No ComfyUI launcher found. Pick one in Settings → ComfyUI.')
       send('comfy:state', { state: 'starting', detail: path.basename(file) })
       try {
-        launchComfy(file, { logFile: path.join(DATA, 'comfyui.log') })
-        const up = await waitUp(s.comfyUrl)
+        const up = process.platform === 'darwin' && /\.app$/i.test(file) ? await startApp(file, { url: s.comfyUrl }) : (launchComfy(file, { logFile: path.join(DATA, 'comfyui.log') }), await waitUp(s.comfyUrl))
         send('comfy:state', { state: 'up', detail: `ComfyUI started in ${up.seconds} s.` })
         return up
       } catch (err) {

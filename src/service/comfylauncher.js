@@ -40,10 +40,12 @@ export function findLaunchers({ env = process.env, drives = ['C', 'D', 'E', 'F',
   }
   if (platform !== 'win32') {
     const home = homeDir || env.HOME || os.homedir()
-    // the ComfyUI Desktop app first on a Mac (most Mac installs)
-    if (platform === 'darwin') for (const apps of ['/Applications', path.join(home, 'Applications')]) add(path.join(apps, 'ComfyUI.app'), 'desktop app')
+    // the ComfyUI Desktop app first on a Mac (most Mac installs). It is "Comfy Desktop.app" now, "ComfyUI.app" before,
+    // and keeps its standalone install in ~/ComfyUI-Installs.
+    if (platform === 'darwin') for (const apps of ['/Applications', path.join(home, 'Applications')]) for (const app of ['Comfy Desktop.app', 'ComfyUI.app']) add(path.join(apps, app), 'desktop app')
     // ComfyUI folders in the home folder, Downloads or /opt, one level down: their best launcher each
-    for (const root of [home, path.join(home, 'Downloads'), path.join(home, 'ai'), '/opt']) {
+    const roots = [home, path.join(home, 'Downloads'), path.join(home, 'ai'), '/opt', ...(platform === 'darwin' ? [path.join(home, 'ComfyUI-Installs')] : [])]
+    for (const root of roots) {
       for (const e of list(root)) {
         if (!e.isDirectory() || !/comfy/i.test(e.name)) continue
         const dir = path.join(root, e.name)
@@ -176,6 +178,18 @@ export function linuxCommand(file) {
     return [venvs.find((p) => fs.existsSync(p)) || 'python3', [file]]
   }
   return [file, []]
+}
+
+// macOS: opens an app bundle through the system (so it runs as its own process and outlives IV Studio), then waits
+// for ComfyUI to answer at url. The Desktop app can open with its server stopped, or serve on another port, so a
+// silent wait gets its own message. launch and wait are injected so a test never opens anything.
+export async function startApp(appPath, { launch: run = launch, wait = waitUp, url, timeoutMs = 3 * 60 * 1000 } = {}) {
+  run(appPath, { platform: 'darwin' })
+  try {
+    return await wait(url, { timeoutMs })
+  } catch {
+    throw new Error(`The ComfyUI app opened, but nothing answered at ${url} within 3 minutes. Start ComfyUI’s server in the app, or set the address the app shows in Settings → ComfyUI.`)
+  }
 }
 
 // 'up' when ComfyUI answers at url, 'busy' when something there took the connection but didn't answer in time (a
