@@ -1,3 +1,5 @@
+import { findGpu } from './gpu.js'
+
 // Adapts a graph to the ComfyUI it will run on. IV Studio's graphs are made on Windows, so on a Linux
 // ComfyUI (the cloud) model names need forward slashes, and the DLSS 5 finishing pass, which is
 // Windows-only (Direct3D 12), is replaced with what Linux can do: an optional 2x AI upscale
@@ -17,6 +19,8 @@ export function capabilities(objectInfo, systemStats) {
   return {
     // ComfyUI reports Python's os.name ('nt') on some versions and sys.platform ('win32') on others
     posix: !['nt', 'win32'].includes(systemStats?.system?.os),
+    // the GPU's type ('cuda', 'mps' or null), by the one GPU rule
+    gpuKind: findGpu(systemStats?.devices)?.type || null,
     dlss: !!objectInfo.DLSS5_Enhance_Video,
     rife: !!objectInfo['RIFE VFI'],
     upscale2x: !!objectInfo.DLSS5_Enhance_Video || upscalers.includes(CLOUD_UPSCALER),
