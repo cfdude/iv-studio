@@ -23,7 +23,8 @@ import { Reframes } from '../service/reframe'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState, MANUAL as UPDATE_MANUAL } from './updater'
-import { menuTemplateFor } from '../shared/platform'
+import { keyStoreMissingText, menuTemplateFor, runpodTokenMissingText } from '../shared/platform'
+import { projectSettings, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { ModelInstaller } from '../service/models'
@@ -323,7 +324,7 @@ function handle(channel, fn) {
   })
 }
 
-const KEY_STORE_MISSING = process.platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : process.platform === 'darwin' ? 'The macOS Keychain is not available to IV Studio, so the key cannot be stored safely.' : 'No system keyring (GNOME Keyring or KWallet) is available, so the key cannot be stored safely.'
+const KEY_STORE_MISSING = keyStoreMissingText(process.platform)
 
 // On Linux without a keyring Electron falls back to a fixed built-in password ('basic_text'), which isn't safe.
 const keysSafe = () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text')
@@ -403,10 +404,9 @@ app.whenReady().then(() => {
   })()
   handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, dataDir: DATA, dataSource: LOCATION.missing ? 'default' : LOCATION.source, portable: PORTABLE, mcp: mcpCommand(), testCopy: TEST_COPY, incognito: INCOGNITO, links }))
   // The window never sees the Comfy.org or Civitai key, only whether one is saved.
-  const publicSettings = (s) => {
-    const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, comfyCloudKey: _ck, ...rest } = s
-    return { ...rest, hasComfyKey: !!comfyApiKey, hasCloudToken: !!cloudToken, hasCivitaiKey: !!civitaiKey, hasRunpodKey: !!runpodKey }
-  }
+  // A saved key the system can't open counts as not saved (and is listed as unreadable); see service/secrets.js.
+  const publicSettings = (s) => projectSettings(s, safeStorage, process.platform)
+  const secretNow = () => secretStates(readSettings(BASE), safeStorage, process.platform)
   const comfyKey = () => unseal(readSettings(BASE).comfyApiKey)
   handle('settings:get', () => publicSettings(readSettings(BASE)))
   handle('settings:setComfyKey', (key) => {
@@ -513,7 +513,7 @@ app.whenReady().then(() => {
   handle('images:toEdit', async (file, name, editId = null) => putOnEdit(file, name, editId, 'iv'))
   // ---------- LoRAs: Civitai's H3 LoRAs and the ones on this PC ----------
   civitai = new Civitai({ dataDir: DATA, comfy: new Comfy(readSettings(BASE).comfyUrl), key: () => unseal(readSettings(BASE).civitaiKey), mature: () => !!readSettings(BASE).civitaiMature, onProgress: (u) => send('loras:progress', u) })
-  handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: !!readSettings(BASE).civitaiKey }))
+  handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: publicSettings(readSettings(BASE)).hasCivitaiKey }))
   handle('loras:search', (opts) => civitai.search(opts))
   handle('loras:model', (id) => civitai.model(id))
   handle('loras:download', (opts) => civitai.download(opts))
@@ -898,6 +898,7 @@ app.whenReady().then(() => {
   handle('cloud:status', async () => {
     const s = readSettings(BASE)
     const { url, podId, ...rp } = s.runpod || {}
+    const have = secretNow()
     return {
       provider: s.cloudProvider || 'modal',
       toolkit: cloud.toolkitReady(),
@@ -909,16 +910,24 @@ app.whenReady().then(() => {
       signInUrl: cloud.signInUrl || null,
       signingIn: !!cloud.signing,
       cloud: s.cloud,
-      runpod: { ...rp, hasKey: !!s.runpodKey, ready: !!(rp.modelsAt && s.runpodToken) },
-      comfycloud: { ...(s.comfycloud || {}), hasKey: !!(s.comfyCloudKey || s.comfyApiKey), ownKey: !!s.comfyCloudKey },
+      runpod: { ...rp, hasKey: have.runpodKey === 'ok', ready: !!(rp.modelsAt && have.runpodToken === 'ok') },
+      comfycloud: { ...(s.comfycloud || {}), hasKey: have.comfyCloudKey === 'ok' || have.comfyApiKey === 'ok', ownKey: have.comfyCloudKey === 'ok' },
       target: s.target,
       gpus: GPUS,
       runpodGpus: RUNPOD_GPUS,
       busy: cloudBusy,
       // the last (or current) setup's progress, for a window that opens or reloads mid-setup
       setup: setupNow?.snapshot() || null,
-      hasToken: !!s.cloudToken
+      hasToken: have.cloudToken === 'ok',
+      // saved keys and sign-ins that can't be opened, which the page offers to remove
+      removable: removableSecrets(have)
     }
+  })
+  // Drops a cloud sign-in that can't be opened. Writes only that one field: running pods, the volume and the
+  // deployed app are left exactly as they are.
+  handle('cloud:clearToken', (name) => {
+    writeSettings(tokenClearPatch(name, secretNow()), BASE)
+    return true
   })
   handle('cloud:provider', (p) => {
     if (readSettings(BASE).target === 'cloud') throw new Error('Switch rendering to My PC first.')
@@ -962,14 +971,20 @@ app.whenReady().then(() => {
     writeSettings({ cloud: null, cloudToken: null }, BASE)
     return r
   })
-  handle('cloud:deploy', ({ gpu, idleSeconds }) =>
-    cloudTask('setting up the cloud', async () => {
+  // Refuse before any remote change: a deploy makes a new token, and one that can't be kept would leave the old one out of step.
+  const requireSealable = () => {
+    const why = sealBlockedText(safeStorage, process.platform)
+    if (why) throw new Error(why)
+  }
+  handle('cloud:deploy', ({ gpu, idleSeconds }) => {
+    requireSealable()
+    return cloudTask('setting up the cloud', async () => {
       const { url, token } = await cloud.deploy({ gpu, idleSeconds })
       writeSettings({ cloudToken: seal(token) }, BASE)
       saveCloud({ url, gpu, idleSeconds, workspace: await cloud.workspace(), deployedAt: new Date().toISOString() })
       return readSettings(BASE).cloud
     })
-  )
+  })
   handle('cloud:fetchModels', () =>
     cloudTask('downloading the models', async () => {
       await cloud.fetchModels()
@@ -979,8 +994,9 @@ app.whenReady().then(() => {
   // Each character's LoRA and the RefMods it uses, found through the local ComfyUI's model folders.
   // The whole Modal setup in one call: the access token and image (deploy), the models, then the characters. It
   // runs here, not in the window, so leaving the page or reloading the window doesn't stop it.
-  handle('cloud:setUp', ({ gpu, idleSeconds }) =>
-    cloudTask('setting up the cloud', () =>
+  handle('cloud:setUp', ({ gpu, idleSeconds }) => {
+    requireSealable()
+    return cloudTask('setting up the cloud', () =>
       tracked(
         'modal',
         async (t) => {
@@ -1002,7 +1018,7 @@ app.whenReady().then(() => {
         cloudModels()
       )
     )
-  )
+  })
   // A stand-in Modal setup for test copies: Modal's own lines, sped up. "fail" stops it in the model download.
   async function fakeSetup(t, mode) {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -1090,6 +1106,8 @@ app.whenReady().then(() => {
     (waking ||= (async () => {
       const r = readSettings(BASE).runpod || {}
       if (!r.volumeId) throw new Error('Set up RunPod on the Cloud page first.')
+      // Without a readable token a new pod would be open to anyone, and an old one could not be reached: set up again.
+      if (!runpodToken()) throw new Error(runpodTokenMissingText(process.platform, safeStorage.isEncryptionAvailable()))
       const current = r.url && (await runpod.health(r.url))
       if (current?.stage === 'ready') return r.url
       let url = current ? r.url : (await runpod.pods())[0]?.url
@@ -1126,8 +1144,9 @@ app.whenReady().then(() => {
   }
   // Set up (and Set up again): the volume, a pod that installs ComfyUI and downloads the models onto it, then
   // the characters. A new gate token each time, so pods started with the old one are shut down first.
-  handle('cloud:runpodSetUp', ({ gpu, idleSeconds }) =>
-    cloudTask('setting up RunPod', () => tracked('runpod', async (t) => {
+  handle('cloud:runpodSetUp', ({ gpu, idleSeconds }) => {
+    requireSealable()
+    return cloudTask('setting up RunPod', () => tracked('runpod', async (t) => {
       const s = readSettings(BASE)
       if (s.target === 'cloud') throw new Error('Switch rendering to My PC first.')
       await runpod.stopAll()
@@ -1160,12 +1179,13 @@ app.whenReady().then(() => {
       send('cloud:log', `Ready. ${done.length} character file${done.length === 1 ? '' : 's'} uploaded. The GPU shuts itself off after ${Math.round(idleSeconds / 60)} idle minutes.`)
       return readSettings(BASE).runpod
     }))
-  )
+  })
   handle('cloud:use', (target) => {
     const s = readSettings(BASE)
+    const have = secretNow()
     if (target === 'cloud' && s.cloudProvider === 'comfycloud' && !comfyCloudKey(s)) throw new Error('Save your Comfy API key first.')
-    if (target === 'cloud' && s.cloudProvider === 'runpod' && !(s.runpod?.modelsAt && s.runpodToken)) throw new Error('Set up RunPod first.')
-    if (target === 'cloud' && (s.cloudProvider || 'modal') === 'modal' && !(s.cloud?.url && s.cloudToken)) throw new Error('Set up the cloud first.')
+    if (target === 'cloud' && s.cloudProvider === 'runpod' && !(s.runpod?.modelsAt && have.runpodToken === 'ok')) throw new Error('Set up RunPod first.')
+    if (target === 'cloud' && (s.cloudProvider || 'modal') === 'modal' && !(s.cloud?.url && have.cloudToken === 'ok')) throw new Error('Set up the cloud first.')
     writeSettings({ target: target === 'cloud' ? 'cloud' : 'local' }, BASE)
     makeStudio()
     return target
@@ -1176,7 +1196,7 @@ app.whenReady().then(() => {
     // Comfy Cloud bills per run on the person's Comfy account: no GPU of theirs runs between renders
     if (provider() === 'comfycloud') return { gpu: 'Comfy Cloud', perHour: 0, running: [], hosted: true }
     if (provider() === 'runpod') {
-      const running = s.runpodKey ? await runpod.pods() : []
+      const running = secretNow().runpodKey === 'ok' ? await runpod.pods() : []
       const gpu = RUNPOD_GPUS.find((g) => g.id === (running[0]?.gpu || s.runpod?.gpu)) || RUNPOD_GPUS[0]
       return { gpu: gpu.label.split(' · ')[0], perHour: running[0]?.perHour || gpu.perHour, running: running.map((p) => ({ id: p.id, startedAt: Date.parse(p.startedAt) })) }
     }
@@ -1210,7 +1230,7 @@ app.whenReady().then(() => {
       }
     }
   })
-  handle('prompts:status', async () => ({ ...(await ollamaStatus()), engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: !!readSettings(BASE).comfyApiKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: harnessStatus() }))
+  handle('prompts:status', async () => ({ ...(await ollamaStatus()), engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: publicSettings(readSettings(BASE)).hasComfyKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: harnessStatus() }))
   handle('prompts:write', (request) => {
     const s = readSettings(BASE)
     const w = writerOf(request?.engine ? { ...s, promptEngine: request.engine } : s)

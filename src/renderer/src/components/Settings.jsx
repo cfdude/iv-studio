@@ -6,7 +6,8 @@ import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
 import { SetCard, SetField, SetSwitch, Pill, SetPath, SetCode } from './SettingsKit'
 import { startTour } from '../tours'
-import { comfyLauncherHelp } from '../../../shared/platform'
+import { comfyLauncherHelp, keychainRefusedText } from '../../../shared/platform'
+import { secretRemedy } from '../../../service/secrets'
 import { usePlatform } from '../platform'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
@@ -529,7 +530,12 @@ function WriterCard({ n, settings, setSettings, notify }) {
           label="Comfy.org key"
           hint={`MiniMax's own prompt rewriter, in the exact format H3 was trained on; it looks at your reference media. Paid through your Comfy.org account, ${status?.contextIrPrice || 'a few cents a prompt'}, and runs through ComfyUI.`}
         >
-          {settings.hasComfyKey ? (
+          {settings.secretStoreRefused ? (
+            <>
+              <p className="set-hint">{keychainRefusedText('darwin')}</p>
+              <RemoveSaved name="comfyApiKey" settings={settings} onRemove={() => saveKey('')} />
+            </>
+          ) : settings.hasComfyKey ? (
             <div className="set-inline">
               <Pill tone="ok">Saved · encrypted on this PC</Pill>
               <button className="link-btn" onClick={() => saveKey('')}>
@@ -538,6 +544,7 @@ function WriterCard({ n, settings, setSettings, notify }) {
             </div>
           ) : (
             <>
+              <RemoveSaved name="comfyApiKey" settings={settings} onRemove={() => saveKey('')} />
               <div className="set-inline grow">
                 <input type="password" value={key} placeholder="comfyui-…" onChange={(e) => setKey(e.target.value)} autoComplete="off" />
                 <button className="btn btn-small" disabled={!key.trim()} onClick={() => saveKey(key)}>
@@ -556,6 +563,36 @@ function WriterCard({ n, settings, setSettings, notify }) {
         </SetField>
       )}
     </SetCard>
+  )
+}
+
+// "Remove it" for a saved key that can't be opened, or that a refused Mac Keychain hides. Clearing needs no encryption.
+function RemoveSaved({ name, settings, onRemove }) {
+  if (!settings.removable?.includes(name)) return null
+  return (
+    <p className="set-hint">
+      The saved key can’t be used.{' '}
+      <button className="link-btn" onClick={onRemove}>
+        Remove it
+      </button>
+    </p>
+  )
+}
+
+// Saved keys the system won't open, and what to do about each. On a Mac whose Keychain refused access there is
+// nothing to re-enter yet, so the allow-in-Keychain text shows, with Remove next to each key.
+function SecretNotice({ settings }) {
+  if (settings.secretStoreRefused) return <p className="notice">{keychainRefusedText('darwin')}</p>
+  const names = settings.unreadable || []
+  if (!names.length) return null
+  return (
+    <>
+      {names.map((name) => (
+        <p key={name} className="notice">
+          {secretRemedy(name).text}
+        </p>
+      ))}
+    </>
   )
 }
 
@@ -585,7 +622,12 @@ function CivitaiCard({ n, settings, setSettings, notify }) {
   return (
     <SetCard id="civitai" n={n} title="Civitai" sub="Where the LoRAs page finds LoRAs to download.">
       <SetField label="API key">
-        {settings.hasCivitaiKey ? (
+        {settings.secretStoreRefused ? (
+          <>
+            <p className="set-hint">{keychainRefusedText('darwin')}</p>
+            <RemoveSaved name="civitaiKey" settings={settings} onRemove={() => saveKey('')} />
+          </>
+        ) : settings.hasCivitaiKey ? (
           <div className="set-inline">
             <Pill tone="ok">Saved · encrypted on this PC</Pill>
             <button className="link-btn" onClick={() => saveKey('')}>
@@ -594,6 +636,7 @@ function CivitaiCard({ n, settings, setSettings, notify }) {
           </div>
         ) : (
           <>
+            <RemoveSaved name="civitaiKey" settings={settings} onRemove={() => saveKey('')} />
             <div className="set-inline grow">
               <input type="password" value={key} placeholder="Civitai API key" onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && key.trim() && saveKey(key)} autoComplete="off" />
               <button className="btn btn-small" disabled={!key.trim()} onClick={() => saveKey(key)}>
@@ -922,6 +965,8 @@ export default function Settings({ info, recheck, notify, go, setup }) {
     <div className="settings settings-v2">
       <Hero art="settings" title="Settings" kicker="Infinite Variance" />
       <SettingsTabs tab="settings" go={go} setup={setup} />
+
+      <SecretNotice settings={settings} />
 
       <div className="set-layout">
         <nav className="set-nav" aria-label="Settings sections">

@@ -38,6 +38,26 @@ export const macMenuTemplate = () => [{ role: 'appMenu' }, { role: 'fileMenu' },
 export const menuTemplateFor = (platform) => (platform === 'darwin' ? macMenuTemplate() : null)
 
 // ---------- Wording ----------
+export const secretStoreName = (platform) => (platform === 'darwin' ? 'Keychain' : platform === 'win32' ? 'Windows encryption' : 'GNOME Keyring or KWallet')
+// Said when the system secret store can't hold a key.
+export const keyStoreMissingText = (platform) =>
+  platform === 'darwin' ? 'The Mac Keychain is not available, so the key cannot be stored safely.' : platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : `No system keyring (${secretStoreName(platform)}) is available, so the key cannot be stored safely.`
+
+// Said on a Mac when the Keychain refuses IV Studio access to its saved keys (Deny was pressed, or nobody answered).
+// Re-entering a key can't work until access is allowed, so this replaces any "enter it again" text. Plain Allow
+// asks for the password on every launch; Always Allow stops that.
+export const keychainRefusedText = (platform) =>
+  platform === 'darwin'
+    ? 'The Mac Keychain isn’t letting IV Studio open its saved keys. Open Keychain Access and allow IV Studio, or quit and start IV Studio again and, when your Mac asks, press Always Allow (plain Allow asks again every time you start).'
+    : keyStoreMissingText(platform)
+
+// Said when a saved RunPod access token can't be used. On a Mac whose Keychain refuses access, setting up
+// again can't work, so it says what to allow; otherwise it keeps the set-up-again text.
+export const runpodTokenMissingText = (platform, storeAvailable) =>
+  platform === 'darwin' && !storeAvailable
+    ? keychainRefusedText(platform)
+    : 'IV Studio can no longer read the RunPod access token it saved. Set up RunPod again on the Cloud page.'
+
 // The Settings -> ComfyUI help under the launcher picker. Windows and Linux keep their text; a Mac names
 // Comfy Desktop.app and ComfyUI's main.py.
 export const comfyLauncherHelp = (platform) =>

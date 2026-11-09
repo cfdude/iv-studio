@@ -3,6 +3,7 @@ import SetupProgress, { useSetupProgress } from './SetupProgress'
 import ModalAccount from './ModalAccount'
 import Hero from './Hero'
 import { ask } from './Confirm'
+import { secretRemedy } from '../../../service/secrets'
 
 // The title-bar meter while rendering in the cloud: GPU time and its estimated cost since IV Studio opened,
 // ticking while a GPU is up. Modal is asked every 30 s which containers run; each one counts from its own
@@ -144,6 +145,14 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
           </p>
         ) : (
           <>
+            {st.removable?.includes('runpodKey') && (
+              <p className="small dim">
+                The saved RunPod key can’t be used.{' '}
+                <button className="link-btn" disabled={!!busy} onClick={() => saveKey('')}>
+                  Remove it
+                </button>
+              </p>
+            )}
             <div className="key-form">
               <input type="password" value={key} placeholder="RunPod API key (rpa_…)" onChange={(e) => setKey(e.target.value)} autoComplete="off" />
               <button className="btn btn-small" disabled={!!busy || !key.trim()} onClick={() => saveKey(key.trim())}>
@@ -244,6 +253,14 @@ function ComfyCloudSteps({ st, busy, run, notify, refresh }) {
         ) : null}
         {(!cc.hasKey || !cc.ownKey) && (
           <>
+            {st.removable?.includes('comfyCloudKey') && (
+              <p className="small dim">
+                The saved Comfy Cloud key can’t be used.{' '}
+                <button className="link-btn" disabled={!!busy} onClick={() => saveKey('')}>
+                  Remove it
+                </button>
+              </p>
+            )}
             <div className="key-form">
               <input type="password" value={key} placeholder="Comfy API key (comfyui-…)" onChange={(e) => setKey(e.target.value)} autoComplete="off" />
               <button className="btn btn-small" disabled={!!busy || !key.trim()} onClick={() => saveKey(key.trim())}>
@@ -364,7 +381,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
   const chosen = st.gpus.find((g) => g.id === gpu)
   const runpod = st.provider === 'runpod'
   const comfyCloud = st.provider === 'comfycloud'
-  const setUpDone = comfyCloud ? !!st.comfycloud?.hasKey : runpod ? !!st.runpod?.ready : !!(st.cloud?.url && st.cloud?.modelsAt)
+  const setUpDone = comfyCloud ? !!st.comfycloud?.hasKey : runpod ? !!st.runpod?.ready : !!(st.cloud?.url && st.cloud?.modelsAt && st.hasToken)
   const onCloud = st.target === 'cloud'
 
   return (
@@ -374,6 +391,14 @@ export default function Cloud({ notify, recheck, setup, info }) {
         No strong graphics card? Render on a cloud GPU instead.
         <span className="lede-small dim">Pick a cloud service below and set it up once; then switch between this PC and the cloud whenever you like.</span>
       </p>
+      {['cloudToken', 'runpodToken'].filter((n) => st.removable?.includes(n)).map((n) => (
+        <p key={n} className="notice">
+          {secretRemedy(n).text} ({n === 'cloudToken' ? 'Modal' : 'RunPod'}) You can also remove the saved sign-in; your account, storage and any running GPU stay as they are.{' '}
+          <button className="link-btn" disabled={!!busy} onClick={() => run('Removing the sign-in', () => window.ivstudio.cloud.clearToken(n))}>
+            Remove it
+          </button>
+        </p>
+      ))}
       <div className="cloud-guided">
         <button className="btn btn-primary" onClick={() => window.dispatchEvent(new CustomEvent('iv:cloud-wizard'))}>
           Guided setup →
