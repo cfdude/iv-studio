@@ -16,14 +16,16 @@ const make = () => {
 }
 
 describe('RunPod token', () => {
-  for (const token of [null, undefined, '', 42]) {
-    test(`podBody and createPod refuse ${JSON.stringify(token)} with no network call`, async () => {
-      const { rp, calls } = make()
-      assert.throws(() => rp.podBody({ gpu: 'NVIDIA L40S', volume, token, idleSeconds: 300 }), /access token/)
-      await assert.rejects(rp.createPod({ gpu: 'NVIDIA L40S', volume, token, idleSeconds: 300 }), /access token/)
-      assert.equal(calls.length, 0)
-    })
-  }
+  test('podBody and createPod refuse a missing, empty or non-string token with no network call', async (t) => {
+    for (const token of [null, undefined, '', 42]) {
+      await t.test(`podBody and createPod refuse ${JSON.stringify(token)} with no network call`, async () => {
+        const { rp, calls } = make()
+        assert.throws(() => rp.podBody({ gpu: 'NVIDIA L40S', volume, token, idleSeconds: 300 }), /access token/)
+        await assert.rejects(rp.createPod({ gpu: 'NVIDIA L40S', volume, token, idleSeconds: 300 }), /access token/)
+        assert.equal(calls.length, 0)
+      })
+    }
+  })
   test('a real token still builds the pod body', () => {
     const { rp } = make()
     assert.equal(rp.podBody({ gpu: 'NVIDIA L40S', volume, token: 'tok', idleSeconds: 300 }).env.IV_TOKEN, 'tok')

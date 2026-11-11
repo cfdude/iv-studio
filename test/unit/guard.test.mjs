@@ -68,20 +68,24 @@ describe('guard: environment', () => {
   for (const e of all) dirty[e.name] = `leak-${e.name}`
   const scrubbed = applyEnvPolicy({ ...dirty, PATH: '/usr/bin', SystemRoot: 'C:\\Windows' }, policy, fs.mkdtempSync(path.join(os.tmpdir(), 'iv-env-')))
 
-  for (const e of policy.remove) {
-    test(`${e.name} is removed from the environment`, () => {
-      assert.equal(scrubbed.env[e.name], undefined)
-      assert.ok(scrubbed.found.includes(e.name))
-    })
-  }
-  for (const e of policy.pin) {
-    test(`${e.name} is pinned to a temp path`, () => {
-      const v = scrubbed.env[e.name]
-      assert.ok(v && v !== `leak-${e.name}`, `${e.name} was not changed`)
-      assert.ok(fs.realpathSync(path.dirname(v)).startsWith(tmpReal), `${e.name}=${v}`)
-      if (e.to === 'missing-file') assert.equal(fs.existsSync(v), false)
-    })
-  }
+  test('every removed variable is gone from the environment', async (t) => {
+    for (const e of policy.remove) {
+      await t.test(`${e.name} is removed from the environment`, () => {
+        assert.equal(scrubbed.env[e.name], undefined)
+        assert.ok(scrubbed.found.includes(e.name))
+      })
+    }
+  })
+  test('every pinned variable points at a temp path', async (t) => {
+    for (const e of policy.pin) {
+      await t.test(`${e.name} is pinned to a temp path`, () => {
+        const v = scrubbed.env[e.name]
+        assert.ok(v && v !== `leak-${e.name}`, `${e.name} was not changed`)
+        assert.ok(fs.realpathSync(path.dirname(v)).startsWith(tmpReal), `${e.name}=${v}`)
+        if (e.to === 'missing-file') assert.equal(fs.existsSync(v), false)
+      })
+    }
+  })
   test('a pinned variable already set to a temp path by the harness is kept', () => {
     const mine = path.join(tmpReal, 'iv-seeded-data')
     const r = applyEnvPolicy({ IV_STUDIO_DATA: mine, HOME: '/Users/someone' }, policy, fs.mkdtempSync(path.join(os.tmpdir(), 'iv-env-')))
