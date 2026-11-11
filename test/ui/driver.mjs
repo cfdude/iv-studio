@@ -63,6 +63,7 @@ export function electronEnv(shellEnv, { home, data, userData, runDir, ports = []
     HOME: home,
     IV_STUDIO_DATA: data,
     IV_STUDIO_USER_DATA: userData,
+    IV_STUDIO_UI_HIDDEN: '1', // windows never show (src/service/uihidden.js); honoured only with IV_STUDIO_DATA
     IV_TEST_RUN_DIR: runDir,
     IV_TEST_ALLOW_PORTS: ports.join(','),
     NODE_OPTIONS: `--import=${GUARD_URL}`

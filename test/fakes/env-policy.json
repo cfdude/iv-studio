@@ -301,6 +301,11 @@
       "name": "APPIMAGE",
       "why": "Linux location, read only, unset on a Mac",
       "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_UI_HIDDEN",
+      "why": "page tier only: windows never show; counts only with IV_STUDIO_DATA",
+      "source": "src/service/uihidden.js:5"
     }
   ]
 }

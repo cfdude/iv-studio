@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { comfyFolders, dataLocation, incognitoDir, readSettings, resourcesDir, videosFolderOf, writerOf, writeSettings } from '../service/paths'
+import { uiHidden } from '../service/uihidden'
 import { chooseTarget, copyData, discardCopy, freeBytes, listData, movableEntries, oldCopy, removeOldCopy, verifyCopy, writePointer } from '../service/datafolder'
 import { codexWindow, EXTRA_BIN, findHarnesses, harnessStatus } from '../service/harness'
 import { AGENT_NAMES, startAgentRun } from '../service/agentrun'
@@ -121,6 +122,15 @@ function serveFile(req) {
 const BG = '#100c0e'
 // A copy started with its own user data (testing beside the installed app) says so everywhere.
 const TEST_COPY = !!process.env.IV_STUDIO_USER_DATA
+// The page tier's windows never show (uihidden.js): no show, focus, restore or full screen, and no Dock icon.
+const UI_HIDDEN = uiHidden()
+// The one place a window is shown or brought forward; a hidden run (page tier) does nothing here.
+function reveal(w, { focus = false } = {}) {
+  if (UI_HIDDEN || !w || w.isDestroyed()) return
+  if (w.isMinimized()) w.restore()
+  w.show()
+  if (focus) w.focus()
+}
 // Where Claude Code and Codex are looked for, and where Install puts them: this account's home, or in a test copy a
 // throwaway one (IV_STUDIO_TEST_HOME). extra is what the installer and the agents get to point them there.
 function agentHome() {
@@ -208,8 +218,7 @@ let chatContext = null
 let dockAfterClose = false
 function openChatWindow() {
   if (chatWin && !chatWin.isDestroyed()) {
-    chatWin.show()
-    chatWin.focus()
+    reveal(chatWin, { focus: true })
     return
   }
   const b = readSettings(BASE).chatWindow || {}
@@ -225,7 +234,7 @@ function openChatWindow() {
     icon: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'icon.png'),
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 14, y: 13 } } : { titleBarOverlay: { color: BG, symbolColor: '#f1ede5', height: 40 } }),
-    webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
+    webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false, backgroundThrottling: !UI_HIDDEN }
   })
   // put it back exactly where it was: setBounds mirrors the getBounds saved on close (the constructor's size reads
   // the frame differently on Windows, so the window crept a little each time), and only on a screen that's still there
@@ -241,7 +250,7 @@ function openChatWindow() {
     if (/^https:\/\//.test(url)) shell.openExternal(url)
     return { action: 'deny' }
   })
-  chatWin.once('ready-to-show', () => chatWin?.show())
+  chatWin.once('ready-to-show', () => reveal(chatWin))
   chatWin.on('close', () => {
     try {
       writeSettings({ chatWindow: chatWin.getBounds() }, BASE)
@@ -252,8 +261,7 @@ function openChatWindow() {
     send('chat:popped', false)
     if (dockAfterClose && win && !win.isDestroyed()) {
       win.webContents.send('chat:docked', true)
-      win.show()
-      win.focus()
+      reveal(win, { focus: true })
     }
     dockAfterClose = false
   })
@@ -383,7 +391,7 @@ function createWindow() {
     // Windows and Linux draw their window buttons on the right over the bar; a Mac its traffic lights on the
     // left, centred in the 40 px bar (the bar leaves room for them)
     ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 14, y: 13 } } : { titleBarOverlay: { color: BG, symbolColor: '#f1ede5', height: 40 } }),
-    webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
+    webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false, backgroundThrottling: !UI_HIDDEN }
   })
   win.webContents.on('will-navigate', (e, url) => {
     if (url !== win.webContents.getURL()) e.preventDefault()
@@ -392,7 +400,7 @@ function createWindow() {
     if (/^https:\/\//.test(url)) shell.openExternal(url)
     return { action: 'deny' }
   })
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => reveal(win))
   // A window whose page crashed, or whose graphics process did (seen as a blank window on a low-end PC), loads
   // itself again instead of staying blank; at most once in 30 s, so a crash that repeats doesn't loop. Each one is
   // noted in logs\window.log in the data folder.
@@ -545,6 +553,7 @@ function missingDataFolder() {
 }
 
 app.whenReady().then(() => {
+  if (UI_HIDDEN) app.dock?.hide()
   const menuTemplate = menuTemplateFor(process.platform) // a Mac gets the standard menu; Windows and Linux none
   Menu.setApplicationMenu(menuTemplate ? Menu.buildFromTemplate(menuTemplate) : null)
   if (!missingDataFolder()) return
@@ -1240,7 +1249,7 @@ app.whenReady().then(() => {
     return r.filePath
   })
   handle('window:fullScreen', (on) => {
-    win.setFullScreen(!!on)
+    if (!UI_HIDDEN) win.setFullScreen(!!on)
     return win.isFullScreen()
   })
 
@@ -1269,9 +1278,7 @@ app.whenReady().then(() => {
         const n = new Notification({ title, body, icon: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'icon.png') })
         n.on('click', () => {
           if (!win || win.isDestroyed()) return
-          if (win.isMinimized()) win.restore()
-          win.show()
-          win.focus()
+          reveal(win, { focus: true })
           send('cloud:open')
         })
         n.show()
@@ -2707,8 +2714,7 @@ app.whenReady().then(() => {
   handle('chat:forwardAsk', (detail) => {
     if (!chatWin || chatWin.isDestroyed()) return false
     chatWin.webContents.send('chat:ask', detail)
-    chatWin.show()
-    chatWin.focus()
+    reveal(chatWin, { focus: true })
     return true
   })
   handle('chat:pin', (on) => {
@@ -2721,7 +2727,7 @@ app.whenReady().then(() => {
   })
   // a link in the popped-out chat (a shot, an edit, a film): the main window goes there and comes to the front
   handle('chat:openInApp', (where) => {
-    if (win && !win.isDestroyed()) win.webContents.send('app:open', where), win.show(), win.focus()
+    if (win && !win.isDestroyed()) win.webContents.send('app:open', where), reveal(win, { focus: true })
     return true
   })
   // ---------- talking to the chat (ChatPanel's mic): IV Studio's own Whisper, and its voices to read replies ----------
@@ -3080,10 +3086,7 @@ app.whenReady().then(() => {
 })
 
 app.on('second-instance', () => {
-  if (win) {
-    if (win.isMinimized()) win.restore()
-    win.focus()
-  }
+  if (win) reveal(win, { focus: true })
 })
 app.on('window-all-closed', () => app.quit())
 // the voice engine is a Python process of ours: stop it with the app
