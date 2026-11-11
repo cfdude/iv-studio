@@ -87,7 +87,7 @@ export const ROUTES = {
   characters: { steps: video(['nav', 'Characters']), marker: /your recurring actors/i },
   loras: { steps: video(['nav', 'LoRAs']), marker: /looks, moves and styles/i },
   cloud: { steps: video(['nav', 'Cloud']), marker: /your own gpu/i },
-  settings: { steps: video(['nav', 'Settings']), marker: /your pc/i },
+  settings: { steps: video(['nav', 'Settings']), marker: /your computer/i },
   setup: { steps: video(['nav', 'Settings'], ['tab', 'Setup']), marker: /reuses the ComfyUI you already have/i },
   media: { steps: video(['library']), marker: /everything you've made/i },
   voices: { steps: audio(['nav', 'Voices']), marker: /a voice for every character/i },
