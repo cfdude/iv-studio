@@ -71,7 +71,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- create_character_training ----------
-  test('[mcp:create_character_training] starts a character with a made-up trigger word and a project of its own', async () => {
+  test('[mcp:create_character_training][ipc:training:create] starts a character with a made-up trigger word and a project of its own', async () => {
     const t = await ok('create_character_training', { name: '  Mira  ' })
     assert.equal(t.name, 'Mira')
     assert.equal(t.trigger, 'm1ra4', 'Mira with its e, i and o swapped for 3, 1 and 0, and its length')
@@ -86,7 +86,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- list_character_trainings ----------
-  test('[mcp:list_character_trainings] lists the trainings newest first with the step each is at', async () => {
+  test('[mcp:list_character_trainings][ipc:training:list] lists the trainings newest first with the step each is at', async () => {
     const a = await ok('create_character_training', { name: 'Listed Old' })
     const old = readTraining(a.id)
     old.updatedAt = '2020-01-01T00:00:00.000Z'
@@ -102,7 +102,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- get_character_training ----------
-  test('[mcp:get_character_training] gives the face candidates, stills, clips, estimate and checkpoints, with each render\'s state and file', async () => {
+  test('[mcp:get_character_training][ipc:training:get] gives the face candidates, stills, clips, estimate and checkpoints, with each render\'s state and file', async () => {
     answerStills()
     const t = await ok('create_character_training', { name: 'Gotten' })
     await ok('design_faces', { trainingId: t.id, faceText: 'freckles, green eyes' })
@@ -117,7 +117,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- update_character_training ----------
-  test('[mcp:update_character_training] changes the name, trigger, who, face description, consent and voice sample', async () => {
+  test('[mcp:update_character_training][ipc:training:save] changes the name, trigger, who, face description, consent and voice sample', async () => {
     const t = await ok('create_character_training', { name: 'Updated' })
     const r = await ok('update_character_training', { trainingId: t.id, name: 'Renamed', trigger: 'zq9x2', who: 'a boy of ten', faceText: 'gap-toothed grin', consent: true, voice })
     assert.deepEqual([r.name, r.trigger, r.who, r.faceText, r.consent, r.voice], ['Renamed', 'zq9x2', 'a boy of ten', 'gap-toothed grin', true, voice])
@@ -136,7 +136,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- design_faces ----------
-  test('[mcp:design_faces] renders four face candidates from the description, each on its own seed, with the Snapshot look when it is installed', async () => {
+  test('[mcp:design_faces][ipc:training:designFaces] renders four face candidates from the description, each on its own seed, with the Snapshot look when it is installed', async () => {
     const t = await ok('create_character_training', { name: 'Faces', who: 'a man in his fifties' })
     const before = fake.prompts.length
     const r = await ok('design_faces', { trainingId: t.id, faceText: 'square jaw, grey stubble, kind eyes' })
@@ -169,7 +169,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- pick_face ----------
-  test('[mcp:pick_face] keeps a finished candidate as the character\'s face, with its seed and picture', async () => {
+  test('[mcp:pick_face][ipc:training:pickFace] keeps a finished candidate as the character\'s face, with its seed and picture', async () => {
     const t = await withFace('Picked')
     assert.equal(t.face.seed, t.faceCandidates[1].seed)
     assert.equal(t.face.jobId, t.faceCandidates[1].jobId)
@@ -190,7 +190,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- design_scenes ----------
-  test('[mcp:design_scenes] needs a face, then renders the picked face\'s seed across eight scenes, four candidates each', async () => {
+  test('[mcp:design_scenes][ipc:training:designScenes] needs a face, then renders the picked face\'s seed across eight scenes, four candidates each', async () => {
     const t = await ok('create_character_training', { name: 'Scenes' })
     await fails('design_scenes', { trainingId: t.id }, /Pick a face first\./)
     const picked = await withFace('Scened')
@@ -207,7 +207,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- pick_still ----------
-  test('[mcp:pick_still] keeps one candidate of a scene in the set, leaves a scene out, or asks for two more candidates', async () => {
+  test('[mcp:pick_still][ipc:training:rerollStill][ipc:training:pickStill] keeps one candidate of a scene in the set, leaves a scene out, or asks for two more candidates', async () => {
     const picked = await withFace('Stilled')
     const scenes = await ok('design_scenes', { trainingId: picked.id })
     const id = scenes.stills[0].id
@@ -242,7 +242,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- set_training_item ----------
-  test('[mcp:set_training_item] puts the trigger first in a caption, keeps or drops a clip and removes an uploaded item', async () => {
+  test('[mcp:set_training_item][ipc:training:setCaption][ipc:training:removeItem][ipc:training:keepClip] puts the trigger first in a caption, keeps or drops a clip and removes an uploaded item', async () => {
     const t = await ok('create_character_training', { name: 'Items' })
     await ok('update_character_training', { trainingId: t.id, consent: true })
     const added = await ok('add_training_files', { trainingId: t.id, kind: 'still', files: [still, still] })
@@ -281,7 +281,7 @@ describe('MCP character training tools', () => {
     assert.equal(fake.uploads.filter((u) => /still/.test(u.name) || /face/.test(u.name)).length >= 2, true, 'the face and a kept still went to ComfyUI as the references')
   })
 
-  test('[mcp:make_training_clips] writes the given lines into the first clips and renders chosen clips again on a new seed', async () => {
+  test('[mcp:make_training_clips][ipc:training:makeClips][ipc:training:remakeClips] writes the given lines into the first clips and renders chosen clips again on a new seed', async () => {
     const picked = await withFace('Lined')
     const scenes = await ok('design_scenes', { trainingId: picked.id })
     await ok('pick_still', { trainingId: picked.id, stillId: scenes.stills[0].id, index: 0 })
@@ -302,7 +302,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- estimate_training ----------
-  test('[mcp:estimate_training] gives steps, minutes and dollars for Modal\'s H200 from the stills and clips kept, with each preset', async () => {
+  test('[mcp:estimate_training][ipc:training:estimate] gives steps, minutes and dollars for Modal\'s H200 from the stills and clips kept, with each preset', async () => {
     const t = await ok('create_character_training', { name: 'Priced' })
     await ok('update_character_training', { trainingId: t.id, consent: true })
     await ok('add_training_files', { trainingId: t.id, kind: 'still', files: Array(8).fill(still) })
@@ -363,7 +363,7 @@ describe('MCP character training tools', () => {
     return { id, loras }
   }
 
-  test('[mcp:test_checkpoints] copies the chosen epochs next to the other character LoRAs and renders one test of each on the same seed', async () => {
+  test('[mcp:test_checkpoints][ipc:training:checkpoints][ipc:training:fetch][ipc:training:test] copies the chosen epochs next to the other character LoRAs and renders one test of each on the same seed', async () => {
     fake.setModels({ loras: [] })
     const { id, loras } = await trained('Tested')
     const before = fake.prompts.length
@@ -396,7 +396,7 @@ describe('MCP character training tools', () => {
     await fails('test_checkpoints', { trainingId: id, epochs: [99] }, /Download some checkpoints first\./)
   })
 
-  test('[mcp:adopt_checkpoint] saves the chosen epoch as a character preset with the face as its picture, and marks the training done', async () => {
+  test('[mcp:adopt_checkpoint][ipc:training:adopt] saves the chosen epoch as a character preset with the face as its picture, and marks the training done', async () => {
     fake.setModels({ loras: [] })
     const { id } = await trained('Adopted')
     await fails('adopt_checkpoint', { trainingId: id, epoch: 20 }, /Download that checkpoint first\./)

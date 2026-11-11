@@ -100,7 +100,7 @@ describe('MCP film tools', () => {
     assert.deepEqual((await ok('list_films')).items, [])
   })
 
-  test('[mcp:create_film] starts a film with the defaults and an empty script', async () => {
+  test('[mcp:create_film][ipc:productions:create] starts a film with the defaults and an empty script', async () => {
     const f = await ok('create_film')
     assert.match(f.id, /^[0-9a-f]{8}$/)
     assert.deepEqual({ name: f.name, logline: f.logline, aspect: f.aspect, targetSeconds: f.targetSeconds, step: f.step, kind: f.kind }, { name: 'Untitled film', logline: '', aspect: '16:9', targetSeconds: 120, step: 'idea', kind: 'short' })
@@ -125,7 +125,7 @@ describe('MCP film tools', () => {
     await fails('create_film', { targetSeconds: 4000 }, /targetSeconds/i)
   })
 
-  test('[mcp:list_films] lists each film with its scene and shot counts, newest first', async () => {
+  test('[mcp:list_films][ipc:productions:list] lists each film with its scene and shot counts, newest first', async () => {
     const h = await film()
     const { items } = await ok('list_films')
     assert.equal(items[0].id, h.id)
@@ -135,7 +135,7 @@ describe('MCP film tools', () => {
     assert.deepEqual(times, [...times].sort().reverse())
   })
 
-  test('[mcp:get_film] shows the brief, the scenes with each shot and where it is, and totals; and names a film that is not there', async () => {
+  test('[mcp:get_film][ipc:productions:get] shows the brief, the scenes with each shot and where it is, and totals; and names a film that is not there', async () => {
     const h = await film()
     const v = await view(h.id)
     assert.equal(v.id, h.id)
@@ -147,7 +147,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- update_film ----------
-  test('[mcp:update_film] changes the brief, the look, the cast, the places and the props, and a list replaces the old one whole', async () => {
+  test('[mcp:update_film][ipc:productions:update] changes the brief, the look, the cast, the places and the props, and a list replaces the old one whole', async () => {
     const f = await ok('create_film', { name: 'Before', script: SCRIPT })
     const u = await ok('update_film', {
       filmId: f.id, name: 'After', logline: 'Waiting.', aspect: '1:1', targetSeconds: 90, step: 'cast', look: { notes: 'Grainy 16 mm.', loras: [{ name: 'film.safetensors', strength: 0.7 }] },
@@ -175,7 +175,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- set_film_script ----------
-  test('[mcp:set_film_script] replaces the script, keeps the shots of a scene that did not change and marks one that did as stale', async () => {
+  test('[mcp:set_film_script][ipc:productions:setScript] replaces the script, keeps the shots of a scene that did not change and marks one that did as stale', async () => {
     const f = await ok('create_film', { script: SCRIPT })
     const [s1, s2] = f.scenes
     await ok('edit_film_shot', { filmId: f.id, sceneId: s1.id, add: true, action: 'Tess waits.', seconds: 4 })
@@ -191,7 +191,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- write_film_script ----------
-  test('[mcp:write_film_script] has the local writer draft the script from the idea, the cast and the length, and fills a place\'s look', async () => {
+  test('[mcp:write_film_script][ipc:productions:writeScript] has the local writer draft the script from the idea, the cast and the length, and fills a place\'s look', async () => {
     const f = await ok('create_film', { name: 'Waiting', targetSeconds: 40 })
     await ok('update_film', { filmId: f.id, cast: [{ characterId: 'tess', as: 'Tess' }], look: { notes: 'Soft night light.', loras: [] } })
     const before = ollama.requests.length
@@ -228,7 +228,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- break_down_film ----------
-  test('[mcp:break_down_film] breaks each scene into shots with the writer in the background and writes each shot\'s prompt', async () => {
+  test('[mcp:break_down_film][ipc:productions:breakDown] breaks each scene into shots with the writer in the background and writes each shot\'s prompt', async () => {
     const f = await ok('create_film', { script: 'INT. BUS STOP - NIGHT\n\nTess waits.\n\nTESS\nWhere is that bus?\n' })
     claudeAnswers(WRITER)
     const started = await ok('break_down_film', { filmId: f.id, sketch: false })
@@ -294,7 +294,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- edit_film_shot ----------
-  test('[mcp:edit_film_shot] adds a shot after another, changes a field, moves it within its scene and removes it', async () => {
+  test('[mcp:edit_film_shot][ipc:productions:editShot] adds a shot after another, changes a field, moves it within its scene and removes it', async () => {
     const f = await ok('create_film', { script: 'INT. BUS STOP - NIGHT\n\nA woman waits.\n' })
     const sceneId = f.scenes[0].id
     const added = await ok('edit_film_shot', { filmId: f.id, sceneId, add: true, action: 'One.', seconds: 4, camera: 'Wide' })
@@ -353,7 +353,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- write_film_shot_prompt ----------
-  test('[mcp:write_film_shot_prompt] writes the shot\'s H3 prompt from its description with the writer chosen in Settings and saves it on the shot', async () => {
+  test('[mcp:write_film_shot_prompt][ipc:productions:writePrompt] writes the shot\'s H3 prompt from its description with the writer chosen in Settings and saves it on the shot', async () => {
     const h = await film()
     claudeAnswers(WRITER)
     const r = await ok('write_film_shot_prompt', { filmId: h.id, sceneId: h.sceneId, shotId: h.a })
@@ -381,7 +381,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- speak_film_line ----------
-  test('[mcp:speak_film_line] says the shot\'s line in its character\'s voice and keeps the file on the shot', async () => {
+  test('[mcp:speak_film_line][ipc:productions:speak] says the shot\'s line in its character\'s voice and keeps the file on the shot', async () => {
     const v = await ok('create_voice', { name: 'Tess film voice', file: wav, text: 'Reference words.', kind: 'designed', seed: 41 })
     await ok('save_character', { id: 'tess', voiceId: v.id })
     const h = await film()
@@ -410,7 +410,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- use_film_recording ----------
-  test('[mcp:use_film_recording] converts a recording to the shot\'s line, keeping the shot\'s words, and a shot with no words keeps what was heard', async () => {
+  test('[mcp:use_film_recording][ipc:productions:useRecording] converts a recording to the shot\'s line, keeping the shot\'s words, and a shot with no words keeps what was heard', async () => {
     const h = await film()
     const r = await ok('use_film_recording', { filmId: h.id, shotId: h.a, file: wav })
     assert.ok(r.file.startsWith(dataFile('productions', 'lines')) && r.file.endsWith('.wav'))
@@ -434,7 +434,7 @@ describe('MCP film tools', () => {
   })
 
   // ---------- use_film_face ----------
-  test('[mcp:use_film_face] keeps the person\'s own picture as a made-up role\'s face and marks their sketches to redraw', async () => {
+  test('[mcp:use_film_face][ipc:productions:useFace] keeps the person\'s own picture as a made-up role\'s face and marks their sketches to redraw', async () => {
     const h = await film({ script: 'INT. BUS STOP - NIGHT\n\nA man waits.\n' })
     await ok('edit_film_shot', { filmId: h.id, sceneId: h.sceneId, shotId: h.b, speaker: 'Driver', characters: ['Driver'], action: 'The driver nods.' })
     const p = readData('productions', `${h.id}.json`)

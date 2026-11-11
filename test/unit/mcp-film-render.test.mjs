@@ -293,7 +293,7 @@ describe('MCP film drawing and rendering tools', () => {
   })
 
   // ---------- make_animatic ----------
-  test('[mcp:make_animatic] plays the storyboard as a film, each sketch held for its shot with a card for a shot without one, and keeps it on the film', async () => {
+  test('[mcp:make_animatic][ipc:productions:animatic] plays the storyboard as a film, each sketch held for its shot with a card for a shot without one, and keeps it on the film', async () => {
     const h = await film({ shotSeconds: 1 })
     patchShot(h.id, h.a, { sketch: picture })
     const r = await ok('make_animatic', { filmId: h.id })
@@ -317,7 +317,7 @@ describe('MCP film drawing and rendering tools', () => {
   })
 
   // ---------- build_rough_cut ----------
-  test('[mcp:build_rough_cut] puts the shots on V1 in script order in an edit of the film\'s own, and says which have nothing to show yet', async () => {
+  test('[mcp:build_rough_cut][ipc:productions:roughCut] puts the shots on V1 in script order in an edit of the film\'s own, and says which have nothing to show yet', async () => {
     const h = await film()
     await ok('render_film_shot', { filmId: h.id, shotId: h.a })
     await view(h.id)
