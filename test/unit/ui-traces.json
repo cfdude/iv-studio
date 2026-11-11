@@ -381,6 +381,68 @@
       "args": "[string]"
     }
   ],
+  "page:edit": [
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:get",
+      "args": "[string]"
+    },
+    {
+      "channel": "editgen:list",
+      "args": "[string]"
+    },
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "app:info",
+      "args": "[]"
+    },
+    {
+      "channel": "cloud:status",
+      "args": "[]"
+    },
+    {
+      "channel": "update:state",
+      "args": "[]"
+    },
+    {
+      "channel": "library:all",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "setup:check",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:list",
+      "args": "[]"
+    },
+    {
+      "channel": "app:info",
+      "args": "[]"
+    },
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    }
+  ],
   "page:edits": [
     {
       "channel": "edits:list",

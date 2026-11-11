@@ -59,6 +59,5 @@
   "event:cloud:log": "needs Modal",
   "event:comfy:state": "spawns the ComfyUI launcher (sent around the launch)",
   "event:voices:log": "spawns uv, after downloading it",
-  "event:characters:progress": "needs GitHub",
-  "page:edit": "blocked by a product bug: the editor page crashes with \"ReferenceError: platform is not defined\" (src/renderer/src/components/edit/Editor.jsx:280 reads platform and never calls usePlatform()); the page test is written and marked todo"
+  "event:characters:progress": "needs GitHub"
 }

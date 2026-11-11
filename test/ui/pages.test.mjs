@@ -376,11 +376,7 @@ describe('page tier: every sidebar page opens', () => {
     await recordRoute('sequence', 'sequences', 'Rig sequence', /← all sequences[\s\S]*how it renders/i)
   })
 
-  // The editor's page crashes on every machine: Editor.jsx reads `platform` at line 280 and never declares it
-  // (usePlatform is imported and not called), so the app shows its error screen. Reported, not fixed here (the rig changes
-  // no product code). Marked todo so the run stays green and the failure text is in the output; when the product is
-  // fixed the test passes, and the gaps entry for page:edit can go.
-  test('[page:edit] opens an edit from the Edit page and shows its timeline', { todo: 'product bug: ReferenceError: platform is not defined (src/renderer/src/components/edit/Editor.jsx:280)' }, async () => {
+  test('[page:edit] opens an edit from the Edit page and shows its timeline', async () => {
     try {
       await recordRoute('edit', 'edits', 'Rig cut', /^(?![\s\S]*cut your shots)[\s\S]*rig cut/i, { settleMs: 2500 })
     } finally {
