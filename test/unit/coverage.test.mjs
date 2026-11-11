@@ -63,6 +63,42 @@ describe('coverage is enforced', () => {
     assert.equal(coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan("test('[mcp:a] ok', { skip: false }, () => {})"), gaps: {} }).length, 0)
   })
 
+  // fixtures are built from pieces so this file's own source never holds a literal skip call in a test body
+  const SKIP = ['skip', 'todo']
+  const call = (obj, m) => `${obj}.${m}()`
+
+  test('a tagged test inside describe.skip or describe.todo does not count, nested or not', () => {
+    for (const m of SKIP) {
+      const text = `describe.${m}('group', () => {\n  test('[mcp:a] in a ${m} group', () => {})\n  describe('inner', () => {\n    test('[mcp:b] nested', () => {})\n  })\n})\ntest('[mcp:c] outside', () => {})`
+      const p = coverageProblems({ rows: [{ id: 'mcp:a' }, { id: 'mcp:b' }, { id: 'mcp:c' }], scanned: scan(text), gaps: {} })
+      assert.deepEqual(p, ['mcp:a has no test and no gaps entry', 'mcp:b has no test and no gaps entry'], m)
+    }
+  })
+
+  test('a describe with a skip or todo option skips what is inside it', () => {
+    const text = "describe('group', { skip: true }, () => {\n  test('[mcp:a] x', () => {})\n})"
+    assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan(text), gaps: {} }), ['mcp:a has no test and no gaps entry'])
+    assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan(text.replace('skip: true', 'skip: false')), gaps: {} }), [])
+  })
+
+  test('a test whose body calls its context skip or todo is read as skipped, by the literal call only', () => {
+    for (const m of SKIP) {
+      const text = `test('[mcp:a] bails', async (t) => {\n  if (!process.env.X) return ${call('t', m)}\n})\ntest('[mcp:b] named ctx', (ctx) => { ${call('ctx', m)} })\ntest('[mcp:c] fine', async (t) => {\n  // ${call('t', m)} is only a comment\n  await t.test('sub', () => {})\n})`
+      const p = coverageProblems({ rows: [{ id: 'mcp:a' }, { id: 'mcp:b' }, { id: 'mcp:c' }], scanned: scan(text), gaps: {} })
+      assert.deepEqual(p, ['mcp:a has no test and no gaps entry', 'mcp:b has no test and no gaps entry'], m)
+    }
+  })
+
+  test('a skipped describe does not swallow the tests after it, and brackets inside strings do not confuse it', () => {
+    const text = "describe.skip('g (', () => {\n  test('[mcp:a] a', () => { const s = ')}' })\n})\ntest('[mcp:b] after', () => {})"
+    assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }, { id: 'mcp:b' }], scanned: scan(text), gaps: {} }), ['mcp:a has no test and no gaps entry'])
+  })
+
+  test('the body-level case cannot be known from source, so a skip decided at run time is only seen in the junit ingest', () => {
+    const [{ tests }] = scan("test('[mcp:a] x', async (t) => { if (await check()) { return t['skip']() } })")
+    assert.equal(tests[0].skipped, false)
+  })
+
   test('a gaps entry for a row a live test names fails, naming the row', () => {
     const p = coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan("test('[mcp:a] works', () => {})"), gaps: { 'mcp:a': 'pending 5.2' } })
     assert.deepEqual(p, ['gaps entry mcp:a is stale: a test now covers it'])
