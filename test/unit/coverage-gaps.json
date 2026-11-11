@@ -60,16 +60,5 @@
   "event:comfy:state": "spawns the ComfyUI launcher (sent around the launch)",
   "event:voices:log": "spawns uv, after downloading it",
   "event:characters:progress": "needs GitHub",
-  "journey:make_a_shot": "pending 7.4",
-  "journey:make_a_picture": "pending 7.4",
-  "journey:make_a_film": "pending 7.4",
-  "journey:make_a_sequence": "pending 7.4",
-  "journey:voice_line": "pending 7.4",
-  "journey:make_music": "pending 7.4",
-  "journey:edit_video": "pending 7.4",
-  "journey:website_sizzle": "pending 7.4",
-  "journey:replace_someone": "pending 7.4",
-  "journey:new_character": "pending 7.4",
-  "journey:show_me_around": "pending 7.4",
   "page:edit": "blocked by a product bug: the editor page crashes with \"ReferenceError: platform is not defined\" (src/renderer/src/components/edit/Editor.jsx:280 reads platform and never calls usePlatform()); the page test is written and marked todo"
 }

@@ -72,6 +72,7 @@ const audio = (...steps) => [['section', 'Audio'], ...steps]
 const tool = (name) => video(['nav', 'Workflows'], ['card', name])
 
 export const ROUTES = {
+  home: { steps: video(['nav', 'Dashboard']), marker: /what if\?/i },
   create: { steps: video(['nav', 'Create']), marker: /new shot/i },
   projects: { steps: video(['nav', 'Projects']), marker: /a short film, step by step/i },
   library: { steps: video(['nav', 'Shots']), marker: /every shot you've made/i },
