@@ -123,7 +123,7 @@ describe('MCP edit tools', () => {
   })
 
   // ---------- set_edit_settings ----------
-  test('[mcp:set_edit_settings] renames an edit and changes its format, frame rate and loudness, keeping what it was not asked about', async () => {
+  test('[mcp:set_edit_settings][ipc:edits:save] renames an edit and changes its format, frame rate and loudness, keeping what it was not asked about', async () => {
     const e = await ok('create_edit', { name: 'Before' })
     const renamed = await ok('set_edit_settings', { editId: e.id, name: 'After' })
     assert.equal(renamed.name, 'After')
@@ -145,7 +145,7 @@ describe('MCP edit tools', () => {
   })
 
   // ---------- add_media ----------
-  test('[mcp:add_media][ipc:edits:addOutput] adds a video, a picture and a sound to the bin with what ffprobe found, and puts nothing on the timeline', async () => {
+  test('[mcp:add_media][ipc:edits:addOutput][ipc:edits:pickFiles] adds a video, a picture and a sound to the bin with what ffprobe found, and puts nothing on the timeline', async () => {
     const e = await ok('create_edit')
     const r = await ok('add_media', { editId: e.id, files: [clip, still, song] })
     assert.deepEqual(r.placed, [])

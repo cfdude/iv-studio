@@ -72,7 +72,7 @@ describe('window channels: character training and films', () => {
     assert.equal(trainings.remove(a.id), true, 'removing it again is fine')
   })
 
-  test('[ipc:training:buildDataset] copies each kept still with a caption file beside it, leaves clips out for a look, and says how many it made', async () => {
+  test('[ipc:training:buildDataset][ipc:training:openDataset] copies each kept still with a caption file beside it, leaves clips out for a look, and says how many it made', async () => {
     const t = trainings.create({ name: 'Dataset' })
     const png = path.join(dir, 'face.png')
     ff('-f', 'lavfi', '-i', 'color=c=red:s=64x64:d=1', '-frames:v', '1', png)

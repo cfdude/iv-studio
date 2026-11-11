@@ -420,7 +420,7 @@ describe('MCP rebuild tools', () => {
   })
 
   // ---------- get_rebuild ----------
-  test('[mcp:get_rebuild] gives the rebuild with each shot\'s route and frames and take, and counts the beats instead of sending them', async () => {
+  test('[mcp:get_rebuild][ipc:rebuild:get] gives the rebuild with each shot\'s route and frames and take, and counts the beats instead of sending them', async () => {
     const r = await withFrames()
     const s = await ok('get_rebuild', { rebuildId: r.id })
     assert.equal(s.id, r.id)

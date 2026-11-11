@@ -118,7 +118,7 @@ describe('MCP finish and enhance tools on an NVIDIA ComfyUI', () => {
   })
 
   // ---------- enhance_final ----------
-  test('[mcp:enhance_final] queues SeedVR2 over the final video with its sound kept, as a new job in the same shot', async () => {
+  test('[mcp:enhance_final][ipc:render:enhance] queues SeedVR2 over the final video with its sound kept, as a new job in the same shot', async () => {
     const { source, job: finish } = await finishedFinish()
     const queued = fake.prompts.length
     const job = await ok('enhance_final', { jobId: finish.id, resolution: 1440 })

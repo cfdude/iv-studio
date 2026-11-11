@@ -119,7 +119,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   })
 
   // ---------- generate_previews ----------
-  test('[mcp:generate_previews] queues the preview graph with the seeds, steps and prompt and records a job in a new project', async () => {
+  test('[mcp:generate_previews][ipc:render:previews] queues the preview graph with the seeds, steps and prompt and records a job in a new project', async () => {
     const queued = fake.prompts.length
     const job = await ok('generate_previews', { prompt: PROMPT, character: 'none', seed: 7, previews: 2, steps: 6 })
     assert.equal(fake.prompts.length, queued + 1)
@@ -209,7 +209,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   })
 
   // ---------- get_outputs ----------
-  test('[mcp:get_outputs] gives a job\'s outputs with the settings that made them, and a project\'s runs', async () => {
+  test('[mcp:get_outputs][ipc:projects:get] gives a job\'s outputs with the settings that made them, and a project\'s runs', async () => {
     const job = await finished({ seed: 21, projectName: 'Outputs shot' })
     const one = await ok('get_outputs', { jobId: job.id })
     assert.equal(one.job, job.id)
@@ -257,7 +257,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   })
 
   // ---------- finish_candidate and enhance_final on an Apple GPU ----------
-  test('[mcp:finish_candidate] queues a finish from the previews job\'s settings, with DLSS swapped out for a plain save on a Mac ComfyUI', async () => {
+  test('[mcp:finish_candidate][ipc:render:finish] queues a finish from the previews job\'s settings, with DLSS swapped out for a plain save on a Mac ComfyUI', async () => {
     const source = await finished({ seed: 31, projectName: 'Finish shot' })
     const queued = fake.prompts.length
     const job = await ok('finish_candidate', { jobId: source.id, candidate: 2, megapixels: 1 })
@@ -319,7 +319,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   })
 
   // ---------- rank_takes ----------
-  test('[mcp:rank_takes][ipc:rank:learn] scores each take on motion and sharpness, marks the best with its reasons and saves it on the job', async () => {
+  test('[mcp:rank_takes][ipc:rank:learn][ipc:rank:job] scores each take on motion and sharpness, marks the best with its reasons and saves it on the job', async () => {
     const job = await finished({ projectName: 'Ranked shot' })
     const { ranking } = await ok('rank_takes', { jobId: job.id })
     assert.deepEqual(ranking.measured, ['motion', 'sharpness'])

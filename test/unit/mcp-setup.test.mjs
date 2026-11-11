@@ -163,7 +163,7 @@ describe('MCP setup, update, model and hardware tools', () => {
     }
   })
 
-  test('[mcp:update_comfy] saves a snapshot, updates every pack through Manager, restarts and records it for undo', async () => {
+  test('[mcp:update_comfy][ipc:setup:updates:run] saves a snapshot, updates every pack through Manager, restarts and records it for undo', async () => {
     // a plain folder Manager's snapshot cannot track, as IV Studio's own pack is
     fs.mkdirSync(path.join(fake.dataDir, 'custom_nodes', 'PlainPack'), { recursive: true })
     const rebootsBefore = fake.manager.rebooted

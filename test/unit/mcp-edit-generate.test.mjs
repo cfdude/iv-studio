@@ -74,7 +74,7 @@ describe('MCP edit generation, reframe and cut-out tools', () => {
   })
 
   // ---------- generate_in_edit: extend ----------
-  test('[mcp:generate_in_edit] extend cuts the end of the clip, starts Continue from it and records a generation placed after the clip', async () => {
+  test('[mcp:generate_in_edit][ipc:editgen:start] extend cuts the end of the clip, starts Continue from it and records a generation placed after the clip', async () => {
     const e = await edit('Extend')
     const before = fake.uploads.length
     const gen = await ok('generate_in_edit', { editId: e.id, kind: 'extend', clip: e.a, prompt: 'The woman keeps walking.', seconds: 5, seed: 8 })
@@ -96,7 +96,7 @@ describe('MCP edit generation, reframe and cut-out tools', () => {
     assert.equal(listed.id, gen.id)
   })
 
-  test('[mcp:list_generations] moves a generation on: finishing the previews starts the finish, and the finished video lands on the timeline', async () => {
+  test('[mcp:list_generations][ipc:editgen:list] moves a generation on: finishing the previews starts the finish, and the finished video lands on the timeline', async () => {
     const e = await edit('Extend lands')
     const gen = await ok('generate_in_edit', { editId: e.id, kind: 'extend', clip: e.a, prompt: 'The woman keeps walking.', seconds: 5 })
     saveOutputs(lastPromptId(), { 42: gif(long) })
@@ -144,7 +144,7 @@ describe('MCP edit generation, reframe and cut-out tools', () => {
     assert.deepEqual([picking.track, picking.at], ['V1', 2])
   })
 
-  test('[mcp:pick_generation] finishes the picked preview at 2 MP and the result lands between the two clips', async () => {
+  test('[mcp:pick_generation][ipc:editgen:pick] finishes the picked preview at 2 MP and the result lands between the two clips', async () => {
     const e = await edit('Bridge lands')
     const gen = await ok('generate_in_edit', { editId: e.id, kind: 'bridge', clip: e.a, next: e.b, prompt: 'She turns to the door.', seconds: 4 })
     saveOutputs(lastPromptId(), { 42: gif(long), 118: gif(long), 128: gif(long) })
@@ -247,7 +247,7 @@ describe('MCP edit generation, reframe and cut-out tools', () => {
   })
 
   // ---------- reframe ----------
-  test('[mcp:reframe] draws the bars of a video with H3\'s masked edit, holds the original sound and returns the file and how much was drawn', async () => {
+  test('[mcp:reframe][ipc:reframes:make] draws the bars of a video with H3\'s masked edit, holds the original sound and returns the file and how much was drawn', async () => {
     fake.setOutputs((g) => (g.edit?.class_type === 'MiniMaxH3FantasticVideoEditLatent' ? { save: gif(long, 'iv_studio/reframes') } : undefined))
     const before = fake.uploads.length
     const r = await ok('reframe', { file: clip, shape: '9:16', about: 'A woman in the rain.', seed: 11 })
@@ -283,7 +283,7 @@ describe('MCP edit generation, reframe and cut-out tools', () => {
   })
 
   // ---------- cut_out ----------
-  test('[mcp:cut_out] cuts a picture out with SAM 3 and returns a PNG with a see-through background and how much of the frame stays', async () => {
+  test('[mcp:cut_out][ipc:cutouts:make] cuts a picture out with SAM 3 and returns a PNG with a see-through background and how much of the frame stays', async () => {
     fake.setView(fs.readFileSync(maskPng))
     fake.setOutputs((g) => (g.find?.class_type === 'SAM3_Detect' ? { mask: { images: [{ filename: 'mask_00001_.png', subfolder: 'iv_studio/cutouts', type: 'output' }] } } : undefined))
     const before = fake.uploads.length

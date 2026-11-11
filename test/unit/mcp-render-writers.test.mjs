@@ -66,7 +66,7 @@ describe('MCP review and prompt writer tools', () => {
   })
 
   // ---------- review_take ----------
-  test('[mcp:review_take] has Claude Code look at six frames of the take and saves the review on the job', async () => {
+  test('[mcp:review_take][ipc:review:take] has Claude Code look at six frames of the take and saves the review on the job', async () => {
     const job = await finished({ projectName: 'Reviewed shot' })
     claudeAnswers(REVIEW)
     const review = await ok('review_take', { jobId: job.id, candidate: 2 })
@@ -106,7 +106,7 @@ describe('MCP review and prompt writer tools', () => {
   })
 
   // ---------- write_prompt ----------
-  test('[mcp:write_prompt] writes an H3 prompt through the claude shim from the idea, in the app\'s shape', async () => {
+  test('[mcp:write_prompt][ipc:prompts:write] writes an H3 prompt through the claude shim from the idea, in the app\'s shape', async () => {
     claudeAnswers(WRITER)
     const r = await ok('write_prompt', { idea: 'a woman walks in the rain', engine: 'claude', character: 'none' })
     assert.deepEqual(r, { prompt: 'integrated_multimodal_description: [Shot 1] Live-action, soft light. A woman in a red coat walks along a rainy street, the camera holds a static shot.\n\noverall_soundscape: Rain.\n\nnon_diegetic_music: N/A', engine: 'claude' })
@@ -143,7 +143,7 @@ describe('MCP review and prompt writer tools', () => {
   })
 
   // ---------- write_shots_from_story ----------
-  test('[mcp:write_shots_from_story] splits a story into one H3 prompt per shot through the claude shim', async () => {
+  test('[mcp:write_shots_from_story][ipc:prompts:story] splits a story into one H3 prompt per shot through the claude shim', async () => {
     const shot = (text) => ({ ...WRITER, shots: [{ start_seconds: 0, description: text }] })
     claudeAnswers({ prompts: [shot('A woman walks into the bus shelter, the camera holds a static shot.'), shot('She sits down and looks at the rain, the camera holds a static shot.')] })
     const { shots } = await ok('write_shots_from_story', { story: 'A woman walks into a bus shelter. She sits and watches the rain.', shots: 2, character: 'none' })

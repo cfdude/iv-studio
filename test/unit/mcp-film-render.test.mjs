@@ -86,7 +86,7 @@ describe('MCP film drawing and rendering tools', () => {
     await fake?.close()
   })
   // ---------- sketch_film_shots ----------
-  test('[mcp:sketch_film_shots] draws the place first, then a sketch of each shot that keeps the place, and get_film shows each sketch once drawn', async () => {
+  test('[mcp:sketch_film_shots][ipc:productions:sketch] draws the place first, then a sketch of each shot that keeps the place, and get_film shows each sketch once drawn', async () => {
     const h = await film()
     const before = fake.prompts.length
     const { items } = await ok('sketch_film_shots', { filmId: h.id })
@@ -125,7 +125,7 @@ describe('MCP film drawing and rendering tools', () => {
   })
 
   // ---------- draw_film_face ----------
-  test('[mcp:draw_film_face] draws a face for a role no preset plays, keeps it on the cast entry and marks their sketches to redraw', async () => {
+  test('[mcp:draw_film_face][ipc:productions:drawFace] draws a face for a role no preset plays, keeps it on the cast entry and marks their sketches to redraw', async () => {
     const h = await film()
     await ok('update_film', { filmId: h.id, cast: [{ characterId: null, as: 'Driver', description: 'A tired man in a cap.' }] })
     await ok('edit_film_shot', { filmId: h.id, sceneId: h.sceneId, shotId: h.b, speaker: 'Driver', characters: ['Driver'] })
@@ -158,7 +158,7 @@ describe('MCP film drawing and rendering tools', () => {
   })
 
   // ---------- draw_place_angles ----------
-  test('[mcp:draw_place_angles] draws the views asked for from the place\'s photo with the camera angles LoRA and keeps them on the place', async () => {
+  test('[mcp:draw_place_angles][ipc:productions:drawAngles] draws the views asked for from the place\'s photo with the camera angles LoRA and keeps them on the place', async () => {
     const h = await film()
     const f = await ok('update_film', { filmId: h.id, locations: [{ name: 'Bus Stop', description: 'A glass shelter.', pictures: [picture] }] })
     const loc = f.locations[0]
@@ -185,7 +185,7 @@ describe('MCP film drawing and rendering tools', () => {
   })
 
   // ---------- render_film_shot ----------
-  test('[mcp:render_film_shot] hunts three previews for a shot with no sketch from its prompt, in a shot project of its own', async () => {
+  test('[mcp:render_film_shot][ipc:productions:render] hunts three previews for a shot with no sketch from its prompt, in a shot project of its own', async () => {
     const h = await film()
     const job = await ok('render_film_shot', { filmId: h.id, shotId: h.a, seed: 5 })
     assert.equal(job.kind, 'previews')
@@ -235,7 +235,7 @@ describe('MCP film drawing and rendering tools', () => {
   })
 
   // ---------- render_film_scene ----------
-  test('[mcp:render_film_scene] hunts previews for every shot in the scene that has a prompt and nothing rendered, and leaves the rest', async () => {
+  test('[mcp:render_film_scene][ipc:productions:renderScene] hunts previews for every shot in the scene that has a prompt and nothing rendered, and leaves the rest', async () => {
     const h = await film()
     await ok('edit_film_shot', { filmId: h.id, sceneId: h.sceneId, add: true, action: 'No prompt yet.' })
     const before = fake.prompts.length
@@ -262,7 +262,7 @@ describe('MCP film drawing and rendering tools', () => {
   })
 
   // ---------- finish_film_shot ----------
-  test('[mcp:finish_film_shot] finishes the chosen take of the latest hunt at 2 MP and the finished video becomes the shot\'s final', async () => {
+  test('[mcp:finish_film_shot][ipc:productions:finish] finishes the chosen take of the latest hunt at 2 MP and the finished video becomes the shot\'s final', async () => {
     const h = await film()
     await ok('render_film_shot', { filmId: h.id, shotId: h.a })
     await view(h.id)

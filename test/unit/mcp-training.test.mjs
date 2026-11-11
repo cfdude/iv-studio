@@ -227,7 +227,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- add_training_files ----------
-  test('[mcp:add_training_files] needs the person\'s confirmation first, then adds their own pictures and clips with the trigger in the caption', async () => {
+  test('[mcp:add_training_files][ipc:training:addStills][ipc:training:addClips] needs the person\'s confirmation first, then adds their own pictures and clips with the trigger in the caption', async () => {
     const t = await ok('create_character_training', { name: 'Own files', who: 'a man in his forties' })
     await fails('add_training_files', { trainingId: t.id, kind: 'still', files: [still] }, /Confirm the pictures are of an invented person, or of someone who agreed to this\./)
     await fails('add_training_files', { trainingId: t.id, kind: 'clip', files: [clipFile] }, /Confirm the clips are of an invented person, or of someone who agreed to this\./)

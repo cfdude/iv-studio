@@ -111,7 +111,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- make_music ----------
-  test('[mcp:make_music] queues the MiniMax graph with the style, lyrics, length and seed and records the song in a music project', async () => {
+  test('[mcp:make_music][ipc:music:create] queues the MiniMax graph with the style, lyrics, length and seed and records the song in a music project', async () => {
     const queued = fake.prompts.length
     const lyrics = '[Verse]\nRain on the window\n[Chorus]\nWe go on'
     const song = await ok('make_music', { caption: 'warm indie folk, female voice', lyrics, seconds: 45, seed: 77, name: 'Rain song' })
@@ -297,7 +297,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- remix_music ----------
-  test('[mcp:remix_music] queues the ACE-Step remix graph on the uploaded song with the default strength, tempo and key as given', async () => {
+  test('[mcp:remix_music][ipc:music:remix] queues the ACE-Step remix graph on the uploaded song with the default strength, tempo and key as given', async () => {
     const uploads = fake.uploads.length
     const song = await ok('remix_music', { source: wav, caption: 'jazz trio, brushed drums', bpm: 100, key: 'A minor', seed: 3 })
     const g = lastGraph()

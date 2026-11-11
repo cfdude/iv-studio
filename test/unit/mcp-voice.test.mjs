@@ -119,7 +119,7 @@ describe('MCP voice tools on a Mac', () => {
     await ok('delete_voice', { id: v.id })
   })
 
-  test('[mcp:list_voices] lists voices newest first with the characters that use each', async () => {
+  test('[mcp:list_voices][ipc:voices:list] lists voices newest first with the characters that use each', async () => {
     const second = await ok('create_voice', { name: 'Second', file: wav, text: 'Two.', kind: 'designed' })
     await ok('save_character', { id: 'tess', voiceId: second.id })
     const { items } = await ok('list_voices')
@@ -221,7 +221,7 @@ describe('MCP voice tools on a Mac', () => {
   })
 
   // ---------- delete_voice ----------
-  test('[mcp:delete_voice] removes the voice and its lines, and a character that used it loses the voice', async () => {
+  test('[mcp:delete_voice][ipc:voices:delete] removes the voice and its lines, and a character that used it loses the voice', async () => {
     const v = (await ok('list_voices')).items.find((x) => x.name === 'Other')
     await ok('save_character', { id: 'tess', voiceId: v.id })
     assert.deepEqual(await ok('delete_voice', { id: v.id }), { deleted: v.id })

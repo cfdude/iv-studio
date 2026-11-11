@@ -58,7 +58,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
   })
 
   // ---------- list_characters, save_character, delete_character ----------
-  test('[mcp:list_characters] lists the Tess preset before anyone has saved a character', async () => {
+  test('[mcp:list_characters][ipc:characters:list] lists the Tess preset before anyone has saved a character', async () => {
     const { items } = await ok('list_characters')
     assert.equal(items.length, 1)
     assert.equal(items[0].id, 'tess')
@@ -176,7 +176,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
     VAELoader: combo('vae_name', ['minimax_h3_video_vae_fp16.safetensors', ...extra])
   })
 
-  test('[mcp:make_refmod_character][ipc:refmods:list][ipc:refmods:ready] queues the RefMod Master graph with the pictures uploaded and saves the character', async () => {
+  test('[mcp:make_refmod_character][ipc:refmods:list][ipc:refmods:ready][ipc:refmods:make] queues the RefMod Master graph with the pictures uploaded and saves the character', async () => {
     fake.setObjectInfo(refmodInfo())
     const uploads = fake.uploads.length
     try {

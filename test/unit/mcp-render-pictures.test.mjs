@@ -86,7 +86,7 @@ describe('MCP picture tools', () => {
   })
 
   // ---------- make_image ----------
-  test('[mcp:make_image] queues the Z-Image graph with the prompt, LoRA, size, count and seed and saves the set as queued in a project', async () => {
+  test('[mcp:make_image][ipc:images:create] queues the Z-Image graph with the prompt, LoRA, size, count and seed and saves the set as queued in a project', async () => {
     fake.setObjectInfo(OBJECT_INFO)
     try {
       const queued = fake.prompts.length

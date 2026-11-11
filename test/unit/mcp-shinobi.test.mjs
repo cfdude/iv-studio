@@ -76,7 +76,7 @@ describe('MCP Shinobi tools', () => {
   })
 
   // ---------- shinobi_project ----------
-  test('[mcp:shinobi_project] gives a project\'s media with full paths, the saved edit\'s shape, its renders and the brief', async () => {
+  test('[mcp:shinobi_project][ipc:shinobi:project] gives a project\'s media with full paths, the saved edit\'s shape, its renders and the brief', async () => {
     const dir = dataFile('shinobi', 'projects', 'film-1')
     write(path.join(dir, 'project.json'), { name: 'Film one', assets: [{ id: 'a1', name: 'shot.mp4', path: 'media/shot.mp4' }, { id: 'a2', name: 'song.wav', path: 'media/song.wav' }, { id: 'a3', name: 'logo.png', path: 'media/logo.png' }] })
     write(path.join(dir, 'timeline.json'), { canvas: { w: 1920, h: 1080, fps: 30, frames: 150 }, shots: [{ id: 's1' }, { id: 's2' }], clips: { c1: {}, c2: {}, c3: {} }, text: [{ id: 't1' }] })
