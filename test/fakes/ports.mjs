@@ -2,6 +2,7 @@
 // agent CLI shims. Kept apart from guard.mjs so a fake can register itself without loading the guard.
 // With no guard loaded the registry still works; it just has nobody to enforce it.
 import { realpathSync } from 'node:fs'
+import path from 'node:path'
 
 const KEY = Symbol.for('iv-studio.test-guard')
 
@@ -36,20 +37,20 @@ export function unregisterProgram(file) {
 export function registerShimDir(dir) {
   const s = guardState()
   s.shimDirs.add(dir)
-  process.env.IV_TEST_SHIM_DIRS = [...s.shimDirs].join(':')
+  process.env.IV_TEST_SHIM_DIRS = [...s.shimDirs].join(path.delimiter)
 }
 
 export function unregisterShimDir(dir) {
   const s = guardState()
   s.shimDirs.delete(dir)
-  process.env.IV_TEST_SHIM_DIRS = [...s.shimDirs].join(':')
+  process.env.IV_TEST_SHIM_DIRS = [...s.shimDirs].join(path.delimiter)
 }
 
 // Reads what a parent process passed down.
 export function loadInherited() {
   const s = guardState()
   for (const p of fromList(process.env.IV_TEST_ALLOW_PORTS)) s.ports.add(Number(p))
-  for (const d of String(process.env.IV_TEST_SHIM_DIRS || '').split(':').filter(Boolean)) s.shimDirs.add(d)
+  for (const d of String(process.env.IV_TEST_SHIM_DIRS || '').split(path.delimiter).filter(Boolean)) s.shimDirs.add(d)
 }
 
 export const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost', '[::1]'])

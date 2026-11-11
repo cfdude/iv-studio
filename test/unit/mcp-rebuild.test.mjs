@@ -23,7 +23,7 @@ const OBJECT_INFO = {
   VAELoader: combo('vae_name', ['flux2-vae.safetensors'])
 }
 
-describe('MCP rebuild tools', () => {
+describe('MCP rebuild tools', { skip: process.platform === 'win32' && 'the agent CLI shims are sh scripts' }, () => {
   let fake, mcp, shimDir, dir, source, face, painted, preview, final
   const call = (name, args = {}) => mcp.client.callTool({ name, arguments: args })
   const ok = async (name, args = {}) => {

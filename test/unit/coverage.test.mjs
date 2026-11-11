@@ -63,6 +63,13 @@ describe('coverage is enforced', () => {
     assert.equal(coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan("test('[mcp:a] ok', { skip: false }, () => {})"), gaps: {} }).length, 0)
   })
 
+  test('a skip option that only tests process.platform still counts as live, any other expression does not', () => {
+    const plat = "describe('g', { skip: process.platform === 'win32' && 'the agent CLI shims are sh scripts' }, () => {\n  test('[mcp:a] x', () => {})\n})\ntest('[mcp:b] y', { skip: process.platform === 'win32' && 'sh only' }, () => {})"
+    assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }, { id: 'mcp:b' }], scanned: scan(plat), gaps: {} }), [])
+    const env = "test('[mcp:a] x', { skip: process.env.IV_REAL !== '1' }, () => {})\ntest('[mcp:b] y', { skip: process.platform === 'win32' || process.env.X }, () => {})"
+    assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }, { id: 'mcp:b' }], scanned: scan(env), gaps: {} }), ['mcp:a has no test and no gaps entry', 'mcp:b has no test and no gaps entry'])
+  })
+
   // fixtures are built from pieces so this file's own source never holds a literal skip call in a test body
   const SKIP = ['skip', 'todo']
   const call = (obj, m) => `${obj}.${m}()`

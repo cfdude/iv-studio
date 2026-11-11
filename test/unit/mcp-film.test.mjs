@@ -31,7 +31,7 @@ const WRITTEN_SHOTS = { shots: [
 const WRITER = { direction: { purpose: 'A woman waits.', staging: 'She stands screen-left.' }, style: 'Live-action, soft light.', shots: [{ start_seconds: 0, description: 'A woman in a red coat waits at a rainy bus stop, the camera holds a static shot.' }], soundscape: 'Rain.', music: 'N/A' }
 const hash = (...parts) => createHash('sha1').update(parts.join('\u0000')).digest('hex').slice(0, 12)
 
-describe('MCP film tools', () => {
+describe('MCP film tools', { skip: process.platform === 'win32' && 'the agent CLI shims are sh scripts' }, () => {
   let fake, ollama, mcp, shimDir, wav, long, face
   const call = (name, args = {}) => mcp.client.callTool({ name, arguments: args })
   const ok = async (name, args = {}) => {

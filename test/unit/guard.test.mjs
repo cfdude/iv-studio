@@ -384,7 +384,7 @@ describe('guard: child processes', () => {
     assert.equal(code, 0)
   })
 
-  test('withShims(): spawn("claude") runs the shim and returns its canned answer', async () => {
+  test('withShims(): spawn("claude") runs the shim and returns its canned answer', { skip: process.platform === 'win32' && 'the agent CLI shims are sh scripts' }, async () => {
     const shims = withShims()
     try {
       const out = await new Promise((resolve, reject) => {
@@ -493,7 +493,7 @@ describe('guard: Electron stand-ins', () => {
 })
 
 describe('guard: what the page tier adds', () => {
-  test('a program the driver registers by exact path starts; its sibling still does not', async () => {
+  test('a program the driver registers by exact path starts; its sibling still does not', { skip: process.platform === 'win32' && 'the test programs are sh scripts' }, async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-program-'))
     for (const n of ['launched', 'sibling']) {
       fs.writeFileSync(path.join(dir, n), '#!/bin/sh\necho ok\n', { mode: 0o755 })

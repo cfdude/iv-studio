@@ -34,10 +34,10 @@ test('folder text: Movies on a Mac, today\'s text elsewhere', () => {
 })
 
 test('the MCP server saves under ~/Movies on a Mac, where the app does, and under Videos elsewhere', () => {
-  assert.equal(path.join(mcpVideosBase({ platform: 'darwin', home: '/Users/me' }), 'IV Studio'), '/Users/me/Movies/IV Studio')
-  assert.equal(videosFolderOf({}, { videos: mcpVideosBase({ platform: 'darwin', home: '/Users/me' }) }), '/Users/me/Movies/IV Studio')
+  assert.equal(path.join(mcpVideosBase({ platform: 'darwin', home: '/Users/me' }), 'IV Studio'), path.join('/Users/me', 'Movies', 'IV Studio'))
+  assert.equal(videosFolderOf({}, { videos: mcpVideosBase({ platform: 'darwin', home: '/Users/me' }) }), path.join('/Users/me', 'Movies', 'IV Studio'))
   assert.equal(mcpVideosBase({ platform: 'win32', env: { USERPROFILE: 'C:\\Users\\me' }, home: 'C:\\home' }), path.join('C:\\Users\\me', 'Videos'))
-  assert.equal(mcpVideosBase({ platform: 'linux', env: {}, home: '/home/me' }), '/home/me/Videos')
+  assert.equal(mcpVideosBase({ platform: 'linux', env: {}, home: '/home/me' }), path.join('/home/me', 'Videos'))
 })
 
 test('the agent guide names no Windows-only folder for exports', () => {

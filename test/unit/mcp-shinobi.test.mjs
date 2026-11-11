@@ -31,8 +31,9 @@ describe('MCP Shinobi tools', () => {
   }
   // an engine that looks installed: its Python and the marker, as the installer leaves them
   const installEngine = () => {
-    write(dataFile('shinobi', 'venv', 'bin', 'python'), '#!/bin/sh\n')
-    fs.chmodSync(dataFile('shinobi', 'venv', 'bin', 'python'), 0o755)
+    const python = dataFile('shinobi', 'venv', ...(process.platform === 'win32' ? ['Scripts', 'python.exe'] : ['bin', 'python']))
+    write(python, '#!/bin/sh\n')
+    fs.chmodSync(python, 0o755)
     write(dataFile('shinobi', 'installed.json'), { commit: ENGINE.commit })
   }
   const removeEngine = () => fs.rmSync(dataFile('shinobi'), { recursive: true, force: true })

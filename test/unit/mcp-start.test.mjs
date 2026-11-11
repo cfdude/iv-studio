@@ -40,7 +40,7 @@ describe('MCP server on source', () => {
     assert.doesNotMatch(r.content[0].text, /canned/)
   })
 
-  test('with the shims opted in, the same tool reaches the canned claude answer', async () => {
+  test('with the shims opted in, the same tool reaches the canned claude answer', { skip: process.platform === 'win32' && 'the agent CLI shims are sh scripts' }, async () => {
     const shimmed = await startMcp({ comfyUrl: fake.url, shims: true })
     try {
       const r = await shimmed.client.callTool({ name: 'write_prompt', arguments: { idea: 'a quiet street at dusk', engine: 'claude' } })

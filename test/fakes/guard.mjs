@@ -269,7 +269,7 @@ function install() {
   function childEnv(options, node) {
     const env = { ...(options?.env || process.env) }
     env.IV_TEST_ALLOW_PORTS = [...state.ports].join(',')
-    env.IV_TEST_SHIM_DIRS = [...state.shimDirs].join(':')
+    env.IV_TEST_SHIM_DIRS = [...state.shimDirs].join(path.delimiter)
     if (node) {
       const flag = `--import=${GUARD_URL}`
       if (!String(env.NODE_OPTIONS || '').includes(flag)) env.NODE_OPTIONS = `${env.NODE_OPTIONS || ''} ${flag}`.trim()

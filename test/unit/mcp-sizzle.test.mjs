@@ -335,10 +335,10 @@ describe('MCP website sizzle tools', () => {
     fs.writeFileSync(dataFile('sizzle', s.id, 'sizzle.json'), JSON.stringify(j))
     await fails('sizzle_to_shinobi', { sizzleId: s.id }, /Set up Shinobi first/)
     // an engine that looks installed: its Python and the marker, as the installer leaves them
-    const venv = dataFile('shinobi', 'venv', 'bin')
+    const venv = dataFile('shinobi', 'venv', process.platform === 'win32' ? 'Scripts' : 'bin')
     fs.mkdirSync(venv, { recursive: true })
-    fs.writeFileSync(path.join(venv, 'python'), '#!/bin/sh\n')
-    fs.chmodSync(path.join(venv, 'python'), 0o755)
+    fs.writeFileSync(path.join(venv, process.platform === 'win32' ? 'python.exe' : 'python'), '#!/bin/sh\n')
+    fs.chmodSync(path.join(venv, process.platform === 'win32' ? 'python.exe' : 'python'), 0o755)
     const { ENGINE } = await import('../../src/service/shinobi.js')
     fs.writeFileSync(dataFile('shinobi', 'installed.json'), JSON.stringify({ commit: ENGINE.commit }))
     const before = (await mcp.refusals()).length

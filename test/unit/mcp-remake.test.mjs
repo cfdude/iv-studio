@@ -34,7 +34,7 @@ const SECTIONS = {
   non_diegetic_music: 'N/A'
 }
 
-describe('MCP remake tools', () => {
+describe('MCP remake tools', { skip: process.platform === 'win32' && 'the agent CLI shims are sh scripts' }, () => {
   let fake, mcp, shimDir, dir, video, long, face, painted, own, take
   const call = (name, args = {}) => mcp.client.callTool({ name, arguments: args })
   const ok = async (name, args = {}) => {

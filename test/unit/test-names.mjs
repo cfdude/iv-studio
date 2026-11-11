@@ -49,6 +49,17 @@ function bodySkips(call) {
   return SKIP_IN_BODY(param?.[1] || param?.[2] || param?.[3] || 't').test(body)
 }
 
+// `skip: process.platform === 'win32' && '<reason>'` skips on one platform only: the row is proven everywhere else, so it
+// stays live. Any other expression (an env var, a probe) is read as skipped. Only the identifier process.platform may
+// appear outside a quoted string.
+function platformOnlySkip(options) {
+  const m = /\bskip\s*:\s*([\s\S]*)$/.exec(options)
+  if (!m || /\btodo\s*:/.test(options)) return false
+  const bare = m[1].replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g, '')
+  const ids = bare.match(/[A-Za-z_$][\w$.]*/g) || []
+  return ids.length > 0 && ids.every((id) => id === 'process.platform')
+}
+
 // The tests named in one file's source: [{ kind, name, line, skipped }] and the names that are not literals.
 export function scanTestNames(text, file) {
   const tests = []
@@ -77,7 +88,7 @@ export function scanTestNames(text, file) {
     }
     const rest = text.slice(i + name.length + 3, i + name.length + 400)
     const options = /^\s*,?\s*\{([^}]*)\}\s*,/.exec(rest)?.[1] || ''
-    const optionSkip = /\b(skip|todo)\s*:\s*(?!false\b)[^\s,}]/.test(options)
+    const optionSkip = /\b(skip|todo)\s*:\s*(?!false\b)[^\s,}]/.test(options) && !platformOnlySkip(options)
     const open = m.index + m[0].indexOf('(')
     const end = endOfCall(text, open)
     const skipped = modifier === 'skip' || modifier === 'todo' || optionSkip

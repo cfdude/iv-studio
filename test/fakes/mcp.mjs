@@ -42,7 +42,7 @@ export async function startMcp({ comfyUrl, shims = false, settings = {}, platfor
     IV_STUDIO_DATA: dataDir,
     IV_TEST_RUN_DIR: runDir,
     IV_TEST_ALLOW_PORTS: [...guardState().ports].join(','),
-    IV_TEST_SHIM_DIRS: [...guardState().shimDirs].join(':'),
+    IV_TEST_SHIM_DIRS: [...guardState().shimDirs].join(path.delimiter),
     ...(civitai ? { IV_TEST_CIVITAI: civitai } : {}),
     ...(civitaiKey ? { IV_TEST_CIVITAI_KEY: civitaiKey } : {})
   }

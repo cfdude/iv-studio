@@ -19,7 +19,7 @@ const PROMPT = 'integrated_multimodal_description: [Shot 1] A woman walks along 
 const WRITER = { direction: { purpose: 'A walk in the rain.', staging: 'She walks screen-left to screen-right.' }, style: 'Live-action, soft light.', shots: [{ start_seconds: 0, description: 'A woman in a red coat walks along a rainy street, the camera holds a static shot.' }], soundscape: 'Rain.', music: 'N/A' }
 const REVIEW = { verdict: 'usable_with_fixes', works: ['The light holds'], issues: [{ from: 1, to: 2, kind: 'anatomy', what: 'A hand glitches', unmet: false }], fix: { kind: 'revise_prompt', why: 'Say what the hands do.', clean_from: 0, clean_to: 0 }, revised_prompt: 'integrated_multimodal_description: [Shot 1] A woman walks along a rainy street with her hands in her coat pockets.\n\noverall_soundscape: Rain on stone.\n\nnon_diegetic_music: N/A' }
 
-describe('MCP review and prompt writer tools', () => {
+describe('MCP review and prompt writer tools', { skip: process.platform === 'win32' && 'the agent CLI shims are sh scripts' }, () => {
   let fake, mcp, shimDir, take
   const call = (name, args = {}) => mcp.client.callTool({ name, arguments: args })
   const ok = async (name, args = {}) => {
