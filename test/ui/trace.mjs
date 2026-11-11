@@ -86,22 +86,26 @@ export const rowCalls = (trace, { mark, startup = 0 }) => [...trace.slice(0, sta
 
 // Returns once the window has stopped making calls: the main process has none open, and a few turns of the page in a
 // row brought no new call (the polls do not count). It is a barrier, not a sleep: each turn lets the page run what it
-// has queued (an effect that fires after an answer arrives), so a start-up call cannot land after it returns. Throws,
-// naming the last call, when the window never stops (a loop of calls is a defect worth a failure).
+// has queued (an effect that fires after an answer arrives). It cannot see a timer the page set for later, which is why
+// the polls are left out of a row and the rest are not allowed to be long. Throws after `maxMs` of wall clock, saying
+// whether calls were still arriving or still open (a loop of calls, or a handler that never answers, is worth a failure).
 //   w: { trace() the calls so far, inflight() the calls open in the main process, turn() one turn of the page }
-export async function untilCallsSettle(w, { quiet = 5, maxTurns = 600 } = {}) {
+export async function untilCallsSettle(w, { quiet = 5, maxTurns = Infinity, maxMs = 30000 } = {}) {
   const made = () => w.trace().filter((c) => !POLLED.includes(c.channel)).length
+  const until = Date.now() + maxMs
   let last = -1
   let still = 0
-  for (let i = 0; i < maxTurns; i++) {
+  let open = 0
+  for (let i = 0; i < maxTurns && Date.now() < until; i++) {
     await w.turn()
     const n = made()
-    if (n === last && (await w.inflight()) === 0) still++
+    open = await w.inflight()
+    if (n === last && open === 0) still++
     else still = 0
     last = n
     if (still >= quiet) return
   }
-  throw new Error(`the window was still making calls after ${maxTurns} turns of the page (last: ${w.trace().at(-1)?.channel})`)
+  throw new Error(`the window was still making calls (last: ${w.trace().at(-1)?.channel}) or the main process still had ${open} open after ${maxMs} ms`)
 }
 
 export function readTraces(file = TRACE_FILE) {

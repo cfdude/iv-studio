@@ -165,13 +165,14 @@ describe('trace: the start-up calls land in a row, never split by when the windo
   })
 
   test('it gives up, naming what is still arriving, instead of waiting forever', async () => {
-    const w = window(Array.from({ length: 500 }, () => ['x']))
-    await assert.rejects(untilCallsSettle(w, { maxTurns: 50 }), /still making calls/)
+    const w = window(Array.from({ length: 100000 }, () => ['x']), () => 0)
+    w.turn = ((turn) => async () => (await new Promise((r) => setTimeout(r, 5)), turn()))(w.turn)
+    await assert.rejects(untilCallsSettle(w, { maxMs: 50 }), /still making calls.*last: x/)
   })
 
   test('the polls are not calls the window made for the page: they never hold the wait open', async () => {
     const w = window(Array.from({ length: 30 }, () => ['queue:list', 'system:stats']))
-    await untilCallsSettle(w, { maxTurns: 20 })
+    await untilCallsSettle(w, { maxMs: 5000 })
   })
 
   test('the first row after a launch that asks for it is the start-up calls (before the settle point) plus its own, nothing in between', () => {

@@ -584,7 +584,8 @@ export function installIpcTrace(ipcMain, { file, inflightFile = null }) {
     open += n
     if (!inflightFile) return
     try {
-      fs.writeFileSync(inflightFile, String(open))
+      fs.writeFileSync(`${inflightFile}.tmp`, String(open))
+      fs.renameSync(`${inflightFile}.tmp`, inflightFile) // never read half-written
     } catch {
       /* the run folder is gone */
     }
