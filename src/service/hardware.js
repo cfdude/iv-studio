@@ -118,8 +118,21 @@ export const MODEL_GROUPS = [
 const gb = (b) => b / GB
 const fmt = (b) => (gb(b) >= 1000 ? `${(gb(b) / 1024).toFixed(1)} TB` : `${gb(b) >= 100 ? Math.round(gb(b)) : gb(b).toFixed(gb(b) < 10 ? 1 : 0)} GB`)
 
-// The tiers, by the best NVIDIA card's memory (H3 runs on CUDA)
+// An Apple Silicon Mac: the chip says arm64 (the scan records it); without that, an Apple graphics entry.
+export function isAppleSilicon(scan) {
+  if (scan.os?.platform !== 'darwin') return false
+  return scan.os.arch ? scan.os.arch === 'arm64' : (scan.gpus || []).some((g) => g.vendor === 'apple')
+}
+
+// The tiers, by the best NVIDIA card's memory (H3 runs on CUDA), or on an Apple Silicon Mac by its unified memory.
+// Only one measurement so far (H3 960x544 peaked at 28 GB on a 128 GB M5 Max), so the Mac cut-offs are cautious.
 export function tierOf(scan) {
+  if (isAppleSilicon(scan)) {
+    const v = gb(scan.ram || 0)
+    const gpu = (scan.gpus || []).find((g) => g.vendor === 'apple') || { vendor: 'apple', name: 'Apple GPU' }
+    const id = v >= 96 ? 'all' : v >= 64 ? 'most' : v >= 32 ? 'some' : 'cloud'
+    return { id, gpu: { ...gpu, vram: scan.ram || 0 }, vram: v }
+  }
   const nv = (scan.gpus || []).filter((g) => g.vendor === 'nvidia' && g.vram).sort((a, b) => b.vram - a.vram)[0]
   const v = nv ? gb(nv.vram) : 0
   if (v >= 30) return { id: 'top', gpu: nv, vram: v }
@@ -142,6 +155,12 @@ export function recommend(scan) {
   const tier = { id: t.id, ...TIERS[t.id] }
   const ram = gb(scan.ram || 0)
   const mac = scan.os?.platform === 'darwin'
+  const apple = isAppleSilicon(scan)
+  if (mac) {
+    for (const k of ['title', 'summary']) tier[k] = tier[k].replace(/This PC/g, 'This Mac').replace(/this PC/g, 'this Mac')
+    if (t.id === 'cloud') tier.summary = apple ? 'This Mac has under 32 GB of memory, which is too little for video. Shots render on RunPod, Modal or Comfy Cloud; IV Studio still edits, plans and organises here.' : 'This Mac has no Apple Silicon chip, so video shots render on RunPod, Modal or Comfy Cloud; IV Studio still edits, plans and organises here.'
+    if (t.id === 'some') tier.summary = 'Pictures, music and voices run here. Video shots are untested at this memory size, so make them in the cloud.'
+  }
   const win = scan.os?.platform === 'win32'
   const ins = scan.installs || {}
   const verdicts = []
@@ -149,7 +168,16 @@ export function recommend(scan) {
 
   // graphics card
   const g = t.gpu
-  if (g?.vendor === 'nvidia' && g.vram) {
+  if (apple) {
+    const state = t.id === 'all' ? 'great' : t.id === 'most' ? 'good' : t.id === 'some' ? 'ok' : 'weak'
+    const say = {
+      great: 'Enough unified memory for MiniMax H3 here: it peaked at 28 GB in testing.',
+      good: 'Should run H3 here; this memory size is not tested yet. Keep finals at 1 to 1.5 MP.',
+      ok: 'Pictures, music and voices fit. H3 video is untested at this size, so make it in the cloud.',
+      weak: 'Under 32 GB of memory: too little for H3 video. Shots render in the cloud.'
+    }[state]
+    verdicts.push({ id: 'gpu', label: 'Graphics', value: `Apple GPU · ${fmt(scan.ram || 0)} unified memory`, state, say })
+  } else if (g?.vendor === 'nvidia' && g.vram) {
     const state = t.id === 'top' || t.id === 'all' ? 'great' : t.id === 'most' ? 'good' : t.id === 'some' ? 'ok' : 'weak'
     const say = {
       great: 'Enough memory for MiniMax H3 at full size, SeedVR2 and training.',
@@ -163,7 +191,7 @@ export function recommend(scan) {
       if (win && major && major < 560) tips.push({ state: 'warn', text: `Your NVIDIA driver is ${g.driver}. Update it (GeForce or NVIDIA App) before rendering: older drivers are slower and miss features DLSS 5 needs.` })
     }
   } else if (mac) {
-    verdicts.push({ id: 'gpu', label: 'Graphics', value: g?.name || 'Apple graphics', state: 'weak', say: 'Macs have no CUDA, which MiniMax H3 needs. Shots render in the cloud.' })
+    verdicts.push({ id: 'gpu', label: 'Graphics', value: g?.name || 'Mac graphics', state: 'weak', say: 'Only an Apple Silicon Mac can render MiniMax H3 here. Shots render in the cloud.' })
   } else {
     const name = g?.name || 'No NVIDIA card found'
     verdicts.push({ id: 'gpu', label: 'Graphics card', value: name, state: 'weak', say: g ? `${g.vendor === 'amd' ? 'AMD' : g.vendor === 'intel' ? 'Intel' : 'This'} card can't run MiniMax H3 (it needs NVIDIA's CUDA). Shots render in the cloud.` : 'MiniMax H3 needs an NVIDIA card. Shots render in the cloud.' })
@@ -194,7 +222,7 @@ export function recommend(scan) {
     design: local,
     sdxl: false,
     music: local && t.vram >= 15,
-    replace: local && t.vram >= 22,
+    replace: local && !apple && t.vram >= 22,
     remake_swap: false,
     remake_edit: false,
     qma: false
@@ -236,7 +264,8 @@ export function recommend(scan) {
     enhancer,
     enhanceResolution: t.id === 'top' ? 1440 : 1080
   }
-  if (!nvidia || !win) tips.push({ state: 'info', text: 'DLSS 5 needs an NVIDIA RTX card on Windows. Finals here use SeedVR2 or the 2× upscale instead.' })
+  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale; DLSS 5 needs an NVIDIA RTX card on Windows, and SeedVR2 isn't available on an Apple GPU yet." })
+  else if (!nvidia || !win) tips.push({ state: 'info', text: 'DLSS 5 needs an NVIDIA RTX card on Windows. Finals here use SeedVR2 or the 2× upscale instead.' })
   if (ins.comfyRunning === false && !ins.comfyFound && local) tips.push({ state: 'warn', text: 'No ComfyUI found on this PC. Install ComfyUI (the Desktop app or the portable build) for anything that renders here.' })
   if (!ins.voices && local && nvidia) tips.push({ state: 'info', text: 'Voices are a one-time 12 GB setup on Audio > Voices.' })
 

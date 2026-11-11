@@ -2,7 +2,7 @@
 // Everything is read from ComfyUI itself (/system_stats and /object_info), so it works with any install.
 
 import { findComfyElsewhere } from './comfylauncher.js'
-import { gpuCheck } from './gpu.js'
+import { appleUpscalerCheck, gpuCheck } from './gpu.js'
 
 // Why a ComfyUI request failed, as a Setup item's status, detail and fix:
 // - busy: ComfyUI took the connection but didn't answer in time (loading, rendering or short on memory); it's running,
@@ -79,6 +79,8 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
   else items.push({ id: 'gpu', label: 'GPU', ...gpuCheck(stats.devices) })
 
   const info = await comfy.objectInfo()
+  const upscaler = comfy.hosted ? null : appleUpscalerCheck(stats.devices, info)
+  if (upscaler) items.push({ id: 'gpu-upscaler', label: 'ComfyUI version', ...upscaler })
   const needed = [...new Set(Object.values(template).map((n) => n.class_type))].filter((c) => !TEMPLATE_SKIP.has(c))
   const missingClasses = needed.filter((c) => !info[c])
   const linux = !['nt', 'win32'].includes(stats.system?.os)

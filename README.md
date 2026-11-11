@@ -205,7 +205,7 @@ card. See [what's new in 1.0](#whats-new-in-10).
 ## What you need
 
 - **Windows 10 or 11** (64-bit), **64-bit Linux** (the AppImage, from 0.2.8; see [Linux](#linux)), or a **Mac**
-  with macOS 12 or newer, Apple Silicon or Intel (from 0.3.2; it renders in the cloud, see [Mac](#mac)).
+  with macOS 12 or newer, Apple Silicon or Intel (from 0.3.2; it renders on an Apple GPU with ComfyUI 0.44 or newer, or in the cloud, see [Mac](#mac)).
 - **An NVIDIA GPU, or the cloud.** 24 GB of VRAM is what IV Studio is tested on (an RTX 4090); 16 GB works
   with smaller previews and finals. 64 GB of system RAM is recommended. Without a suitable card, shots and
   sequences can render on a cloud GPU in your own RunPod or Modal account; pictures, music and voices still need a
@@ -260,9 +260,9 @@ the AppImage, so it keeps working after updates.
 
 ### Mac
 
-A Mac has no NVIDIA graphics card, and MiniMax H3 needs one, so on a Mac IV Studio is the studio and the cloud is
-the GPU: shots, hunts, finishes and sequences render on your own [RunPod](#on-runpod) or [Modal](#on-modal)
-account, or on [Comfy Cloud](#on-comfy-cloud).
+On an Apple Silicon Mac, MiniMax H3 can render on the Mac's own GPU through ComfyUI 0.44 or newer (Setup asks you to
+update an older ComfyUI). Or let the cloud be the GPU: shots, hunts, finishes and sequences render on your own
+[RunPod](#on-runpod) or [Modal](#on-modal) account, or on [Comfy Cloud](#on-comfy-cloud).
 
 1. Download the `.dmg` for your Mac: [Apple Silicon (M1 and newer)](https://github.com/hollisorg/iv-studio/releases/latest/download/IV-Studio-mac-arm64.dmg)
    or [Intel](https://github.com/hollisorg/iv-studio/releases/latest/download/IV-Studio-mac-x64.dmg). Open it and drag
@@ -273,7 +273,7 @@ account, or on [Comfy Cloud](#on-comfy-cloud).
 
 What's different on a Mac:
 
-- **Renders:** in the cloud. Finals there use a 2× AI upscale (Real-ESRGAN) and RIFE frame interpolation in place
+- **Renders:** on your Apple GPU (ComfyUI 0.44 or newer), or in the cloud. Finals in the cloud use a 2× AI upscale (Real-ESRGAN) and RIFE frame interpolation in place
   of DLSS 5, which is Windows-only.
 - **Pictures and music** need a ComfyUI with their models: Comfy Cloud, or a ComfyUI on your Mac (IV Studio
   finds and starts the ComfyUI Desktop app, `ComfyUI.app`, or a ComfyUI folder in your home folder). Note that
