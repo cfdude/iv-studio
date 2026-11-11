@@ -1,13 +1,5 @@
 {
   "mcp:install_node_packs": "spawns git (hasGit runs git --version, pip installs pack requirements); refusal proven by \"guard refuses git for install_node_packs\" in mcp-setup.test.mjs",
-  "mcp:sketch_film_shots": "pending 5.1",
-  "mcp:render_film_shot": "pending 5.1",
-  "mcp:render_film_scene": "pending 5.1",
-  "mcp:finish_film_shot": "pending 5.1",
-  "mcp:make_animatic": "pending 5.1",
-  "mcp:draw_film_face": "pending 5.1",
-  "mcp:draw_place_angles": "pending 5.1",
-  "mcp:build_rough_cut": "pending 5.1",
   "mcp:make_reel": "pending 5.1",
   "mcp:shinobi_status": "pending 5.1",
   "mcp:shinobi_setup": "pending 5.1",
