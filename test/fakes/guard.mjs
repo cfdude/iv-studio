@@ -82,7 +82,15 @@ function recordRefusal(kind, command, detail) {
   }
 }
 
-const networkError = (host, port, what = 'a network call') => {
+const networkError = (host, port, what = 'a network call', pathname = null) => {
+  state.netRefusals.push({ host: String(host), port: Number(port), what, path: pathname, at: new Date().toISOString() })
+  if (state.runDir) {
+    try {
+      fs.writeFileSync(path.join(state.runDir, 'guard-network-refusals.json'), JSON.stringify(state.netRefusals, null, 2))
+    } catch {
+      /* the run folder is gone; the in-memory list still holds it */
+    }
+  }
   const e = new Error(`IV Studio's tests refused ${what} to ${host}:${port}. Only a local fake that registered its port may be reached.`)
   e.code = 'ECONNREFUSED'
   e.ivGuardRefused = true
@@ -103,7 +111,7 @@ function install() {
   }
   const checkUrl = (u, what) => {
     const { host, port } = hostPort(u)
-    if (!portAllowed(host, port)) throw networkError(host, port, what)
+    if (!portAllowed(host, port)) throw networkError(host, port, what, new URL(u).pathname)
   }
   if (realFetch) {
     globalThis.fetch = async function guardedFetch(input, init) {
@@ -222,6 +230,7 @@ function install() {
       if (media.includes(real) && (Array.isArray(args) ? args : [String(command)]).some((a) => NETWORK_ARG.test(String(a)))) return { ok: false, name: path.basename(name), why: 'a network input or output is refused' }
       return { ok: true, command, node: real === realpath(process.execPath), name }
     }
+    if (state.programs.has(real)) return { ok: true, command, node: false, name }
     if (inShimDir(abs)) return { ok: true, command, node: false, name }
     return { ok: false, name: base, why: 'not on the test allowlist' }
   }
@@ -360,8 +369,19 @@ function install() {
 
 // Replaces shell, dialog and Notification on `electron` with stubs that show and open nothing, record the call in
 // `trace`, and return canned answers (answers: { open, save, messageBox } keyed by dialog title).
-export function installElectronStubs(electron, { answers = {}, tempDir = os.tmpdir(), trace = state.trace } = {}) {
-  const rec = (fn, extra) => trace.push({ fn, ...extra })
+// The trace is also written to `traceFile` (the guard's own trace goes to guard-trace.json in the run folder), so the
+// page-tier driver, a different process, can read it.
+export function installElectronStubs(electron, { answers = {}, tempDir = os.tmpdir(), trace = state.trace, traceFile = trace === state.trace && state.runDir ? path.join(state.runDir, 'guard-trace.json') : null } = {}) {
+  const rec = (fn, extra) => {
+    trace.push({ fn, ...extra })
+    if (traceFile) {
+      try {
+        fs.writeFileSync(traceFile, JSON.stringify(trace, null, 2))
+      } catch {
+        /* the run folder is gone */
+      }
+    }
+  }
   const { shell, dialog } = electron
   shell.openExternal = async (url) => void rec('shell.openExternal', { arg: url })
   shell.openPath = async (p) => (rec('shell.openPath', { arg: p }), '')
@@ -370,6 +390,7 @@ export function installElectronStubs(electron, { answers = {}, tempDir = os.tmpd
   const titleOf = (o) => o?.title ?? o?.message ?? ''
   const optsOf = (args) => (args.length > 1 ? args[1] : args[0]) || {}
   const made = (entry, title) => {
+    fs.mkdirSync(tempDir, { recursive: true })
     const dir = fs.mkdtempSync(path.join(tempDir, 'dialog-'))
     const target = path.join(dir, entry.name || 'picked')
     if (entry.kind === 'dir') fs.mkdirSync(target, { recursive: true })
@@ -410,7 +431,7 @@ export function installElectronStubs(electron, { answers = {}, tempDir = os.tmpd
   dialog.showMessageBox = async (...a) => ({ response: box(a, 'dialog.showMessageBox'), checkboxChecked: false })
   dialog.showMessageBoxSync = (...a) => box(a, 'dialog.showMessageBoxSync')
 
-  electron.Notification = class {
+  class Quiet {
     constructor(options = {}) {
       this.options = options
     }
@@ -428,7 +449,38 @@ export function installElectronStubs(electron, { answers = {}, tempDir = os.tmpd
     }
     close() {}
   }
+  try {
+    electron.Notification = Quiet
+  } catch {
+    // Electron's own `Notification` is a getter that cannot be replaced or redefined, so patch the class it hands out:
+    // supported, and showing records the call and shows nothing
+    const Real = electron.Notification
+    Real.isSupported = () => true
+    Real.prototype.show = function show() {
+      rec('Notification.show', { title: this.title ?? this.options?.title, body: this.body ?? this.options?.body })
+    }
+  }
   return electron
+}
+
+// On macOS Electron's 'home', 'videos' and the other user folders do NOT follow $HOME (they come from the account
+// record), so a pinned HOME would still leave app.getPath('videos') at the person's real ~/Movies. This points each one
+// at a folder inside the temp home, and returns { name: folder }.
+export const ELECTRON_FOLDERS = { home: '', videos: 'Movies', documents: 'Documents', downloads: 'Downloads', desktop: 'Desktop', music: 'Music', pictures: 'Pictures' }
+export function pinElectronPaths(app, home) {
+  const pinned = {}
+  for (const [name, sub] of Object.entries(ELECTRON_FOLDERS)) {
+    const dir = sub ? path.join(home, sub) : home
+    fs.mkdirSync(dir, { recursive: true })
+    app.setPath(name, dir)
+    pinned[name] = dir
+  }
+  return pinned
+}
+
+// What the app resolves for each of those folders (plus userData), read live.
+export function readElectronPaths(app) {
+  return Object.fromEntries([...Object.keys(ELECTRON_FOLDERS), 'userData'].map((n) => [n, app.getPath(n)]))
 }
 
 // ---------- load ----------
@@ -449,19 +501,35 @@ if (!state.loaded) {
   state.found = found
   install()
   const inElectronMain = !!process.versions.electron && process.type === 'browser'
+  const writeMarker = (paths) =>
+    fs.writeFileSync(
+      path.join(state.runDir, 'guard-loaded.json'),
+      JSON.stringify({ pid: process.pid, processType: process.type || 'node', electron: !!process.versions.electron, allowedPorts: [...state.ports], scrubbedFound: found, electronError: state.electronError || null, paths: paths || null }, null, 2)
+    )
+  let electronApp = null
   if (inElectronMain) {
     try {
       const answers = JSON.parse(fs.readFileSync(path.join(here, 'dialog-answers.json'), 'utf8'))
-      installElectronStubs(require('electron'), { answers, tempDir: path.join(state.runDir, 'dialogs') })
+      const electron = require('electron')
+      installElectronStubs(electron, { answers, tempDir: path.join(state.runDir, 'dialogs') })
+      pinElectronPaths(electron.app, process.env.HOME)
+      electronApp = electron.app
     } catch (e) {
       state.electronError = String(e?.message || e)
     }
   }
   state.loaded = true
-  fs.writeFileSync(
-    path.join(state.runDir, 'guard-loaded.json'),
-    JSON.stringify({ pid: process.pid, processType: process.type || 'node', electron: !!process.versions.electron, allowedPorts: [...state.ports], scrubbedFound: found, electronError: state.electronError || null }, null, 2)
-  )
+  writeMarker()
+  // once the app is ready, say what it resolves for home, videos and the rest (the page tier reads these)
+  if (electronApp) {
+    electronApp
+      .whenReady()
+      .then(() => writeMarker(readElectronPaths(electronApp)))
+      .catch((e) => {
+        state.electronError = String(e?.message || e)
+        writeMarker()
+      })
+  }
 }
 
 export { LOOPBACK, pathToFileURL }

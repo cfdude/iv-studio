@@ -20,8 +20,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { modalConfigPath } from '../../src/service/cloud.js'
 import { scanHardware } from '../../src/service/hardware.js'
-import { applyEnvPolicy, checkNode, guardState, installElectronStubs } from '../fakes/guard.mjs'
-import { registerPort, unregisterPort } from '../fakes/ports.mjs'
+import { applyEnvPolicy, checkNode, ELECTRON_FOLDERS, guardState, installElectronStubs, pinElectronPaths, readElectronPaths } from '../fakes/guard.mjs'
+import { registerPort, registerProgram, unregisterPort, unregisterProgram } from '../fakes/ports.mjs'
 import { withShims } from '../fakes/shims.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -367,11 +367,105 @@ describe('guard: Electron stand-ins', () => {
     assert.equal(trace.filter((t) => t.fn.startsWith('dialog.')).length, 4)
   })
 
+  test('a dialog answer is made even when the temp folder for answers does not exist yet', async () => {
+    const tempDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-electron-')), 'not', 'yet')
+    const electron = makeElectron()
+    installElectronStubs(electron, { answers, tempDir, trace: [] })
+    const r = await electron.dialog.showOpenDialog({ title: 'Pick a folder', properties: ['openDirectory'] })
+    assert.ok(fs.statSync(r.filePaths[0]).isDirectory())
+  })
+
   test('showMessageBoxSync returns the canned button index, then cancelId, then 0', () => {
     const electron = makeElectron()
     installElectronStubs(electron, { answers, tempDir: os.tmpdir(), trace: [] })
     assert.equal(electron.dialog.showMessageBoxSync({ title: 'Delete it?', buttons: ['No', 'Yes'] }), 1)
     assert.equal(electron.dialog.showMessageBoxSync({ title: 'Other', cancelId: 2 }), 2)
     assert.equal(electron.dialog.showMessageBoxSync({ title: 'Other' }), 0)
+  })
+})
+
+describe('guard: what the page tier adds', () => {
+  test('a program the driver registers by exact path starts; its sibling still does not', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-program-'))
+    for (const n of ['launched', 'sibling']) {
+      fs.writeFileSync(path.join(dir, n), '#!/bin/sh\necho ok\n', { mode: 0o755 })
+    }
+    const before = spawnSync(path.join(dir, 'launched'), [])
+    assert.equal(before.error?.ivGuardRefused, true)
+    registerProgram(path.join(dir, 'launched'))
+    try {
+      const r = spawnSync(path.join(dir, 'launched'), [])
+      assert.equal(r.status, 0)
+      assert.equal(String(r.stdout).trim(), 'ok')
+      assert.equal(spawnSync(path.join(dir, 'sibling'), []).error?.ivGuardRefused, true)
+    } finally {
+      unregisterProgram(path.join(dir, 'launched'))
+    }
+    assert.equal(spawnSync(path.join(dir, 'launched'), []).error?.ivGuardRefused, true)
+  })
+
+  test('a refused network call is also recorded, with its host and port, apart from the refused commands', async () => {
+    const before = guardState().netRefusals.length
+    await assert.rejects(fetch('http://127.0.0.1:8188/experiment/models'), /127\.0\.0\.1:8188/)
+    const added = guardState().netRefusals.slice(before)
+    assert.equal(added.length, 1)
+    assert.deepEqual([added[0].host, added[0].port, added[0].path], ['127.0.0.1', 8188, '/experiment/models'])
+    assert.ok(!guardState().refusals.some((r) => r.command === '127.0.0.1'))
+    const written = JSON.parse(fs.readFileSync(path.join(guardState().runDir, 'guard-network-refusals.json'), 'utf8'))
+    assert.ok(written.some((r) => r.port === 8188))
+  })
+
+  test('the Electron stubs write their trace to a file the driver can read', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-trace-'))
+    const traceFile = path.join(dir, 'guard-trace.json')
+    const dialog = Object.fromEntries(['showOpenDialog', 'showOpenDialogSync', 'showSaveDialog', 'showSaveDialogSync', 'showMessageBox', 'showMessageBoxSync'].map((n) => [n, () => 'REAL']))
+    const electron = { shell: {}, dialog }
+    const trace = []
+    installElectronStubs(electron, { answers: { open: { 'Pick a folder': { kind: 'dir', name: 'picked' } } }, tempDir: dir, trace, traceFile })
+    await electron.shell.openExternal('https://example.com')
+    await electron.dialog.showOpenDialog({ title: 'Pick a folder', properties: ['openDirectory'] })
+    const read = JSON.parse(fs.readFileSync(traceFile, 'utf8'))
+    assert.deepEqual(read.map((t) => t.fn), ['shell.openExternal', 'dialog.showOpenDialog'])
+    assert.equal(read[0].arg, 'https://example.com')
+    assert.equal(read[1].title, 'Pick a folder')
+  })
+
+  test("a Notification that cannot be replaced (Electron's own getter) is patched so it shows nothing and records", () => {
+    class Real {
+      constructor(options) {
+        this.title = options.title
+        this.body = options.body
+      }
+      static isSupported() {
+        return false
+      }
+      show() {
+        throw new Error('REAL')
+      }
+    }
+    const electron = { shell: {}, dialog: {} }
+    Object.defineProperty(electron, 'Notification', { get: () => Real, enumerable: true, configurable: false })
+    const trace = []
+    installElectronStubs(electron, { answers: {}, tempDir: os.tmpdir(), trace, traceFile: null })
+    assert.equal(electron.Notification, Real)
+    assert.equal(electron.Notification.isSupported(), true)
+    new electron.Notification({ title: 'Done', body: 'Your video' }).show()
+    assert.deepEqual(trace.map((t) => [t.fn, t.title, t.body]), [['Notification.show', 'Done', 'Your video']])
+  })
+
+  test('pinElectronPaths points home, videos and the other user folders at the temp home, not the account record', () => {
+    // a stand-in app that, like macOS Electron, resolves these from "the account" until told otherwise
+    const real = { home: '/Users/someone', videos: '/Users/someone/Movies', documents: '/Users/someone/Documents', downloads: '/Users/someone/Downloads', desktop: '/Users/someone/Desktop', music: '/Users/someone/Music', pictures: '/Users/someone/Pictures', userData: '/tmp/ud' }
+    const set = {}
+    const app = { setPath: (n, v) => ((set[n] = v), (real[n] = v)), getPath: (n) => real[n] }
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-pin-home-'))
+    const pinned = pinElectronPaths(app, home)
+    assert.deepEqual(Object.keys(pinned), Object.keys(ELECTRON_FOLDERS))
+    for (const name of Object.keys(ELECTRON_FOLDERS)) {
+      assert.ok(app.getPath(name) === home || app.getPath(name).startsWith(home + path.sep), `${name} is ${app.getPath(name)}`)
+      assert.ok(fs.statSync(app.getPath(name)).isDirectory())
+    }
+    assert.equal(app.getPath('videos'), path.join(home, 'Movies'))
+    assert.deepEqual(readElectronPaths(app).userData, '/tmp/ud')
   })
 })
