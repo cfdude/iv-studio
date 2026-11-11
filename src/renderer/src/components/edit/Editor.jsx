@@ -69,6 +69,7 @@ const fitFades = (c) => {
 // the timeline below, every border draggable. A full-screen workspace hides IV Studio's own sidebar.
 // An agent edits the same file through the MCP server: its changes appear here with a one-click undo.
 export default function EditEditor({ editId, notify, go, focus, setFocus, characters = [], remakeClip }) {
+  const platform = usePlatform()
   const [meta, setMeta] = useState(null)
   const [edit, setEdit] = useState(null)
   const [gens, setGens] = useState([]) // new footage on its way (src/service/editgen.js)

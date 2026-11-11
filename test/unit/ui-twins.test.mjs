@@ -62,6 +62,7 @@ describe('mocked twins: every page and journey, in trace order', () => {
   test('[page:cloud] twin: every channel it called is exposed, handled and covered, in trace order', () => twin('page:cloud'))
   test('[page:create] twin: every channel it called is exposed, handled and covered, in trace order', () => twin('page:create'))
   test('[page:edits] twin: every channel it called is exposed, handled and covered, in trace order', () => twin('page:edits'))
+  test('[page:edit] twin: every channel it called is exposed, handled and covered, in trace order', () => twin('page:edit'))
   test('[page:home] twin: every channel it called is exposed, handled and covered, in trace order', () => twin('page:home'))
   test('[page:library] twin: every channel it called is exposed, handled and covered, in trace order', () => twin('page:library'))
   test('[page:lines] twin: every channel it called is exposed, handled and covered, in trace order', () => twin('page:lines'))

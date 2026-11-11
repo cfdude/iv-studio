@@ -79,6 +79,7 @@ export class Edits {
     this.ffprobe = ffprobe
     this.fontFile = fontFile
     this.exports = new Map() // edit id -> child process
+    this.cancelled = new Set() // edit ids whose running export was asked to stop
   }
 
   file = (id) => path.join(this.dir, `${id}.json`)
@@ -231,8 +232,10 @@ export class Edits {
       p.on('error', reject)
       p.on('close', (code, signal) => {
         this.exports.delete(id)
+        // ffmpeg catches the stop signal and exits with a code of its own, so a cancel is remembered here
+        const asked = this.cancelled.delete(id)
         if (code === 0) resolve()
-        else reject(new Error(signal || code === null ? 'Export cancelled.' : `Export failed: ${err.trim().split('\n').slice(-3).join(' ')}`))
+        else reject(new Error(asked || signal || code === null ? 'Export cancelled.' : `Export failed: ${err.trim().split('\n').slice(-3).join(' ')}`))
       })
     })
     fs.rmSync(work, { recursive: true, force: true })
@@ -292,7 +295,10 @@ export class Edits {
 
   cancelExport(id) {
     const p = this.exports.get(id)
-    if (p) p.kill()
+    if (p) {
+      this.cancelled.add(id)
+      p.kill()
+    }
     return !!p
   }
 
