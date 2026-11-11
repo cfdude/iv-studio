@@ -27,7 +27,7 @@ export default function HfLogin({ notify, pages = [], onChange }) {
     try {
       const r = await window.ivstudio.cloud.hfToken(k)
       setToken('')
-      if (k) notify?.(`Hugging Face token saved (encrypted on this PC)${r?.name ? ` for ${r.name}` : ''}.`, 'info')
+      if (k) notify?.(`Hugging Face token saved (encrypted on this computer)${r?.name ? ` for ${r.name}` : ''}.`, 'info')
       await refresh()
       onChange?.()
     } catch (err) {
@@ -65,7 +65,7 @@ export default function HfLogin({ notify, pages = [], onChange }) {
         </p>
       ) : from ? (
         <p className="small hf-login-ok">
-          <span className="ok-dot" aria-hidden="true">●</span> Using this PC’s Hugging Face login ({from === 'env' ? 'HF_TOKEN' : 'hf auth login'}).
+          <span className="ok-dot" aria-hidden="true">●</span> Using this computer’s Hugging Face login ({from === 'env' ? 'HF_TOKEN' : 'hf auth login'}).
         </p>
       ) : (
         <div className="key-form">

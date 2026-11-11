@@ -272,7 +272,7 @@ export class CloudPrep {
     const files = []
     for (const u of upload) {
       const file = await this.localFile(u.kind, u.name)
-      if (!file) throw Object.assign(new Error(`${u.name} isn't in your cloud storage, and IV Studio can't find it on this PC to upload it.`), { code: 'missing_file' })
+      if (!file) throw Object.assign(new Error(`${u.name} isn't in your cloud storage, and IV Studio can't find it on this computer to upload it.`), { code: 'missing_file' })
       files.push({ ...u, file, size: fs.statSync(file).size })
     }
     if (download.length) {

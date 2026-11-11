@@ -25,7 +25,7 @@ export function pickBuild(scan = {}) {
   const nv = gpus.filter((g) => g.vendor === 'nvidia').sort((a, b) => (b.vram || 0) - (a.vram || 0))[0]
   if (!nv) {
     const other = gpus.find((g) => g.vendor === 'amd' || g.vendor === 'intel')
-    return { ok: false, reason: other ? `IV Studio’s video model needs an NVIDIA graphics card; this PC has ${other.name || other.vendor}. Render in the cloud instead (Cloud page).` : 'No NVIDIA graphics card was found. IV Studio’s video model needs one: render in the cloud instead (Cloud page).' }
+    return { ok: false, reason: other ? `IV Studio’s video model needs an NVIDIA graphics card; this computer has ${other.name || other.vendor}. Render in the cloud instead (Cloud page).` : 'No NVIDIA graphics card was found. IV Studio’s video model needs one: render in the cloud instead (Cloud page).' }
   }
   const old = nv.computeCap != null && nv.computeCap < 7.5
   const driver = Number(String(nv.driver || '').split('.')[0]) || null

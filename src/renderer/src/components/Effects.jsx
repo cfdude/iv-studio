@@ -99,7 +99,7 @@ export default function Effects({ notify, go, openEdit }) {
             + A photo
           </button>
         </StageDrop>
-        <p className="stage-note small">Each one is a short clip with motion, made on this PC. Put it in an edit from here or from the Library.</p>
+        <p className="stage-note small">Each one is a short clip with motion, made on this computer. Put it in an edit from here or from the Library.</p>
         <WorkflowNeeds page="effects" />
       </Stage>
 

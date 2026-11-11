@@ -37,7 +37,7 @@ export function AgentRows({ setup, notify, only }) {
         const installing = mine?.status === 'running'
         const failed = mine?.status === 'failed' && !a.installed
         const ready = a.installed && a.signedIn === true
-        const state = installing ? 'Installing…' : ready ? 'Ready' : a.installed ? (a.signedIn === false ? 'Installed · not signed in' : 'Installed') : 'Not on this PC'
+        const state = installing ? 'Installing…' : ready ? 'Ready' : a.installed ? (a.signedIn === false ? 'Installed · not signed in' : 'Installed') : 'Not on this computer'
         return (
           <div key={engine} className={`agent-setup-row ${ready ? 'ready' : ''}`} data-engine={engine}>
             <div className="agent-setup-who">

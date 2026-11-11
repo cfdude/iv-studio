@@ -15,7 +15,7 @@ export function SpeedCards({ value, onPick, recommended }) {
             <span className="speed-time mono">
               Hunt {roughTime(s.estimate.hunt)} · finish {roughTime(s.estimate.finish)}
             </span>
-            {recommended === id && <span className="speed-rec mono">Suits this PC</span>}
+            {recommended === id && <span className="speed-rec mono">Suits this computer</span>}
           </button>
         )
       })}

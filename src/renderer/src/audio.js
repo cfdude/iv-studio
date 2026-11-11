@@ -6,7 +6,7 @@ export const AUDIO_TOOLS = [
     name: 'Voices',
     tag: 'A voice for every character',
     about: 'Describe a voice that doesn’t exist yet, or save your own from a recording, and give it to a character so their shots speak in it.',
-    needs: ['VoxCPM2 and Whisper, set up once (about 12 GB) on this PC or your cloud'],
+    needs: ['VoxCPM2 and Whisper, set up once (about 12 GB) on this computer or your cloud'],
     credit: 'VoxCPM2 (OpenBMB), Whisper large-v3 turbo (OpenAI)'
   },
   {
@@ -22,7 +22,7 @@ export const AUDIO_TOOLS = [
     name: 'Music',
     tag: 'Songs and scores',
     about: 'Describe the music, add lyrics or keep it instrumental, or remix a song you already have, for an edit or a song a character sings.',
-    needs: ['MiniMax Music 3 or ACE-Step 1.5 on this PC (Setup)'],
+    needs: ['MiniMax Music 3 or ACE-Step 1.5 on this computer (Setup)'],
     credit: 'MiniMax Music 3, ACE-Step 1.5 Turbo'
   },
   {
@@ -30,7 +30,7 @@ export const AUDIO_TOOLS = [
     name: 'Sounds',
     tag: 'Effects, ambiences and loops',
     about: 'Describe a sound and make up to four takes at once, then put the one you like under an edit, on A2 beneath the music.',
-    needs: ['Stable Audio 3 on this PC (Setup)'],
+    needs: ['Stable Audio 3 on this computer (Setup)'],
     credit: 'Stable Audio 3 (Stability AI)'
   }
 ]

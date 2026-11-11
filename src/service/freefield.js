@@ -296,7 +296,7 @@ export class FreefieldApps {
     if (!spec?.preview) throw new Error(`${spec?.label || fx} has no preview.`)
     if (!file || !fs.existsSync(file)) throw new Error('Pick a clip.')
     const studio = this.studio()
-    if (studio.comfy.remote) throw new Error(`${spec.label} runs on this PC’s ComfyUI.`)
+    if (studio.comfy.remote) throw new Error(`${spec.label} runs on this computer’s ComfyUI.`)
     const { app, graph } = loadApp(this.resourcesDir, spec.app)
     const info = await studio.comfy.objectInfo()
     const vals = { ...(spec.defaults || {}), ...values }
@@ -353,7 +353,7 @@ export class FreefieldApps {
     if (spec.off) throw new Error(spec.off)
     if (!file || !fs.existsSync(file)) throw new Error(spec.media === 'image' ? 'Pick a picture.' : 'Pick a clip.')
     const studio = this.studio()
-    if (studio.comfy.hosted) throw new Error(`${spec.label} runs on this PC’s ComfyUI or on your own cloud (RunPod, Modal).`)
+    if (studio.comfy.hosted) throw new Error(`${spec.label} runs on this computer’s ComfyUI or on your own cloud (RunPod, Modal).`)
     const { app, graph: raw } = loadApp(this.resourcesDir, spec.app)
     const graph = withoutPromptWriter(raw)
     const info = await studio.comfy.objectInfo()

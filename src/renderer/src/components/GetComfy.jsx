@@ -16,7 +16,7 @@ export default function GetComfy({ notify, recheck }) {
   useEffect(() => {
     window.ivstudio.comfy.installPlan().then(
       (p) => (setPlan(p), setFolder((f) => f || p.folder || ''), p.state && !p.state.done && setSt(p.state)),
-      () => setPlan({ build: { ok: false, reason: 'Couldn’t read this PC’s graphics card.' } })
+      () => setPlan({ build: { ok: false, reason: 'Couldn’t read this computer’s graphics card.' } })
     )
     return window.ivstudio.comfy.onInstall?.((s) => {
       setSt(s)
@@ -54,13 +54,13 @@ export default function GetComfy({ notify, recheck }) {
 
   return (
     <div className="get-comfy">
-      <h3>No ComfyUI on this PC yet</h3>
+      <h3>No ComfyUI on this computer yet</h3>
       {!build.ok ? (
         <p className="small">{build.reason}</p>
       ) : (
         <>
           <p className="small dim">
-            IV Studio renders with ComfyUI. It can get ComfyUI’s official portable build for you{asset?.version ? ` (${asset.version})` : ''}: it comes with its own Python, so nothing else is installed on your PC, and it lives in one folder you choose.
+            IV Studio renders with ComfyUI. It can get ComfyUI’s official portable build for you{asset?.version ? ` (${asset.version})` : ''}: it comes with its own Python, so nothing else is installed on your computer, and it lives in one folder you choose.
             {asset?.size ? ` ${gb(asset.size)} to download, about ${gb(asset.size + 5 * GB)} free while it unpacks;` : ''} the H3 models it needs come next, about 60 GB, so pick a roomy drive.
           </p>
           {build.note && <p className="small dim">{build.note}</p>}

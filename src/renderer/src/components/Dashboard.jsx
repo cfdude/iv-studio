@@ -112,7 +112,7 @@ export default function Dashboard(ctx) {
               <button
                 className="btn agent-go"
                 disabled={!idea.trim() || agentBusy || agent.cloud}
-                title={agent.cloud ? `${agent.name} only renders on this PC: switch Cloud to This PC to use it` : agentBusy ? `${agent.name} is still working on the last idea` : `${agent.name} writes the prompt and renders the previews here, on this PC`}
+                title={agent.cloud ? `${agent.name} only renders on this computer: switch Cloud to This computer to use it` : agentBusy ? `${agent.name} is still working on the last idea` : `${agent.name} writes the prompt and renders the previews here, on this computer`}
                 onClick={letAgent}
               >
                 Let {agent.name} make it

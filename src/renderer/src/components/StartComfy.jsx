@@ -69,7 +69,7 @@ export function RestartComfy({ notify, recheck, className = 'btn btn-small', lab
       </span>
     )
   return (
-    <button className={className} disabled={state === 'restarting'} onClick={() => restart(false)} title="Restart this PC’s ComfyUI, e.g. after installing node packs or models">
+    <button className={className} disabled={state === 'restarting'} onClick={() => restart(false)} title="Restart this computer’s ComfyUI, e.g. after installing node packs or models">
       {state === 'restarting' ? 'Restarting ComfyUI…' : label}
     </button>
   )

@@ -27,7 +27,7 @@ export default function Failure({ job, error, explain, go, notify, onRetry }) {
         // the speed preset Settings → Your PC shows (speed.js); Create picks it up for the next shot
         await window.ivstudio.settings.set({ speed: 'low' })
         window.dispatchEvent(new CustomEvent(SPEED_EVENT))
-        notify?.('Switched to the Low memory preset. New shots use it; change it back in Settings → Your PC.')
+        notify?.('Switched to the Low memory preset. New shots use it; change it back in Settings → Your computer.')
       } else if (fix.id === 'restart-comfy') {
         await window.ivstudio.comfy.restart()
         notify?.('Restarting ComfyUI. Give it a minute, then try again.')

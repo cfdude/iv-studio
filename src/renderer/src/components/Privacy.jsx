@@ -126,7 +126,7 @@ export function PrivacyCard({ n, notify }) {
             ? status.counting
               ? status.sends
                 ? 'On. Counts are sent a few at a time. Turning this off deletes this copy’s id and anything not sent yet.'
-                : 'On. This version has nowhere to send counts yet, so they stay on this PC. Turning this off deletes them.'
+                : 'On. This version has nowhere to send counts yet, so they stay on this computer. Turning this off deletes them.'
               : 'On, but paused: Incognito is never counted.'
             : 'Off. IV Studio counts nothing and sends nothing.'
         }

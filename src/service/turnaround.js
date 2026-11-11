@@ -83,7 +83,7 @@ export class Turnarounds {
   // characterId (its face picture) or picture; size per view (512 takes about a minute on a 4090)
   async make({ characterId = null, picture = null, size = 512, seed = Math.floor(Math.random() * 1e9), strength = DEFAULT_STRENGTH, studioBackground = false }) {
     const st = this.studio()
-    if (st.comfy.hosted) throw new Error('Turnaround sheets run on this PC’s ComfyUI or your own cloud (RunPod, Modal).')
+    if (st.comfy.hosted) throw new Error('Turnaround sheets run on this computer’s ComfyUI or your own cloud (RunPod, Modal).')
     const ch = characterId ? st.characters().find((c) => c.id === characterId) : null
     if (characterId && !ch) throw new Error('No such character.')
     const ref = picture || (ch && st.facePicture(ch, st.resourcesDir))

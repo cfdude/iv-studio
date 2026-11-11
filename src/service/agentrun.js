@@ -24,9 +24,9 @@ export const AGENT_BLOCKED = new Set([
 // Why an agent run can't make this call, or null when it can. settings: IV Studio's settings now; started: the job
 // ids this run has started.
 export function agentGuard(name, args = {}, { settings = {}, started = new Set() } = {}) {
-  if (settings.target === 'cloud') return 'IV Studio is set to render on the cloud. An agent run only renders on this PC (free), so it stops here: switch Cloud to This PC to use it.'
+  if (settings.target === 'cloud') return 'IV Studio is set to render on the cloud. An agent run only renders on this computer (free), so it stops here: switch Cloud to This computer to use it.'
   if (AGENT_BLOCKED.has(name)) return `${name} isn't available in an agent run started from IV Studio's Dashboard: it deletes, installs, trains, changes Settings or stops other work. Leave it to the person.`
-  if (args.engine === 'seedance' || args.way === 'seedance') return 'Seedance costs money, and an agent run from the Dashboard never spends: use engine h3 (free, on this PC).'
+  if (args.engine === 'seedance' || args.way === 'seedance') return 'Seedance costs money, and an agent run from the Dashboard never spends: use engine h3 (free, on this computer).'
   if (Number(args.confirm_cost) > 0) return 'An agent run from the Dashboard never spends money: leave anything with a cost to the person.'
   if (name === 'cancel_job' && !started.has(args.jobId)) return 'An agent run can only cancel jobs it started itself.'
   return null
@@ -41,7 +41,7 @@ export function startedJobId(name, result) {
 
 export const agentPrompt = () => `You are working inside IV Studio, the person's video app, on their behalf. They typed an idea on IV Studio's Dashboard and pressed "make it" for you; they are watching a progress panel and cannot answer questions, so make sensible choices yourself.
 
-Your only tools are IV Studio's (the iv-studio MCP server). Make the idea as H3 preview takes on this PC:
+Your only tools are IV Studio's (the iv-studio MCP server). Make the idea as H3 preview takes on this computer:
 1. check_setup. If ComfyUI or a model is missing, stop and say in one sentence what the person needs to do.
 2. get_guide once, then list_characters. Use a character only if the idea names one that exists; otherwise character "none".
 3. Write the H3 prompt (write_prompt helps), run check_prompt and fix what it reports.

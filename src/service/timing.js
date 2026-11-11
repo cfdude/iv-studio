@@ -118,7 +118,7 @@ export function roughly(seconds) {
 // The line under a Hunt or Finish button.
 export function estimateLine(e, { where = 'local' } = {}) {
   if (!e) return null
-  const place = where === 'cloud' ? 'in your cloud' : 'on this PC'
+  const place = where === 'cloud' ? 'in your cloud' : 'on this computer'
   const from = e.basis === 'same' ? `from your last ${e.runs === 1 ? 'render' : `${e.runs} renders`} like this` : 'worked out from your other renders'
   const cost = e.cost !== null ? (e.cost < 0.01 ? ', under $0.01' : `, about $${e.cost.toFixed(2)}`) : where === 'cloud' ? '' : ', free'
   return `${roughly(e.seconds)[0].toUpperCase()}${roughly(e.seconds).slice(1)} ${place}${cost} (${from}).`

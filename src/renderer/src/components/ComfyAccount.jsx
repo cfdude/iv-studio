@@ -64,7 +64,7 @@ export function AccountCard({ n, notify }) {
       <SetField label="API key">
         {a?.hasKey ? (
           <div className="set-inline">
-            <Pill tone="ok">Saved · encrypted on this PC</Pill>
+            <Pill tone="ok">Saved · encrypted on this computer</Pill>
             <button className="link-btn" onClick={remove}>
               Remove
             </button>
@@ -82,7 +82,7 @@ export function AccountCard({ n, notify }) {
               <button className="link-btn" onClick={() => open(KEYS_PAGE)}>
                 platform.comfy.org
               </button>{' '}
-              (API keys). IV Studio checks it with Comfy.org before keeping it, and it never leaves this PC except to Comfy.org.
+              (API keys). IV Studio checks it with Comfy.org before keeping it, and it never leaves this computer except to Comfy.org.
             </p>
           </>
         )}

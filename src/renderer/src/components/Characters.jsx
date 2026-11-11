@@ -947,7 +947,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
           <button className="link-btn" onClick={() => window.ivstudio.links.open('https://github.com/shootthesound/Fizgig')}>
             Fizgig
           </button>{' '}
-          by shootthesound, free and open source, on this PC, Modal and RunPod alike.
+          by shootthesound, free and open source, on this computer, Modal and RunPod alike.
         </p>
         <div className="train-presets">
           {PRESET_ORDER.map((k) => {
@@ -1375,7 +1375,7 @@ function Turnaround({ c, face, notify, go }) {
       {!face && <p className="small dim">Add a face picture first.</p>}
       {face && st && !st.ready && (
         <div className="turnaround-need small">
-          <span>It needs two things on this PC:</span>
+          <span>It needs two things on this computer:</span>
           {!st.lora &&
             (getting && getting.status !== 'error' ? (
               <span className="mono">Turnaround LoRA: {getting.total ? `${Math.round((100 * getting.received) / getting.total)}%` : 'starting…'}</span>

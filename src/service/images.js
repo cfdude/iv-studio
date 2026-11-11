@@ -511,7 +511,7 @@ export class Images {
     const had = key && this.all().find((r) => r.mode === 'frame' && r.source === key && r.files?.[0] && fs.existsSync(r.files[0]))
     if (had) return had
     const src = await this.studio.localCopy(file, path.join(this.dir, '_comfy'))
-    if (!src || !fs.existsSync(src)) throw new Error('That video is not on this PC.')
+    if (!src || !fs.existsSync(src)) throw new Error('That video is not on this computer.')
     const id = randomUUID().slice(0, 8)
     const title = String(name || '').trim() || `${path.basename(src, path.extname(src)).replace(/_\d+$/, '').replace(/[_-]+/g, ' ').slice(0, 40)} · last frame`
     fs.mkdirSync(this.dir, { recursive: true })

@@ -59,7 +59,7 @@ export const CREDITS = [
     group: 'Tools IV Studio runs on',
     items: [
       { name: 'ComfyUI', by: 'Comfy Org', use: 'Everything that renders: IV Studio is a front end for ComfyUI', licence: 'GPL-3.0', url: 'https://github.com/comfyanonymous/ComfyUI' },
-      { name: 'Fizgig', by: 'shootthesound', use: 'Character LoRA training, on this PC, Modal and RunPod. RunPod training pods start from Fizgig’s own template.', url: 'https://github.com/shootthesound/Fizgig' },
+      { name: 'Fizgig', by: 'shootthesound', use: 'Character LoRA training, on this computer, Modal and RunPod. RunPod training pods start from Fizgig’s own template.', url: 'https://github.com/shootthesound/Fizgig' },
       { name: 'Freefield', by: 'Sammir Femat (neuregex)', use: 'The workflows behind Sounds, the picture tools, the editor’s Effects (dub, VFX, slow motion) and Workflows → Effects', licence: 'MIT', url: 'https://github.com/neuregex/freefield' },
       { name: 'OpenKatana', by: 'rk0neki', use: 'Shinobi, the motion-graphics films', licence: 'Apache-2.0', url: 'https://github.com/rk0neki/OpenKatana' },
       { name: 'OpenJutsu', by: 'D3voz', use: 'Replace’s earlier engine, and Finish (faces and colours)', licence: 'MIT', url: 'https://github.com/D3voz/openjutsu' },

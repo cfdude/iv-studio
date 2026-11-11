@@ -213,7 +213,7 @@ export class Remake {
   // The int8 file for a kind on this ComfyUI (any folder), and what else Remake needs that it lacks.
   async check(kind = 'swap') {
     // Comfy Cloud has no Viggle Remake; the person's own cloud (RunPod, Modal) downloads it the first time it's used
-    if (this.studio.comfy.hosted) return { ready: false, cloud: true, error: 'Replace doesn’t run on Comfy Cloud: it needs Viggle Remake. Use this PC, or your own cloud on RunPod or Modal.', packs: [], models: [], unet: null }
+    if (this.studio.comfy.hosted) return { ready: false, cloud: true, error: 'Replace doesn’t run on Comfy Cloud: it needs Viggle Remake. Use this computer, or your own cloud on RunPod or Modal.', packs: [], models: [], unet: null }
     const info = await this.studio.comfy.objectInfo()
     const unets = comboOptions(info, 'UNETLoader', 'unet_name') || []
     const unet = unets.find((u) => u.replace(/\\/g, '/').split('/').pop() === MODEL[kind]) || null

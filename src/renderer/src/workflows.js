@@ -24,7 +24,7 @@ export const WORKFLOWS = [
     tag: 'A photo, made into a moment',
     about: 'Pick a photo and an effect: cakeify, explode, money rain, a 360° orbit and 20 more; a transformation that keeps the face; or a transition from one picture into another. Each becomes a short clip.',
     credit: 'Freefield (neuregex): Wan 2.1, Flux 3 Klein, LTX-2.5',
-    needs: ['Wan 2.1 or LTX-2.5 on this PC (Setup)']
+    needs: ['Wan 2.1 or LTX-2.5 on this computer (Setup)']
   },
   {
     page: 'reel',

@@ -161,7 +161,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot, incoming
     if (!incomingLora || !status) return
     const f = families.find((x) => x.id === incomingLora.family && x.ready)
     clearIncomingLora()
-    if (!f) return notify(`${incomingLora.title || loraTitle(incomingLora.name)} is for a picture model that isn’t set up on this PC yet (Setup).`)
+    if (!f) return notify(`${incomingLora.title || loraTitle(incomingLora.name)} is for a picture model that isn’t set up on this computer yet (Setup).`)
     const info = loraInfo(incomingLora.name)
     const words = info?.prefs?.autoTrigger !== false ? (incomingLora.words || []).filter((w) => w && !form.prompt.includes(w)) : []
     const keep = f.id === form.family ? form.loras.filter((l) => l.name !== incomingLora.name) : []

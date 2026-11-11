@@ -235,7 +235,7 @@ export function SoundsPage({ notify, openEdit, go }) {
           onGo={make}
           note={
             status?.remote
-              ? { text: 'Sounds are made on this PC’s ComfyUI. Switch to This PC on the Cloud page to make them.' }
+              ? { text: 'Sounds are made on this computer’s ComfyUI. Switch to This computer on the Cloud page to make them.' }
               : status && !status.ready && !status.error
                 ? { text: 'Stable Audio 3 isn’t downloaded yet.', action: { label: 'See what it needs', onClick: () => showBelow('.sounds .composer') } }
                 : null
@@ -243,10 +243,10 @@ export function SoundsPage({ notify, openEdit, go }) {
         />
       </Stage>
       <p className="lede">
-        Sound effects and ambiences, made on this PC.
+        Sound effects and ambiences, made on this computer.
         <span className="lede-small dim">Describe a sound, or a few words and Write it for me. Make up to four takes at once and put the one you like under an edit, on A2 beneath the music.</span>
       </p>
-      {status?.remote && <p className="notice">Sounds are made on this PC's ComfyUI. Switch to "This PC" on the Cloud page to make them.</p>}
+      {status?.remote && <p className="notice">Sounds are made on this computer's ComfyUI. Switch to "This computer" on the Cloud page to make them.</p>}
       {status?.error && <p className="notice">{status.error}</p>}
 
       <section className="audio-card composer">

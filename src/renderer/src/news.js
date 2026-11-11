@@ -4,7 +4,7 @@ export const NEWS = [
   {
     version: '1.1.3',
     items: [
-      { text: 'Talk to the chat: press the mic, say what you want, and press send. IV Studio’s own speech recognition writes it down on your PC. Talking while the agent works stops its answer and sends your new words.' },
+      { text: 'Talk to the chat: press the mic, say what you want, and press send. IV Studio’s own speech recognition writes it down on your computer. Talking while the agent works stops its answer and sends your new words.' },
       { text: 'Read aloud: the speaker in the chat’s header reads each reply in one of your voices (Audio → Voices).' },
       { text: 'A cleaner chat: your messages and the agent’s in bubbles with times, each agent in its own colour, and one rounded box to write in.' },
       { text: 'Pop the chat out into its own window (the arrow in its header), keep it on top, and put it back in the app when you’re done. It still knows what’s open in IV Studio.' },
@@ -12,7 +12,7 @@ export const NEWS = [
       { text: 'The chat knows more about what you’re looking at: the version you picked on a shot, the clip and playhead in the editor, the item open in the Library, how Create is set up, what’s rendering, and the last render that failed.' },
       { text: 'See how full the agent’s working memory is, and this chat’s usage, in the chat’s header. You’ll see a note when it summarizes earlier messages to make room.' },
       { text: 'Create → Image: a model that isn’t set up opens what it needs, with one button that downloads it. Flux.2 Klein, Flux 3 Klein, Krea 2, Moss and Qwen Image 2.1 can now be downloaded from IV Studio.' },
-      { text: 'Setup: each optional tool says what it does and where to find it, and lists its files. The Needs you / Everything bar stays at the top as you scroll. A Hugging Face login for gated models (Flux, the LTX effects) can be saved right there, for this PC and the cloud.' },
+      { text: 'Setup: each optional tool says what it does and where to find it, and lists its files. The Needs you / Everything bar stays at the top as you scroll. A Hugging Face login for gated models (Flux, the LTX effects) can be saved right there, for this computer and the cloud.' },
       { text: 'Fixed: Z-Image Turbo installed from Setup now works in Create → Image and Projects (they were looking for a different text encoder file).' }
     ]
   },
@@ -44,7 +44,7 @@ export const NEWS = [
       { text: 'Overnight batches: up to 12 variations of an idea render while you’re away, and a report with the best takes is waiting in the chat.' },
       { text: 'A short film in one conversation: Make one with … on Projects takes an idea to a rough cut, stopping for your OK at each step.' },
       { text: 'A spending limit for the chat in Settings → Agents, off unless you turn it on. Seedance works from the chat too.' },
-      { text: 'Let Claude Code or Codex make a Dashboard idea for you, and install either one from Check my PC or Settings → Agents.' },
+      { text: 'Let Claude Code or Codex make a Dashboard idea for you, and install either one from Check my computer or Settings → Agents.' },
       { text: 'MiniMax H3 Image in Create → Image: big 4, 8 or 16 MP pictures that follow long descriptions. It needs ComfyUI 0.45 or newer and a 22 GB download.' },
       { text: 'Nearly everything now runs on your own RunPod or Modal: pictures, effects, music, sounds, voices, Replace and more. The models it needs download the first time, after you agree.' },
       { text: 'Want IV Studio to run the cloud for you? Join the cloud beta on the Cloud page or in Settings → Privacy.' },
@@ -68,7 +68,7 @@ export const NEWS = [
       { text: 'Seedance 2.5 in Create: a model switch beside MiniMax H3, on your Comfy.org credits. Cheap 480p drafts or 720p and 1080p takes, 4 to 30 seconds; the price shows first and you confirm before anything is charged.' },
       { text: 'Your Comfy account in Settings and the title bar, with every paid partner model priced before it runs.' },
       { text: 'Free finishes for Seedance takes on your own graphics card (SeedVR2, DLSS 5, or an H3 redraw), and a strength for each upscaler.' },
-      { text: 'Speed presets (Quality, Balanced, Fast, Low memory) so smaller cards render too. Check my PC picks one for you.' },
+      { text: 'Speed presets (Quality, Balanced, Fast, Low memory) so smaller cards render too. Check my computer picks one for you.' },
       { text: 'Compare up to four versions in sync: side by side, as a wipe or in a grid, zoomed on the same spot.' },
       { text: 'The Library shows how each render was made: model, size, seed, finish, render time, cost and the prompt.' },
       { text: 'Simple words for people new to AI video, and Get ComfyUI for me when there isn’t one yet.' },

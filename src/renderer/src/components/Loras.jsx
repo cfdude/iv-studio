@@ -607,7 +607,7 @@ function Recommended({ notify, onUse, go }) {
               <footer>
                 {have ? (
                   <>
-                    <span className="mono small cloud-ok">● On this PC</span>
+                    <span className="mono small cloud-ok">● On this computer</span>
                     {r.use === 'turnaround' ? (
                       <button className="btn btn-small" onClick={() => go?.('characters')}>
                         Open Characters

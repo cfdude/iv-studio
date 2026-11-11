@@ -133,7 +133,7 @@ function Row({ i, dl, remote, recheck, notify }) {
       <div className="setup-row-text">
         <div className="setup-row-name">{i.kind === 'model' ? i.name || i.label : i.label}</div>
         <div className="dim small setup-row-detail" title={i.detail}>
-          {i.kind === 'model' && i.status !== 'ok' ? `Not on this PC yet${i.fix ? ` · goes in ${i.fix.replace(/^Download into /, '')}` : ''}` : i.detail}
+          {i.kind === 'model' && i.status !== 'ok' ? `Not on this computer yet${i.fix ? ` · goes in ${i.fix.replace(/^Download into /, '')}` : ''}` : i.detail}
           {i.status !== 'ok' && i.page && (
             <button className="link-btn mono small setup-row-link" onClick={() => window.ivstudio.links.open(i.page)}>
               Page and licence
@@ -226,7 +226,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
   // one count everywhere: what needs you (outside the optional tools); blocking is the part that stops shots
   const blocking = items.filter((i) => i.status === 'missing' && !i.optional).length
   const verdict = !setup
-    ? { tone: '', title: 'Checking this PC…', sub: '' }
+    ? { tone: '', title: 'Checking this computer…', sub: '' }
     : !comfyUp
       ? { tone: 'warn', title: comfyItem?.busy ? 'ComfyUI is busy' : 'ComfyUI isn’t running', sub: comfyItem?.detail || '' }
       : blocking
@@ -263,7 +263,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
 
       <section className={`setup-summary ${verdict.tone}`}>
         <div className="setup-summary-text">
-          <span className="mono small dim">This PC</span>
+          <span className="mono small dim">This computer</span>
           <h2>{verdict.title}</h2>
           {verdict.sub && <p className="dim small">{verdict.sub}</p>}
           <div className="setup-chips">

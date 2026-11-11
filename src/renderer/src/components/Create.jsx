@@ -71,7 +71,7 @@ Audio: ___.
 
 Pure video, no subtitles, no on-screen text, no background music.`
 const TIERS = [
-  ['draft', 'Draft · 480p', 'Quick and cheap to hunt with. Finish the one you pick at 1080p with Seedance, or free on this PC.'],
+  ['draft', 'Draft · 480p', 'Quick and cheap to hunt with. Finish the one you pick at 1080p with Seedance, or free on this computer.'],
   ['720p', '720p', 'Final quality straight away.'],
   ['1080p', '1080p', 'Final quality, full HD.']
 ]
@@ -83,7 +83,7 @@ const SD_HINTS = {
   continue: 'Carries a clip on for the length you set. One take.'
 }
 const ENGINES = [
-  ['h3', 'MiniMax H3', 'On this PC · free'],
+  ['h3', 'MiniMax H3', 'On this computer · free'],
   ['seedance', 'Seedance 2.5', 'Comfy credits · priced first']
 ]
 
@@ -1011,7 +1011,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
                 <div>
                   <dt>Finish</dt>
                   <dd>
-                    {sd ? (r.draft ? `1080p with Seedance, or on this PC` : 'the take you pick, as it is') : `${finishLabel(finishFor(finishSpeed, { upscale2x: setup?.caps?.upscale2x !== false }))} → ${plan.finish.width}×${plan.finish.height}`}
+                    {sd ? (r.draft ? `1080p with Seedance, or on this computer` : 'the take you pick, as it is') : `${finishLabel(finishFor(finishSpeed, { upscale2x: setup?.caps?.upscale2x !== false }))} → ${plan.finish.width}×${plan.finish.height}`}
                   </dd>
                 </div>
                 {sd && (

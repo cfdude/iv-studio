@@ -311,7 +311,7 @@ export function CameraRig({ values, camera, defaults = {}, clip, previewStatus, 
           {cannot ||
             (state.phase === 'error' && state.note) ||
             (state.phase === 'clip' && (state.note || 'The live picture is gone (ComfyUI ran something else). Preview again to bring it back.')) ||
-            (live ? `Warped in ${state.seconds} s. Magenta is what the original camera never saw: H3 fills it in.` : 'A few seconds, free, on this PC. Only the depth and warp, not H3.')}
+            (live ? `Warped in ${state.seconds} s. Magenta is what the original camera never saw: H3 fills it in.` : 'A few seconds, free, on this computer. Only the depth and warp, not H3.')}
         </span>
       </div>
 
@@ -330,7 +330,7 @@ export function CameraRig({ values, camera, defaults = {}, clip, previewStatus, 
                   </button>
                 ))}
               </div>
-              <span className="small dim">Standard fits a 5 s clip on a PC with 64 GB of RAM. Sharper needs a good deal more memory; on 64 GB keep it to about 2 seconds.</span>
+              <span className="small dim">Standard fits a 5 s clip on a computer with 64 GB of RAM. Sharper needs a good deal more memory; on 64 GB keep it to about 2 seconds.</span>
             </div>
           )}
           <div className="create-field">
