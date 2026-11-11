@@ -134,6 +134,18 @@ describe('fake ComfyUI: more routes', () => {
       fake.releaseHeld()
     })
 
+    test('downAfterReboot makes /system_stats answer 503 that many times after /manager/reboot, then 200 again', async () => {
+      fake.setManager({ downAfterReboot: 2 })
+      try {
+        await managerReq(comfy, '/manager/reboot', { method: 'POST', json: {} })
+        assert.equal((await fetch(`${fake.url}/system_stats`)).status, 503)
+        assert.equal((await fetch(`${fake.url}/system_stats`)).status, 503)
+        assert.equal((await fetch(`${fake.url}/system_stats`)).status, 200)
+      } finally {
+        fake.setManager({ downAfterReboot: 0, rebootDown: 0 })
+      }
+    })
+
     test('restart posts /manager/reboot and waits for ComfyUI to answer again', async () => {
       const r = await restart(comfy, { up: async () => false, wait: async () => {} })
       assert.ok(r.version)

@@ -87,6 +87,9 @@ export async function startFakeComfy({ devices = 'cuda', os = 'linux', version =
       snapshots: [],
       restored: null,
       rebooted: 0,
+      // after /manager/reboot, this many /system_stats probes answer 503 (ComfyUI is down), so restart() sees it go down and come back
+      downAfterReboot: 0,
+      rebootDown: 0,
       queued: 0,
       doneCount: 0,
       totalCount: 0
@@ -143,7 +146,10 @@ export async function startFakeComfy({ devices = 'cuda', os = 'linux', version =
     if (fail) return json(res, fail.status, { error: { type: 'fake_failure', message: fail.message } })
 
     if (req.method === 'GET') {
-      if (route === '/system_stats') return json(res, 200, stats())
+      if (route === '/system_stats') {
+        if (state.manager.rebootDown > 0) return (state.manager.rebootDown--, json(res, 503, {}))
+        return json(res, 200, stats())
+      }
       if (route === '/object_info') return json(res, 200, state.objectInfo)
       if (route.startsWith('/object_info/')) {
         const cls = decodeURIComponent(route.slice('/object_info/'.length))
@@ -224,7 +230,7 @@ export async function startFakeComfy({ devices = 'cuda', os = 'linux', version =
           setTimeout(tell, 10)
           return json(res, 200, {})
         }
-        if (route === '/manager/reboot') return (m.rebooted++, json(res, 200, {}))
+        if (route === '/manager/reboot') return (m.rebooted++, (m.rebootDown = m.downAfterReboot), json(res, 200, {}))
         if (route === '/snapshot/save') return (m.snapshots.push(`snapshot-${m.snapshots.length + 1}`), json(res, 200, {}))
         if (route === '/snapshot/restore') return ((m.restored = body?.target ?? null), json(res, 200, {}))
       }
