@@ -293,7 +293,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   test('[mcp:finish_candidate] refuses the SeedVR2 enhancer on an Apple GPU in the product\'s words and queues nothing', async () => {
     const source = await finished()
     const queued = fake.prompts.length
-    await fails('finish_candidate', { jobId: source.id, enhancer: 'seedvr2' }, /^SeedVR2 isn't available on an Apple GPU yet\.$/)
+    await fails('finish_candidate', { jobId: source.id, enhancer: 'seedvr2' }, /^SeedVR2 isn't available on an Apple GPU yet\. Use the 2× upscale and frame rate options instead\.$/)
     assert.equal(fake.prompts.length, queued)
     assert.deepEqual(await mcp.refusals(), [], 'the product refused it, not the test guard')
   })
@@ -301,8 +301,8 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   test('[mcp:enhance_final] refuses SeedVR2 on an Apple GPU in the product\'s words and queues nothing', async () => {
     const source = await finished()
     const queued = fake.prompts.length
-    await fails('enhance_final', { jobId: source.id }, /^SeedVR2 isn't available on an Apple GPU yet\.$/)
-    await fails('enhance_final', { jobId: source.id, engine: 'seedvr2', resolution: 1440 }, /^SeedVR2 isn't available on an Apple GPU yet\.$/)
+    await fails('enhance_final', { jobId: source.id }, /^SeedVR2 isn't available on an Apple GPU yet\. Use the 2× upscale and frame rate options instead\.$/)
+    await fails('enhance_final', { jobId: source.id, engine: 'seedvr2', resolution: 1440 }, /^SeedVR2 isn't available on an Apple GPU yet\. Use the 2× upscale and frame rate options instead\.$/)
     assert.equal(fake.prompts.length, queued)
     assert.deepEqual(await mcp.refusals(), [], 'the product refused it, not the test guard')
   })
