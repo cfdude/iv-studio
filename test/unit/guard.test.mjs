@@ -82,6 +82,12 @@ describe('guard: environment', () => {
       if (e.to === 'missing-file') assert.equal(fs.existsSync(v), false)
     })
   }
+  test('a pinned variable already set to a temp path by the harness is kept', () => {
+    const mine = path.join(tmpReal, 'iv-seeded-data')
+    const r = applyEnvPolicy({ IV_STUDIO_DATA: mine, HOME: '/Users/someone' }, policy, fs.mkdtempSync(path.join(os.tmpdir(), 'iv-env-')))
+    assert.equal(r.env.IV_STUDIO_DATA, mine)
+    assert.notEqual(r.env.HOME, '/Users/someone')
+  })
   test('kept variables pass through', () => {
     assert.equal(scrubbed.env.PATH, '/usr/bin')
     assert.equal(scrubbed.env.SystemRoot, 'C:\\Windows')

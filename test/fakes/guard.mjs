@@ -41,7 +41,17 @@ export function applyEnvPolicy(env, policy, root) {
     delete out[e.name]
   }
   fs.mkdirSync(root, { recursive: true })
+  const tmp = fs.realpathSync(os.tmpdir())
+  const underTemp = (v) => {
+    if (typeof v !== 'string' || !path.isAbsolute(v)) return false
+    let dir = path.dirname(v)
+    while (!fs.existsSync(dir) && dir !== path.dirname(dir)) dir = path.dirname(dir)
+    const real = fs.realpathSync(dir)
+    return real === tmp || real.startsWith(tmp + path.sep)
+  }
   for (const e of policy.pin) {
+    // a temp path a harness chose on purpose (the MCP child's seeded data folder) stays; anything else is replaced
+    if (underTemp(out[e.name])) continue
     if (e.name in out) found.push(e.name)
     if (e.to === 'dir') {
       const dir = path.join(root, e.name === 'HOME' ? 'home' : e.name.toLowerCase())
