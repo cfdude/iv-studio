@@ -94,7 +94,7 @@ function ReviewCard({ review, title, videoKey, before, onRun }) {
 const ENHANCER_NAMES = { dlss: 'DLSS 5', upscale: '2× upscale', seedvr2: 'SeedVR2' }
 const ENHANCER_HINTS = {
   dlss: 'Cleans up and can upscale 2× and add frames. Quick.',
-  upscale: 'Upscales 2× and adds frames (Real-ESRGAN and RIFE). Works on any computer.',
+  upscale: 'Upscales 2× and adds frames (Real-ESRGAN and RIFE), without DLSS 5.',
   seedvr2: 'Restores detail after the finish. Slower; 24 fps.'
 }
 
@@ -162,7 +162,7 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote }) {
           <div className="enhancer-pick">
             <div className="segmented">
               {choices.map((c) => (
-                <button key={c} className={enhancer === c ? 'on' : ''} onClick={() => set({ enhancer: c, ...(c === 'seedvr2' ? { upscale2x: false, fps: 0 } : {}), ...(!fpsFor(caps, c).includes(opts.fps) ? { fps: 0 } : {}) })}>
+                <button key={c} className={enhancer === c ? 'on' : ''} onClick={() => set({ enhancer: c, ...(c === 'seedvr2' || (c === 'upscale' && !caps?.esrgan) ? { upscale2x: false } : {}), ...(c === 'seedvr2' ? { fps: 0 } : {}), ...(!fpsFor(caps, c).includes(opts.fps) ? { fps: 0 } : {}) })}>
                   {ENHANCER_NAMES[c]}
                 </button>
               ))}
@@ -204,7 +204,7 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote }) {
                 </button>
               ))}
             </div>
-            {upscale && !caps?.rife && <span className="dim small">Frame rates above 24 need the Frame Interpolation (RIFE) pack: install it in Setup.</span>}
+            {upscale && !caps?.rife && <span className="dim small">Frame rates above 24 need the Frame Interpolation (RIFE) pack: install it (Setup lists it on a Mac or Linux).</span>}
           </div>
         </>
       )}

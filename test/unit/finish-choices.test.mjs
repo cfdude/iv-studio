@@ -45,6 +45,10 @@ describe('finishDefaults', () => {
   test('the old Mac default, SeedVR2, lands on the upscale instead of on a refused enhancer', () => {
     assert.equal(finishDefaults({ ...MAC_PREFS, enhancer: 'seedvr2' }, mac, false).enhancer, 'upscale')
   })
+  test('a Mac that saved SeedVR2 before the upscale existed starts on the upscale at 2× and 48 fps', () => {
+    const d = finishDefaults({ finalMp: 1.5, enhancer: 'seedvr2', enhanceResolution: 1080 }, mac, false)
+    assert.deepEqual([d.enhancer, d.upscale2x, d.fps], ['upscale', true, 48])
+  })
   test('Windows keeps DLSS 5 and sets no 2× or frame rate of its own', () => {
     const d = finishDefaults({ finalMp: 2, enhancer: 'dlss', enhanceResolution: 1440 }, win, false)
     assert.deepEqual(d, { enhancer: 'dlss', megapixels: 2, enhanceResolution: 1440 })

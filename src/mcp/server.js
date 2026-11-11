@@ -123,7 +123,7 @@ const finish = {
   fps: z.number().int().default(0).describe(`Frame generation: ${FRAME_GEN_FPS.join(', ')} (0 = off)`),
   audio: z.enum(['pass', 'preview', 'voice']).default('pass').describe('Final sound: the 2 MP pass, the picked preview (keeps a cloned voice), or the voice line itself'),
   rerollSeed: z.number().int().optional(),
-  enhancer: z.enum(['dlss', 'seedvr2', 'upscale']).default('dlss').describe('dlss: DLSS 5 in the finish (noise reduction, upscale2x, fps). upscale: no DLSS 5; the finish\'s own Real-ESRGAN 2x (upscale2x) and RIFE frame rate (fps 48, 72 or 120), what a Mac uses; both are optional models in Setup. seedvr2: the finish skips DLSS and SeedVR2 then restores detail to enhanceResolution (24 fps); follow the enhanceJob of the finish job with get_job'),
+  enhancer: z.enum(['dlss', 'seedvr2', 'upscale']).default('dlss').describe('dlss: DLSS 5 in the finish (noise reduction, upscale2x, fps). upscale: no DLSS 5; the finish\'s own Real-ESRGAN 2x (upscale2x) and RIFE frame rate (fps 48, 72 or 120), what a Mac uses; needs Real-ESRGAN x2 (a model) and the RIFE node pack, both in Setup on a Mac or Linux. seedvr2: the finish skips DLSS and SeedVR2 then restores detail to enhanceResolution (24 fps); follow the enhanceJob of the finish job with get_job'),
   enhanceResolution: z.union([z.literal(1080), z.literal(1440), z.literal(2160)]).default(1080).describe('seedvr2: the short side')
 }
 

@@ -86,7 +86,8 @@ export class ModelInstaller {
   async download(model, signal) {
     const target = await modelTarget(this.comfy, model)
     if (fs.existsSync(target)) return this.set(model.id, { status: 'done', path: target })
-    const { sha256, size } = await upstreamInfo(model.url)
+    const { sha256, size: probed } = await upstreamInfo(model.url)
+    const size = probed || model.size || null // GitHub's redirect answers the probe with no length
     const part = `${target}.part`
     fs.mkdirSync(path.dirname(target), { recursive: true })
 

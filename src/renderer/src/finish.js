@@ -25,8 +25,12 @@ export function finishDefaults(prefs, caps, remote) {
   if (prefs?.finalMp) out.megapixels = prefs.finalMp
   if (prefs?.enhanceResolution) out.enhanceResolution = prefs.enhanceResolution
   if (enhancer === 'upscale') {
-    out.upscale2x = !!prefs?.upscale2x && !!caps?.esrgan
-    out.fps = fpsFor(caps, 'upscale').includes(prefs?.fps) ? prefs.fps : 0
+    // saved before the upscale existed (an old Mac default was SeedVR2): start on what Check my computer now picks
+    const fresh = !!prefs && prefs.enhancer !== 'upscale'
+    const want2x = fresh ? prefs?.upscale2x ?? true : !!prefs?.upscale2x
+    const wantFps = fresh ? prefs?.fps ?? 48 : prefs?.fps
+    out.upscale2x = want2x && !!caps?.esrgan
+    out.fps = fpsFor(caps, 'upscale').includes(wantFps) ? wantFps : 0
   }
   return out
 }

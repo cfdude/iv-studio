@@ -11,7 +11,7 @@ export const CLOUD_UPSCALER = 'RealESRGAN_x2plus.pth'
 // A finish that asks for a 2× or a frame rate above 24 is never quietly made without it: these say what is missing.
 // Setup lists both (models.json: Real-ESRGAN x2, and the Frame Interpolation (RIFE) node pack).
 export const NO_UPSCALER = 'This ComfyUI has no 2x upscaler. Download Real-ESRGAN x2 from Setup.'
-export const NO_RIFE = 'This ComfyUI has no frame interpolation (RIFE), so it can\'t make a frame rate above 24. Install the Frame Interpolation (RIFE) pack from Setup.'
+export const NO_RIFE = 'This ComfyUI has no frame interpolation (RIFE), so it can\'t make a frame rate above 24. Install the Frame Interpolation (RIFE) pack (Setup lists it on a Mac or Linux).'
 
 // What a finish can use, by its enhancer. 'upscale' is the finish's own Real-ESRGAN 2× and RIFE: never DLSS 5, even
 // where it is installed, so its 2× needs Real-ESRGAN x2 itself and its frame rates are RIFE's. 'seedvr2' skips the
