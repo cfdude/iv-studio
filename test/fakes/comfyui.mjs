@@ -7,6 +7,7 @@
 //   await fake.close()
 import { randomUUID } from 'node:crypto'
 import http from 'node:http'
+import { registerPort, unregisterPort } from './ports.mjs'
 
 const GB = 1024 ** 3
 
@@ -152,6 +153,7 @@ export async function startFakeComfy({ devices = 'cuda', os = 'linux', version =
 
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address()
+  registerPort(port) // tells the test guard this local port may be reached
 
   return {
     url: `http://127.0.0.1:${port}`,
@@ -170,6 +172,7 @@ export async function startFakeComfy({ devices = 'cuda', os = 'linux', version =
     failRoute: (route, status, message = 'fake failure') => (status ? (state.failures[route] = { status, message }) : delete state.failures[route]),
     close: () =>
       new Promise((resolve) => {
+        unregisterPort(port)
         server.closeAllConnections?.()
         server.close(() => resolve())
       })

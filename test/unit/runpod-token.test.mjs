@@ -10,7 +10,9 @@ const volume = { id: 'vol1', dataCenter: 'US-NC-1' }
 const make = () => {
   const calls = []
   const fetchImpl = async (url) => (calls.push(url), { ok: true, status: 200, json: async () => ({}), text: async () => '{}' })
-  return { calls, rp: new RunPod({ resourcesDir: 'resources', key: () => 'k', fetchImpl }) }
+  const rp = new RunPod({ resourcesDir: 'resources', key: () => 'k', fetchImpl })
+  rp.bundle = () => 'stub-bundle' // the real one runs `tar`, which the test guard refuses
+  return { calls, rp }
 }
 
 describe('RunPod token', () => {
