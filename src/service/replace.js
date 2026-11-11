@@ -96,6 +96,8 @@ export class Replace {
 
   // What this ComfyUI lacks for a mode: node packs (with links) and models (with where to get them).
   async check(mode = 'person') {
+    // the old engine's node packs are installed on PCs only (models.json "cloud": false); Remake runs in the cloud
+    if (this.studio.comfy.remote) return { ready: false, cloud: true, error: 'The old engine runs on this computer only. In the cloud, Replace uses Remake (Swap people, Change the scene).', packs: [], models: [] }
     const g = this.graph(WORKFLOW[mode])
     const info = await this.studio.comfy.objectInfo()
     const classes = [...new Set(Object.values(g).map((n) => n.class_type))].map((c) => (c === 'H3SourceSlice' && !info[c] && info.MiniMaxH3ContexLoopSourceSlice ? 'MiniMaxH3ContexLoopSourceSlice' : c))

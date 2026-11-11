@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useRef, useState } from 'react'
 import { media } from '../media'
-import Hero from './Hero'
+import Stage from './Stage'
+import QuickBar from './AudioQuick'
 import TileDelete from './TileDelete'
 import Loading from './Loading'
 import { dayGroup, groupBy, WHEN, inWhen, Chips, Near, useMore, Groups, FilterPanel } from './ShelfKit'
@@ -114,7 +115,9 @@ export default function Library({ openShot, go, notify, characters = [] }) {
 
   return (
     <div className="library shelf-page">
-      <Hero art="shots" title="Shots" kicker="Infinite Variance" />
+      <Stage effect="projector" art="shots" title="Shots" kicker="Infinite Variance">
+        <QuickBar search label="Search shots" placeholder="Search your shots, even the words of a prompt" value={q} onChange={setQ} results=".shelf-tools" found={shown.length} noun="shot" alt={{ label: '+ New shot', onClick: () => go('create') }} />
+      </Stage>
       <p className="lede">
         Every shot you've made.
         <span className="lede-small dim">Open one to watch its takes, pick the best, finish it at full size, or try again from the same settings.</span>
@@ -132,7 +135,6 @@ export default function Library({ openShot, go, notify, characters = [] }) {
               </button>
             ))}
           </div>
-          <input className="list-search" type="search" value={q} placeholder="Search shots" onChange={(e) => setQ(e.target.value)} aria-label="Search shots" />
           <label className="shelf-sort mono">
             Sort
             <select value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -143,9 +145,6 @@ export default function Library({ openShot, go, notify, characters = [] }) {
               ))}
             </select>
           </label>
-          <button className="btn btn-primary shelf-new" onClick={() => go('create')}>
-            + New shot
-          </button>
         </div>
         {all.length > 0 && (
           <FilterPanel

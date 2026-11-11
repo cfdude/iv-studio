@@ -4,11 +4,14 @@ import { LoraPicker, LoraThumb, loraTitle, useYours } from './Loras'
 import { fileUrl } from './edit/model'
 import { ask } from './Confirm'
 import { AspectTiles, DropIcon, ImageModeIcon, StepHead } from './CreateKit'
+import PictureTools from './PictureTools'
+import HfLogin from './HfLogin'
 
 const I = () => window.ivstudio.images
 const MODES = [
   ['generate', 'Generate', 'Make pictures from a prompt.'],
-  ['edit', 'Edit', 'Change a picture with an instruction. Only models that can edit.']
+  ['edit', 'Edit', 'Change a picture with an instruction. Only models that can edit.'],
+  ['tools', 'Tools', 'Inpaint, relight, remove the background, upscale, depth map.']
 ]
 const ASPECTS = ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9']
 const SIZES = [0.5, 1, 1.5, 2]
@@ -29,15 +32,99 @@ const sizeOf = (aspect, mp) => {
   return [Math.round(Math.sqrt(px * ar) / 32) * 32, Math.round(Math.sqrt(px / ar) / 32) * 32]
 }
 
+const GB = (b) => `${(b / 1024 ** 3).toFixed(1)} GB`
+const ACTIVE = ['queued', 'downloading', 'verifying']
+
+// A model family that isn't set up yet (GitHub #22): what it is, the files it needs and which are already here, one
+// button that downloads the rest into ComfyUI (the same downloader as Settings → Setup), a Hugging Face login when one
+// is gated, and anything else it needs (a newer ComfyUI, a turbo LoRA).
+function FamilySetup({ f, remote, notify, go, onReady }) {
+  const [dl, setDl] = useState({})
+  useEffect(() => {
+    window.ivstudio.models.status().then(setDl, () => {})
+    return window.ivstudio.models.onUpdate((u) => {
+      setDl((all) => ({ ...all, [u.id]: u }))
+      if (u.status === 'done') onReady()
+      if (u.status === 'error') notify(u.error || 'The download stopped.')
+    })
+  }, [])
+  const files = f.setup || []
+  const want = files.filter((x) => !x.present)
+  const going = want.filter((x) => ACTIVE.includes(dl[x.id]?.status))
+  const todo = want.filter((x) => !ACTIVE.includes(dl[x.id]?.status))
+  const bytes = todo.reduce((n, x) => n + x.size, 0)
+  const gated = want.filter((x) => x.gated)
+  const pages = [...new Map(gated.map((x) => [x.gated, { url: x.gated, label: x.label.replace(/ \(.*\)$/, '') }])).values()]
+  const other = f.missing.filter((m) => !/^text encoder|^VAE /.test(m))
+  const pct = (x) => {
+    const st = dl[x.id]
+    return st?.total ? Math.floor((st.received / st.total) * 100) : null
+  }
+  const busyFile = (x) => ACTIVE.includes(dl[x.id]?.status)
+  return (
+    <div className="family-setup">
+      <div className="family-setup-head">
+        <h3>{f.label} isn’t set up yet</h3>
+        <p className="small dim">
+          {f.note} <span className="mono">Licence: {f.licence}</span>
+        </p>
+      </div>
+      {files.length > 0 ? (
+        <ul className="family-setup-files">
+          {files.map((x) => (
+            <li key={x.id} className={x.present ? 'ok' : ''}>
+              <span className="check-icon" aria-hidden="true">
+                {x.present ? '●' : busyFile(x) ? '◌' : '○'}
+              </span>
+              <span className="family-setup-name">{x.label}</span>
+              <span className="mono dim small">{x.present ? 'Here' : busyFile(x) ? (pct(x) == null ? 'Waiting…' : `${pct(x)}%`) : x.size ? GB(x.size) : ''}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="small dim">IV Studio has no download for this one. Put its model files in ComfyUI’s models folders, then check again.</p>
+      )}
+      {other.length > 0 && <p className="small pink">Also needs {other.join(', ')}.</p>}
+      {remote ? (
+        <p className="small dim">In the cloud, IV Studio downloads a model into your cloud storage the first time you use it.</p>
+      ) : (
+        <>
+          {gated.length > 0 && <HfLogin notify={notify} pages={pages} />}
+          <div className="family-setup-actions">
+            {todo.length > 0 && (
+              <button className="btn btn-primary" onClick={() => window.ivstudio.models.download(todo.map((x) => x.id)).catch((err) => notify(err.message))}>
+                Download {todo.length === want.length ? (todo.length === 1 ? 'it' : `all ${todo.length}`) : `the other ${todo.length}`} · {GB(bytes)}
+              </button>
+            )}
+            {going.length > 0 && (
+              <span className="mono small dim">
+                Downloading {going.length} file{going.length === 1 ? '' : 's'}. You can keep working.
+              </span>
+            )}
+            <button className="btn" onClick={onReady}>
+              Check again
+            </button>
+            <button className="link-btn mono small" onClick={() => go?.('setup')}>
+              Settings → Setup
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // Create -> Image: Generate and Edit with the person's own image models, their LoRAs, and a gallery.
-export default function Images({ kindSwitch, notify, go, pictureToShot }) {
+export default function Images({ kindSwitch, notify, go, pictureToShot, incomingLora = null, clearIncomingLora = () => {}, incomingPicture = null, clearIncomingPicture = () => {} }) {
   const [status, setStatus] = useState(null)
   const [form, setForm] = useState(savedForm)
   const [sets, setSets] = useState([])
   const [busy, setBusy] = useState(false)
   const [picking, setPicking] = useState(false)
   const [viewing, setViewing] = useState(null) // { set, i }
+  const [toFix, setToFix] = useState(null) // a picture handed to Tools from the viewer
   const [more, setMore] = useState(false)
+  const [setupFam, setSetupFam] = useState(null) // a family that isn't set up, opened to see what it needs
   const [yours, , reloadYours] = useYours()
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
   // an iv:go with a mode (App.jsx) can open Image on Generate or Edit
@@ -47,8 +134,9 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
     return () => window.removeEventListener('iv:learn', go)
   }, [])
 
+  const loadStatus = () => I().status().then(setStatus, (err) => setStatus({ error: err.message, families: [] }))
   useEffect(() => {
-    I().status().then(setStatus, (err) => setStatus({ error: err.message, families: [] }))
+    loadStatus()
     I().list().then(setSets, () => {})
   }, [])
   useEffect(() => {
@@ -65,8 +153,29 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
   }, [running])
 
   const families = status?.families || []
+  // a stale saved form from before Tools, or Tools picked: the model steps below stay on generate/edit
   const usable = families.filter((f) => f.ready && (form.mode !== 'edit' || f.edit))
   const fam = families.find((f) => f.id === form.family && f.ready) || null
+  // a LoRA sent from the LoRAs page: switch to its model and put it in the tray
+  useEffect(() => {
+    if (!incomingLora || !status) return
+    const f = families.find((x) => x.id === incomingLora.family && x.ready)
+    clearIncomingLora()
+    if (!f) return notify(`${incomingLora.title || loraTitle(incomingLora.name)} is for a picture model that isn’t set up on this computer yet (Setup).`)
+    const info = loraInfo(incomingLora.name)
+    const words = info?.prefs?.autoTrigger !== false ? (incomingLora.words || []).filter((w) => w && !form.prompt.includes(w)) : []
+    const keep = f.id === form.family ? form.loras.filter((l) => l.name !== incomingLora.name) : []
+    set({ mode: form.mode === 'edit' && f.edit ? 'edit' : 'generate', family: f.id, model: f.models.includes(form.model) ? form.model : f.models[0], loras: [...keep, { name: incomingLora.name, strength: info?.prefs?.strength ?? 1 }], prompt: words.length ? `${words.join(', ')}. ${form.prompt}` : form.prompt })
+    notify(`${incomingLora.title || loraTitle(incomingLora.name)} is on, with ${f.label}.`, 'info')
+  }, [incomingLora, status])
+  // a picture handed over to change (a finished version's last frame): Edit, with it as the picture to edit
+  useEffect(() => {
+    if (!incomingPicture || !status) return
+    clearIncomingPicture()
+    I().list().then(setSets, () => {})
+    editThis(incomingPicture)
+    if (families.some((x) => x.ready && x.edit)) notify('The last frame is ready to edit. Say what to change, then make it.', 'info')
+  }, [incomingPicture, status])
   // keep a family and checkpoint that fit the mode
   useEffect(() => {
     if (!status) return
@@ -77,7 +186,6 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
   }, [status, form.mode, form.family])
 
   const loraInfo = (name) => yours?.find((x) => x.name === name)
-  const familyFilter = useMemo(() => (fam ? { label: fam.label, test: (name) => new RegExp(fam.loraPattern, 'i').test(name) } : null), [fam])
   function addLora({ name, words = [], title }) {
     if (form.loras.some((l) => l.name === name)) return notify(`${title || loraTitle(name)} is already on.`, 'info')
     const info = loraInfo(name)
@@ -134,45 +242,59 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
   const n = editMode ? { model: 2, refs: 3, prompt: 4, shape: 5 } : { model: 2, prompt: 3, shape: 4 }
   const makeLabel = busy ? 'Starting…' : editMode ? `Edit${form.count > 1 ? ` · ${form.count} versions` : ''}` : `Make ${form.count} picture${form.count > 1 ? 's' : ''}`
   const canMake = !(busy || blocked || !form.prompt.trim())
+  const toolsMode = form.mode === 'tools'
+  const modeStep = (
+    <section className="create-step">
+      <StepHead n={1} title="What to make" sub="A new picture from words, a picture you have changed by an instruction, or a one-step fix." />
+      <div className="mode-cards create-modes">
+        {MODES.map(([id, label, hint]) => (
+          <button key={id} className={`mode-card ${form.mode === id ? 'on' : ''}`} onClick={() => set({ mode: id })}>
+            <ImageModeIcon id={id} />
+            <span className="mode-name">{label}</span>
+            <span className="dim small">{hint}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
   return (
     <div className="images-page create-v2">
       <Hero art="create" title="Create" kicker="New image" help="image" />
       {kindSwitch}
-      {status?.remote && <p className="notice">Pictures render on this computer’s ComfyUI. Switch to “This computer” on the Cloud page to make them.</p>}
       {status?.error && <p className="notice">{status.error}</p>}
 
+      {toolsMode ? (
+        <PictureTools modeStep={modeStep} notify={notify} onQueued={(rec) => setSets((all) => [rec, ...all])} incoming={toFix} clearIncoming={() => setToFix(null)} />
+      ) : (
       <div className="create-layout">
         <div className="create-steps">
-          <section className="create-step">
-            <StepHead n={1} title="What to make" sub="A new picture from words, or a picture you already have, changed by an instruction." />
-            <div className="mode-cards create-modes two">
-              {MODES.map(([id, label, hint]) => (
-                <button key={id} className={`mode-card ${form.mode === id ? 'on' : ''}`} onClick={() => set({ mode: id })}>
-                  <ImageModeIcon id={id} />
-                  <span className="mode-name">{label}</span>
-                  <span className="dim small">{hint}</span>
-                </button>
-              ))}
-            </div>
-          </section>
+          {modeStep}
 
           <section className="create-step">
             <StepHead n={n.model} title="The model" sub={editMode ? 'Only models that can edit are on.' : 'Your image models in ComfyUI. Each has its own look.'} />
             <div className="family-cards" role="radiogroup" aria-label="Model family">
               {families.map((f) => {
-                const off = !f.ready || (editMode && !f.edit)
-                const why = !f.models.length ? 'No checkpoints for it in ComfyUI.' : f.missing.length ? `Needs ${f.missing.join(', ')}.` : editMode && !f.edit ? f.editNote : f.note
+                // a family that isn't set up stays clickable and opens what it needs; edit mode still rules out the ones
+                // that can't edit
+                const off = editMode && (f.ready ? !f.edit : !f.canEdit)
+                const why = !f.ready ? 'Not set up yet: click to see what it needs.' : editMode && !f.edit ? f.editNote : f.note
+                const pickIt = () => {
+                  if (!f.ready) return setSetupFam(setupFam === f.id ? null : f.id)
+                  setSetupFam(null)
+                  set({ family: f.id, model: f.models[0], loras: [], ...((f.sizes || SIZES).includes(form.megapixels) ? {} : { megapixels: f.defaultMp || (f.sizes || SIZES)[0] }) })
+                }
                 return (
-                  <button key={f.id} role="radio" aria-checked={form.family === f.id} className={`family-card ${form.family === f.id ? 'on' : ''}`} disabled={off} title={why} onClick={() => set({ family: f.id, model: f.models[0], loras: [] })}>
+                  <button key={f.id} role="radio" aria-checked={form.family === f.id && f.ready} aria-expanded={!f.ready ? setupFam === f.id : undefined} className={`family-card ${form.family === f.id && f.ready ? 'on' : ''} ${!f.ready ? 'unset' : ''} ${setupFam === f.id ? 'open' : ''}`} disabled={off} title={why} onClick={pickIt}>
                     <span className="family-name">{f.label}</span>
                     <span className="family-tags mono">
-                      {!f.ready ? 'not set up' : f.edit ? 'makes · edits' : 'makes'}
+                      {!f.ready ? 'not set up ▸' : f.edit ? 'makes · edits' : 'makes'}
                     </span>
                   </button>
                 )
               })}
               {!status && <span className="dim small">Checking your image models…</span>}
             </div>
+            {setupFam && families.some((f) => f.id === setupFam && !f.ready) && <FamilySetup key={setupFam} f={families.find((f) => f.id === setupFam)} remote={status?.remote} notify={notify} go={go} onReady={loadStatus} />}
             {fam && (
               <>
                 <div className="create-field">
@@ -218,7 +340,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
                 </button>
               </div>
             </div>
-            {picking && <LoraPicker family={familyFilter} notify={notify} go={go} onClose={() => setPicking(false)} onPick={addLora} />}
+            {picking && <LoraPicker family={fam?.id || 'h3'} notify={notify} go={go} onClose={() => setPicking(false)} onPick={addLora} />}
           </section>
 
           {editMode && (
@@ -248,17 +370,25 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
           <section className="create-step">
             <StepHead n={n.prompt} title={editMode ? 'What to change' : 'What it shows'} sub={editMode ? 'Say what to change, and what to keep.' : 'Subject, place, light and style.'} />
             <textarea className="prompt image-prompt" value={form.prompt} placeholder={editMode ? 'Make it night, keep her face and pose.' : 'An old farmer kneeling in a golden field at sunset, a 3D animated film still.'} onChange={(e) => set({ prompt: e.target.value })} aria-label={editMode ? 'What to change' : 'Prompt'} />
+            {fam?.tips && (
+              <details className="image-tips small">
+                <summary className="mono">How to write for {fam.label}</summary>
+                <p className="dim">{fam.tips}</p>
+              </details>
+            )}
             <div className={`more-settings ${more ? 'open' : ''}`}>
               <button type="button" className="more-settings-toggle mono" onClick={() => setMore(!more)} aria-expanded={more}>
-                {more ? '−' : '+'} More: negative prompt, steps, CFG
+                {more ? '−' : '+'} More: {fam?.noNegative ? 'steps, CFG' : 'negative prompt, steps, CFG'}
                 <span className="dim">{[form.negative && 'negative', form.steps !== '' && `${form.steps} steps`, form.cfg !== '' && `CFG ${form.cfg}`].filter(Boolean).join(' · ')}</span>
               </button>
               {more && (
                 <div className="more-settings-body">
-                  <div className="create-field">
-                    <span className="create-label mono">Negative</span>
-                    <input value={form.negative} placeholder="What to keep out (used when CFG is above 1)" onChange={(e) => set({ negative: e.target.value })} />
-                  </div>
+                  {!fam?.noNegative && (
+                    <div className="create-field">
+                      <span className="create-label mono">Negative</span>
+                      <input value={form.negative} placeholder="What to keep out (used when CFG is above 1)" onChange={(e) => set({ negative: e.target.value })} />
+                    </div>
+                  )}
                   <div className="create-grid">
                     <div className="create-field">
                       <span className="create-label mono">Steps</span>
@@ -281,7 +411,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
               <div className="create-field">
                 <span className="create-label mono">Size</span>
                 <div className="segmented">
-                  {SIZES.map((m) => (
+                  {(fam?.sizes || SIZES).map((m) => (
                     <button key={m} className={form.megapixels === m ? 'on' : ''} onClick={() => set({ megapixels: m })}>
                       {m} MP
                     </button>
@@ -351,6 +481,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
           </button>
         </aside>
       </div>
+      )}
 
       {sets.length > 0 && (
         <section className="audio-section image-gallery">
@@ -367,7 +498,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
                     {s.name}
                   </span>
                   <span className="mono small dim">
-                    {s.familyLabel} · {s.mode === 'edit' ? 'edit' : 'generate'} · seed {s.seed}
+                    {s.mode === 'frame' ? 'Last frame of a video' : s.mode === 'tool' ? `${s.familyLabel} · tool` : `${s.familyLabel} · ${s.mode === 'edit' ? 'edit' : 'generate'} · seed ${s.seed}`}
                   </span>
                   <button className="link-btn small" onClick={() => remove(s)}>
                     Delete
@@ -393,6 +524,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
       )}
 
       {/* Narrow windows: what will be made, and the button, as a bar at the bottom of the window. */}
+      {!toolsMode && (
       <section className="go-dock create-dock">
         <div className="go-info">
           <span className="mono">{fam ? `${form.count} picture${form.count > 1 ? 's' : ''} · ${editMode ? `about ${form.megapixels} MP, the picture's shape` : `${w} × ${h}`} · ${fam.label}` : status ? 'No image model is ready' : 'Checking your image models…'}</span>
@@ -402,6 +534,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
           {makeLabel}
         </button>
       </section>
+      )}
 
       {viewing && (
         <ImageViewer
@@ -410,6 +543,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
           onIndex={(i) => setViewing({ ...viewing, i })}
           onClose={() => setViewing(null)}
           onEdit={editThis}
+          onFix={(f) => (setToFix(f), set({ mode: 'tools' }), setViewing(null), document.querySelector('.images-page')?.scrollIntoView({ behavior: 'smooth' }))}
           onShot={(f) => (setViewing(null), pictureToShot?.(f))}
           onEditTimeline={async (f) => {
             try {
@@ -419,7 +553,15 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
               notify(err.message)
             }
           }}
-          onAgain={() => (set({ mode: viewing.set.mode, family: viewing.set.family, model: viewing.set.model, prompt: viewing.set.prompt, negative: viewing.set.negative || '', loras: viewing.set.loras || [], aspect: viewing.set.aspect, megapixels: viewing.set.megapixels, count: viewing.set.count, seed: '', refs: viewing.set.refs || [] }), setViewing(null))}
+          onAgain={() => {
+            const v = viewing.set
+            if (v.mode === 'tool') {
+              setToFix(v.refs?.[0] || null)
+              set({ mode: 'tools' })
+            } else if (v.mode === 'frame') set({ mode: 'edit', refs: v.files || [] })
+            else set({ mode: v.mode, family: v.family, model: v.model, prompt: v.prompt, negative: v.negative || '', loras: v.loras || [], aspect: v.aspect, megapixels: v.megapixels, count: v.count, seed: '', refs: v.refs || [] })
+            setViewing(null)
+          }}
         />
       )}
     </div>
@@ -443,7 +585,7 @@ function PictureFrame({ aspect, picture, count }) {
 }
 
 // A picture large, with what to do next. ← → move through the set, Esc closes.
-function ImageViewer({ set, index, onIndex, onClose, onEdit, onShot, onEditTimeline, onAgain }) {
+function ImageViewer({ set, index, onIndex, onClose, onEdit, onFix, onShot, onEditTimeline, onAgain }) {
   const file = set.files[index]
   useEffect(() => {
     const key = (e) => {
@@ -462,7 +604,7 @@ function ImageViewer({ set, index, onIndex, onClose, onEdit, onShot, onEditTimel
           <p className="image-set-name">{set.name}</p>
           <p className="small dim">{set.prompt}</p>
           <p className="mono small dim">
-            {set.familyLabel} · {shortName(set.model)} · seed {set.seed}
+            {set.mode === 'tool' || set.mode === 'frame' ? set.familyLabel : `${set.familyLabel} · ${shortName(set.model)} · seed ${set.seed}`}
             {set.files.length > 1 ? ` · ${index + 1} of ${set.files.length}` : ''}
           </p>
           <div className="image-viewer-actions">
@@ -471,6 +613,9 @@ function ImageViewer({ set, index, onIndex, onClose, onEdit, onShot, onEditTimel
             </button>
             <button className="btn" onClick={() => onEdit(file)}>
               Edit this
+            </button>
+            <button className="btn" onClick={() => onFix(file)} title="Inpaint, relight, remove the background, upscale or make a depth map">
+              Fix this…
             </button>
             <button className="btn" onClick={() => onEditTimeline(file)}>
               Add to edit

@@ -125,7 +125,10 @@
         "characters"
       ],
       "optional": true,
-      "optionalFor": "designing characters"
+      "optionalFor": "Z-Image Turbo pictures (Create → Image) and designing characters",
+      "pictureFamilies": [
+        "zimage"
+      ]
     },
     {
       "id": "zimage_te",
@@ -142,7 +145,10 @@
         "characters"
       ],
       "optional": true,
-      "optionalFor": "designing characters"
+      "optionalFor": "Z-Image Turbo pictures (Create → Image) and designing characters",
+      "pictureFamilies": [
+        "zimage"
+      ]
     },
     {
       "id": "zimage_vae",
@@ -156,7 +162,48 @@
         "characters"
       ],
       "optional": true,
-      "optionalFor": "designing characters"
+      "optionalFor": "Z-Image Turbo pictures (Create → Image) and designing characters",
+      "pictureFamilies": [
+        "zimage"
+      ]
+    },
+    {
+      "id": "h3image",
+      "label": "MiniMax H3 Image (int8)",
+      "loader": "UNETLoader.unet_name",
+      "match": "minimax_h3_image_pruned_int8_convrot.safetensors",
+      "alt": [
+        "minimax_h3_image_pruned_w4a8.safetensors",
+        "minimax_h3_image_pruned_bf16.safetensors"
+      ],
+      "folder": "diffusion_models",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3-Image/resolve/main/diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors",
+      "size": 20979314802,
+      "needed_for": [
+        "pictures"
+      ],
+      "optional": true,
+      "optionalFor": "MiniMax H3 Image pictures",
+      "pictureFamilies": [
+        "h3image"
+      ]
+    },
+    {
+      "id": "h3image_vae",
+      "label": "MiniMax H3 Image VAE",
+      "loader": "VAELoader.vae_name",
+      "match": "minimax_h3_image_vae_fp16.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3-Image/resolve/main/vae/minimax_h3_image_vae_fp16.safetensors",
+      "size": 1168505312,
+      "needed_for": [
+        "pictures"
+      ],
+      "optional": true,
+      "optionalFor": "MiniMax H3 Image pictures",
+      "pictureFamilies": [
+        "h3image"
+      ]
     },
     {
       "id": "qma",
@@ -231,7 +278,10 @@
         "replace"
       ],
       "optional": true,
-      "optionalFor": "Replace"
+      "optionalFor": "Replace (describing a clip) and Qwen Image 2.1 pictures (Create → Image)",
+      "pictureFamilies": [
+        "qwen21"
+      ]
     },
     {
       "id": "music3_dit",
@@ -343,7 +393,1020 @@
         "images"
       ],
       "optional": true,
-      "optionalFor": "SDXL pictures (Create → Image)"
+      "optionalFor": "SDXL pictures (Create → Image)",
+      "pictureFamilies": [
+        "sdxl"
+      ]
+    },
+    {
+      "id": "sa3",
+      "label": "Stable Audio 3 (medium)",
+      "loader": "CheckpointLoaderSimple.ckpt_name",
+      "match": "stable_audio_3_medium.safetensors",
+      "folder": "checkpoints",
+      "url": "https://huggingface.co/Comfy-Org/stable-audio-3/resolve/75aad8836271cb5a5123fb58304fae5d3bb4b0f9/checkpoints/stable_audio_3_medium.safetensors",
+      "size": 9222116660,
+      "sha256": "48d9c65e290e7bcd5194e0633bfc2424a59ee9683f5c2d58762d997b7d8ce0b5",
+      "needed_for": [
+        "sounds"
+      ],
+      "optional": true,
+      "optionalFor": "Sounds"
+    },
+    {
+      "id": "sa3_te",
+      "label": "Stable Audio 3 text encoder (T5Gemma)",
+      "loader": "CLIPLoader.clip_name",
+      "match": "t5gemma_b_b_ul2.safetensors",
+      "folder": "text_encoders",
+      "url": "https://huggingface.co/Comfy-Org/stable-audio-3/resolve/75aad8836271cb5a5123fb58304fae5d3bb4b0f9/text_encoders/t5gemma_b_b_ul2.safetensors",
+      "size": 1187264003,
+      "sha256": "1e1eba25be8872edb0d3c6335c6658fd6388e7b14b60da6e454e404cfcd8150e",
+      "needed_for": [
+        "sounds"
+      ],
+      "optional": true,
+      "optionalFor": "Sounds"
+    },
+    {
+      "id": "relight_unet",
+      "label": "Qwen Image Edit 2509 (fp8, for Relight)",
+      "loader": "UNETLoader.unet_name",
+      "match": "qwen_image_edit_2509_fp8_e4m3fn.safetensors",
+      "folder": "diffusion_models",
+      "url": "https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/resolve/f68ace85e60b4a02a323e394253731947657b7d2/split_files/diffusion_models/qwen_image_edit_2509_fp8_e4m3fn.safetensors",
+      "size": 20430698424,
+      "sha256": "318568f61951ab9da21100c7b896e3c1da67f0d2efad6421545e022cfaa2b2b4",
+      "needed_for": [
+        "relight"
+      ],
+      "optional": true,
+      "optionalFor": "Relight (picture tools)"
+    },
+    {
+      "id": "relight_te",
+      "label": "Qwen 2.5 VL 7B text encoder (Relight)",
+      "loader": "CLIPLoader.clip_name",
+      "match": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "folder": "text_encoders",
+      "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/1f12b17be14c89b026c51a91d67c32f84bb047bc/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "size": 9384670680,
+      "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4",
+      "alt": [
+        "qwen_2.5_vl_7b.safetensors"
+      ],
+      "needed_for": [
+        "relight"
+      ],
+      "optional": true,
+      "optionalFor": "Relight (picture tools)"
+    },
+    {
+      "id": "relight_vae",
+      "label": "Qwen Image VAE (Relight)",
+      "loader": "VAELoader.vae_name",
+      "match": "qwen_image_vae.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/1f12b17be14c89b026c51a91d67c32f84bb047bc/split_files/vae/qwen_image_vae.safetensors",
+      "size": 253806246,
+      "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f",
+      "needed_for": [
+        "relight"
+      ],
+      "optional": true,
+      "optionalFor": "Relight (picture tools) and Krea 2 pictures (Create → Image)",
+      "pictureFamilies": [
+        "krea2"
+      ]
+    },
+    {
+      "id": "relight_lightning",
+      "label": "Qwen Image Edit 2509 Lightning 4-step LoRA",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/lightx2v/Qwen-Image-Lightning/resolve/d468c534b360e0754c6bf9e38ed49e1e09cd2e2a/Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
+      "size": 849608296,
+      "sha256": "2a32ce938ec71db2b49a817b4844ae86995569518dea56ee0ddc209cbe8e1377",
+      "needed_for": [
+        "relight"
+      ],
+      "optional": true,
+      "optionalFor": "Relight (picture tools)"
+    },
+    {
+      "id": "relight_lora",
+      "label": "Qwen Image Edit 2509 Relight LoRA",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "Qwen-Image-Edit-2509-Relight.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/resolve/f68ace85e60b4a02a323e394253731947657b7d2/split_files/loras/Qwen-Image-Edit-2509-Relight.safetensors",
+      "size": 236117032,
+      "sha256": "2a11c2b74ce0965abf35a8c8db52305072e970a689ca904b5a5b5a94d0aab86c",
+      "needed_for": [
+        "relight"
+      ],
+      "optional": true,
+      "optionalFor": "Relight (picture tools)"
+    },
+    {
+      "id": "birefnet",
+      "label": "BiRefNet (background removal)",
+      "loader": "LoadBackgroundRemovalModel.bg_removal_name",
+      "match": "birefnet.safetensors",
+      "folder": "background_removal",
+      "url": "https://huggingface.co/Comfy-Org/BiRefNet/resolve/884af709e9b795d89dafbf97f29c8d6a2386f5c6/background_removal/birefnet.safetensors",
+      "size": 444473596,
+      "sha256": "9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154",
+      "needed_for": [
+        "removebg"
+      ],
+      "optional": true,
+      "optionalFor": "Remove background (pictures and video)"
+    },
+    {
+      "id": "moge",
+      "label": "MoGe-2 (depth maps)",
+      "loader": "LoadMoGeModel.model_name",
+      "match": "moge_2_vitl_normal_fp16.safetensors",
+      "folder": "geometry_estimation",
+      "url": "https://huggingface.co/Comfy-Org/MoGe/resolve/1484985258ba7ef45c314144fcf0e90924ffbf44/geometry_estimation/moge_2_vitl_normal_fp16.safetensors",
+      "size": 661859924,
+      "sha256": "cb1a692d03235671e959e81360d7b4d9f44aefadb1f852d6ca6aa17799d5e31f",
+      "needed_for": [
+        "depth",
+        "reshoot"
+      ],
+      "optional": true,
+      "optionalFor": "Depth maps"
+    },
+    {
+      "id": "ff_ltx_2_5_22b_distilled_transformer_comfy_int8_convrot",
+      "label": "LTX-2.5 22B distilled (int8)",
+      "loader": "UNETLoader.unet_name",
+      "match": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+      "folder": "diffusion_models",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+      "size": 21504034224,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Dub, Transformations, SDR to HDR, Transitions, Clean plate, Day to night, Add water",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5"
+    },
+    {
+      "id": "ff_gemma4_12b_with_proj_ltx_2_5_comfy_int8_convrot",
+      "label": "LTX-2.5 text encoder (Gemma 4 12B, int8)",
+      "loader": "CLIPLoader.clip_name",
+      "match": "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+      "folder": "text_encoders",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+      "size": 15372969374,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Dub, Transformations, Transitions, Clean plate, Day to night, Add water",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5"
+    },
+    {
+      "id": "ff_ltx_2_5_video_vae_bf16",
+      "label": "LTX-2.5 video VAE",
+      "loader": "VAELoader.vae_name",
+      "match": "ltx-2.5-video-vae-bf16.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-video-vae-bf16.safetensors",
+      "size": 1472223346,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Dub, Transformations, SDR to HDR, Transitions, Clean plate, Day to night, Add water",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5"
+    },
+    {
+      "id": "ff_ltx_2_5_audio_vae_bf16",
+      "label": "LTX-2.5 audio VAE",
+      "loader": "VAELoader.vae_name",
+      "match": "ltx-2.5-audio-vae-bf16.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-audio-vae-bf16.safetensors",
+      "size": 364866540,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Dub, Transformations, SDR to HDR, Transitions, Clean plate, Day to night, Add water",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5"
+    },
+    {
+      "id": "ff_ltx_2_3_22b_ic_lora_dubit_0_9",
+      "label": "LTX IC-LoRA: DubIt (Dub)",
+      "loader": "LTXICLoRALoaderModelOnly.lora_name",
+      "match": "ltx-2.3-22b-ic-lora-dubit-0.9.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-DubIt/resolve/cc18226c909e87aa8a1a079896ad46a4ec01e4d1/ltx-2.3-22b-ic-lora-dubit-0.9.safetensors",
+      "size": 2466665072,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Dub",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-DubIt"
+    },
+    {
+      "id": "ff_wan2_1_i2v_480p_14b_fp8_scaled",
+      "label": "Wan 2.1 image-to-video 14B (fp8)",
+      "loader": "UNETLoader.unet_name",
+      "match": "wan2.1_i2v_480p_14B_fp8_scaled.safetensors",
+      "folder": "diffusion_models",
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/diffusion_models/wan2.1_i2v_480p_14B_fp8_scaled.safetensors",
+      "size": 16401356938,
+      "sha256": "b2de21b99b2e72cb0ff15253b07e926f26e7cf1b7e229efc32f94ad1f1ed9395",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_umt5_xxl_fp8_e4m3fn_scaled",
+      "label": "Wan text encoder (UMT5 XXL, fp8)",
+      "loader": "CLIPLoader.clip_name",
+      "match": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "folder": "text_encoders",
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "size": 6735906897,
+      "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_clip_vision_h",
+      "label": "CLIP Vision H (Wan)",
+      "loader": "CLIPVisionLoader.clip_name",
+      "match": "clip_vision_h.safetensors",
+      "folder": "clip_vision",
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/clip_vision/clip_vision_h.safetensors",
+      "size": 1264219396,
+      "sha256": "64a7ef761bfccbadbaa3da77366aac4185a6c58fa5de5f589b42a65bcc21f161",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_wan_2_1_vae",
+      "label": "Wan 2.1 VAE",
+      "loader": "VAELoader.vae_name",
+      "match": "wan_2.1_vae.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/vae/wan_2.1_vae.safetensors",
+      "size": 253815318,
+      "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_lightx2v_i2v_14b_480p_cfg_step_distill_rank64_bf16",
+      "label": "Wan 2.1 step-distill LoRA (fast Effects)",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Kijai/WanVideo_comfy/resolve/8260d429d19fd7a72304cad059160b95d843913f/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors",
+      "size": 738005744,
+      "sha256": "85c4a61c30e0497aa44b91d93a893b624708461a56fe5485183b28fa07e2dfb3",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_cakeify_16_epochs",
+      "label": "Effect LoRA: Cakeify",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "cakeify_16_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Cakeify/resolve/01167db8cb4dad20a4c1d07fd1b9210cf581bff7/cakeify_16_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "4078cd32c45ad6f0206b87bd8de7e25700bd8419b9c0e0267bb828aec7eb6bf1",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_angry_face_5_epochs",
+      "label": "Effect LoRA: Angry face",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "angry_face_5_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/angry-face/resolve/34b2d3ff5d32204c0966e6d11aa67f660390b43e/angry_face_5_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "5c1345180ed79eadd88b2b95a9b5da9b782568c1f21d9bd310f63a3321084ac1",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_crying_20_epochs",
+      "label": "Effect LoRA: Crying",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "crying_20_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/crying/resolve/732fb4ac9c9823061c5dd275dceaed9bbc0c44c9/crying_20_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "644eb73f513d66d37789f6910c8f04de1f3a2cbea40defc8c63d1f4ffed842c7",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_laughing_15_epochs",
+      "label": "Effect LoRA: Laughing",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "laughing_15_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Laughing/resolve/bdd8ff128de62ee33640554c6250d2d4bccd0607/laughing_15_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "5c22fa4ea852a10ccd167955e60436486626e2d2effd55f4a1f8e7547348e62f",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_puppy_50_epochs",
+      "label": "Effect LoRA: Surrounded by puppies",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "puppy_50_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Puppy/resolve/24e1d6f9bab4bab7ef4e539ff7730ae03ed01464/puppy_50_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "79b8b7d153610036a027725a8564d18f59cd975e9a51cd3cdb2a43e21e5dfa61",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_wan21_penqi_000003500",
+      "label": "Effect LoRA: Steam from nose and ears",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "wan21_penqi_000003500.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/lvfengchun/wan21_i2v_boiling_point/resolve/ebe2279309ab7deb24374786c8f12cd204f48629/wan21_penqi_000003500.safetensors",
+      "size": 359258120,
+      "sha256": "19756a95e0f101addd9a57166f13f4b0ffa842fc5762daa444e1a550c4b99919",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_money_000003000",
+      "label": "Effect LoRA: Money rain",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "money_000003000.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/joyfox/WAN2.1-I2V-480P-Falling_US_dollars/resolve/24e9bff12c43ac4924051d38563c7732f0894b18/money_000003000.safetensors",
+      "size": 359258168,
+      "sha256": "b5c5c9b1158d602b5b5e32875acc6021292728fde8147c8c9a3938415aa9887e",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_crush_20_epochs",
+      "label": "Effect LoRA: Hydraulic press",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "crush_20_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Crush/resolve/1fc27c908c3e631664b157454a0a185213c6688e/crush_20_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "c2d67e9600edbd0be40febcdb262a0fe145a5962767ac23c644c4a42df2e4ec3",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_deflate_20_epochs",
+      "label": "Effect LoRA: Deflate",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "deflate_20_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Deflate/resolve/ff78a3a46e3bd9f028e50e6d79fbd7649a3036fc/deflate_20_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "7bb4107dea9966b3533613fb3bc625d8b6bfa7cbf68985f37a33c04aebe53e46",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_electrify_50_epochs",
+      "label": "Effect LoRA: Electrify",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "electrify_50_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Electrify/resolve/73ca236b150e305913878c72a4c13f7e73edd6de/electrify_50_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "7fb8712b03377c5f8d7eace7332c2afec3252cc14f86a6ccd24ae06676588e4b",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_explode_30_epochs",
+      "label": "Effect LoRA: Explode",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "explode_30_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Explode/resolve/bf9da953b780d86d966e4b67d1084fb252367b4c/explode_30_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "040dfee5d106acd4e027b6a493b2f228cef2adf090c23fb2040ff6ce016eccc5",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_inflate_20_epochs",
+      "label": "Effect LoRA: Inflate",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "inflate_20_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Inflate/resolve/18bfff8b5b38af3ebb25d00c2a1b4fdee89eb4e4/inflate_20_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "978f493aec4b98ed910abfb9963522d05092c264c69182e5462514cee043eb96",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_rotate_20_epochs",
+      "label": "Effect LoRA: Rotate 360°",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "rotate_20_epochs.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Rotate/resolve/a3f0ef060a4c7405b4a49b859f2f40e9bfb85e76/rotate_20_epochs.safetensors",
+      "size": 359257680,
+      "sha256": "43ce56166b6941eb0037fd7a7675885a221e8cfd53486c4d923b3464f1db1560",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_squish_18",
+      "label": "Effect LoRA: Squish",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "squish_18.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Squish/resolve/1e0810850eac92c9a43cd7c7332df321f0d5bcc9/squish_18.safetensors",
+      "size": 359257680,
+      "sha256": "c2195da8077b02674775929e94b43caa30dc069ed74b1818a2e2adf8fe559cf7",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_360_orbit",
+      "label": "Effect LoRA: 360° orbit",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "360_Orbit.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/360-Orbit/resolve/f22f9e46069d752dd0ab7a54c056de4113eedd82/360_Orbit.safetensors",
+      "size": 359257680,
+      "sha256": "5a99f1fd2db47344211fe6836a8664cfd5f053d03647b67c981cf163d65ffa82",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_arc_shot",
+      "label": "Effect LoRA: Arc shot",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "Arc_shot.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Arc_shot/resolve/6b932e0290cb9a811e789f4d1e0ffa3aa64ec796/Arc_shot.safetensors",
+      "size": 359257680,
+      "sha256": "d2b378c704e4a5239be6405d085bb7d2518fe7d332999d472def91cff772e8bb",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_wan21_i2v_rotation_000003750",
+      "label": "Effect LoRA: Bullet time",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "Wan21_I2V_rotation_000003750.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/joyfox/Wan2.1-BulletTime-LoRA/resolve/1a9eafb475b7c72db8caa66e8112d27fd4cbedee/Wan21_I2V_rotation_000003750.safetensors",
+      "size": 359258136,
+      "sha256": "f57e89047a740d4d706f22823f1e1eb2f9d74fc93856a9beeb9c2f8ba290b1a1",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_car_chase",
+      "label": "Effect LoRA: Car chase",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "car_chase.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Car-chase/resolve/93b9df5cd86aefe65f79d6d1a449bbe05229a9cd/car_chase.safetensors",
+      "size": 359257680,
+      "sha256": "169fd04f2c4025e1a65f4cb7253ecc2808d03432d75d4768f50f5950006534c4",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_crane_down",
+      "label": "Effect LoRA: Crane down",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "crane_down.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Crane-down/resolve/b1580b51de6e1240d9393b11ed2f9cb61bc2983a/crane_down.safetensors",
+      "size": 359257680,
+      "sha256": "3fb8cbd8f042c66e490d37ad1e5335b9893f406894ec41c5f519a7a990ee4b64",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_crane_overhead",
+      "label": "Effect LoRA: Crane over the head",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "crane_overhead.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Crane_over_the_head/resolve/c76778e53ceae4ac7e99441002011d7bce9b808a/crane_overhead.safetensors",
+      "size": 359257680,
+      "sha256": "971fd1fdd159f31928fe67f57fac6274cc9c86644697d9045670cec7d5fc76f7",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_crane_up",
+      "label": "Effect LoRA: Crane up",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "crane_up.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Crane_up/resolve/e3484eeca891aae176889e361ce3672a5c1dba51/crane_up.safetensors",
+      "size": 359257680,
+      "sha256": "78c048652e034ffc6115e08feac8b2c84191715f9b2e6312f3180f8dcb75a69d",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_crash_zoom_in",
+      "label": "Effect LoRA: Crash zoom in",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "crash_zoom_in.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Crash-zoom-in/resolve/96f8f59bfca64313ad16d7753e78a6b0bda67941/crash_zoom_in.safetensors",
+      "size": 359257680,
+      "sha256": "bcc26f0e2ae5f1d2fbe08e8278c2a89c7ef0c0ff7f595ebecc7f4602a92ffdd8",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_wan_21_i2v_dolly_zoom",
+      "label": "Effect LoRA: Dolly zoom",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "wan_21_i2v_dolly_zoom.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/ostris/wan21_i2v_dolly_zoom_lora/resolve/c13666e37a8a010eb200e4569f111d81ed2b26ea/wan_21_i2v_dolly_zoom.safetensors",
+      "size": 359258120,
+      "sha256": "5980c83c32ec0dbfe7e6e8262318031c468cc032f5fcc8fedba578ee82c208f6",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_hero_run",
+      "label": "Effect LoRA: Hero run",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "Hero_run.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Remade-AI/Hero-run/resolve/d0379216ec59a85d3986d78559da11c18b06b02f/Hero_run.safetensors",
+      "size": 359257680,
+      "sha256": "f08deffaed3ac8eb34cb2bf36848737607b1c11b27d65a2244de706cfe27f0bb",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Effects"
+    },
+    {
+      "id": "ff_ltx2_3_transition",
+      "label": "LTX transition LoRA",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "ltx2.3-transition.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/joyfox/LTX-2.3-Transition-LORA/resolve/685118b10fdc2aea63b47bbc6c395fe8c602db53/ltx2.3-transition.safetensors",
+      "size": 390229424,
+      "sha256": "ba420d6fefafced8e317e2d6ff951b312b52f534377d016b491877a00b830d33",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Transformations, Transitions"
+    },
+    {
+      "id": "ff_ltx_2_5_22b_ic_lora_sdr_to_hdr_1_0",
+      "label": "LTX IC-LoRA: SDR to HDR",
+      "loader": "LTXICLoRALoaderModelOnly.lora_name",
+      "match": "ltx-2.5-22b-ic-lora-sdr-to-hdr-1.0.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR/resolve/c7578ebddb54f4210e534e4d8cad698a5a520692/ltx-2.5-22b-ic-lora-sdr-to-hdr-1.0.safetensors",
+      "size": 1308787472,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "SDR to HDR",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR"
+    },
+    {
+      "id": "ff_ltx_2_5_22b_ic_lora_sdr_to_hdr_scene_emb",
+      "label": "LTX SDR to HDR scene embeddings",
+      "loader": "LTXVLoadConditioning.file_name",
+      "match": "ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors",
+      "folder": "embeddings",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR/resolve/c7578ebddb54f4210e534e4d8cad698a5a520692/ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors",
+      "size": 12614165,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "SDR to HDR",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR"
+    },
+    {
+      "id": "ff_film_net_fp16",
+      "label": "FILM frame interpolation",
+      "loader": "FrameInterpolationModelLoader.model_name",
+      "match": "film_net_fp16.safetensors",
+      "folder": "frame_interpolation",
+      "url": "https://huggingface.co/Comfy-Org/frame_interpolation/resolve/aa7009be4d1471ea0bac91d6fe4d7e4b637cbbfc/frame_interpolation/film_net_fp16.safetensors",
+      "size": 68882302,
+      "sha256": "f226e51375dc839d4b40e5c3d63da560dd1ea1c962364ec78f5adf2d05db05c0",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Smooth and slow motion"
+    },
+    {
+      "id": "ff_ltx_2_5_22b_ic_lora_clean_plate_1_0",
+      "label": "LTX IC-LoRA: Clean plate",
+      "loader": "LTXICLoRALoaderModelOnly.lora_name",
+      "match": "ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Clean-Plate/resolve/5cdacad3ee33574ecb11120b873dec320de79b37/ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
+      "size": 327318439,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Clean plate",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Clean-Plate"
+    },
+    {
+      "id": "ff_ltx_2_5_22b_ic_lora_day_to_night_0_9",
+      "label": "LTX IC-LoRA: Day to night",
+      "loader": "LTXICLoRALoaderModelOnly.lora_name",
+      "match": "ltx-2.5-22b-ic-lora-day-to-night-0.9.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Day-To-Night/resolve/16a69fe6c88de9e349246789d0c18803560881f5/ltx-2.5-22b-ic-lora-day-to-night-0.9.safetensors",
+      "size": 327318440,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Day to night",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Day-To-Night"
+    },
+    {
+      "id": "ff_ltx_2_5_22b_ic_lora_water_simulation_0_9",
+      "label": "LTX IC-LoRA: Water simulation",
+      "loader": "LTXICLoRALoaderModelOnly.lora_name",
+      "match": "ltx-2.5-22b-ic-lora-water-simulation-0.9.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Water-Simulation/resolve/7a458d0c206d6f80ee7bae2f46e21e959f6fc42e/ltx-2.5-22b-ic-lora-water-simulation-0.9.safetensors",
+      "size": 906080568,
+      "sha256": "****************************************************************",
+      "needed_for": [
+        "effects"
+      ],
+      "optional": true,
+      "optionalFor": "Add water",
+      "gated": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Water-Simulation"
+    },
+    {
+      "id": "flux2_unet",
+      "label": "Flux.2 Klein 9B (fp8)",
+      "loader": "UNETLoader.unet_name",
+      "match": "flux-2-klein-9b-fp8.safetensors",
+      "folder": "diffusion_models/Flux 2",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8/resolve/902d9d510b51533e07729f19211414a3648b77d2/flux-2-klein-9b-fp8.safetensors",
+      "size": 9430000000,
+      "gated": "https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Flux.2 Klein 9B pictures (Create → Image) and Projects sketches",
+      "pictureFamilies": [
+        "flux2"
+      ],
+      "accept": [
+        "^flux-?2[-_]klein[-_]9b"
+      ],
+      "acceptPath": [
+        "^flux ?2[\\\\/]"
+      ]
+    },
+    {
+      "id": "flux2_te",
+      "label": "Flux.2 Klein text encoder (Qwen 3 8B fp8)",
+      "loader": "CLIPLoader.clip_name",
+      "match": "qwen_3_8b_fp8mixed.safetensors",
+      "alt": [
+        "qwen_3_8b.safetensors"
+      ],
+      "folder": "text_encoders",
+      "url": "https://huggingface.co/Comfy-Org/Flux-2-Klein-9B/resolve/1138ce884c8e977cdacacbe779784fec4426bb3f/split_files/text_encoders/qwen_3_8b_fp8mixed.safetensors",
+      "size": 8660000000,
+      "sha256": "abad16806e0cbabc54e0325d6565847443fe396d5f0be38bb3cd3fe75a1201d6",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Flux.2 Klein 9B pictures (Create → Image)",
+      "pictureFamilies": [
+        "flux2"
+      ]
+    },
+    {
+      "id": "flux2_vae",
+      "label": "Flux.2 VAE",
+      "loader": "VAELoader.vae_name",
+      "match": "flux2-vae.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Comfy-Org/Flux-2-Klein-9B/resolve/1138ce884c8e977cdacacbe779784fec4426bb3f/split_files/vae/flux2-vae.safetensors",
+      "size": 336213556,
+      "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Flux.2 and Flux 3 Klein pictures (Create → Image)",
+      "pictureFamilies": [
+        "flux2",
+        "flux3"
+      ]
+    },
+    {
+      "id": "flux3_unet",
+      "label": "Flux 3 Klein (int8)",
+      "loader": "UNETLoader.unet_name",
+      "match": "flux3-image-klein-int8-convrot.safetensors",
+      "folder": "diffusion_models/Flux 3",
+      "url": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/resolve/9d36114cf7a2e03a45c28f5cc4987d20ebfdb6c1/diffusion_models/flux3-image-klein-int8-convrot.safetensors",
+      "size": 5827874779,
+      "gated": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Flux 3 Klein pictures and Inpaint (Create → Image)",
+      "pictureFamilies": [
+        "flux3"
+      ],
+      "accept": [
+        "^flux3[-_]image[-_]klein"
+      ],
+      "acceptPath": [
+        "^flux ?3[\\\\/]"
+      ]
+    },
+    {
+      "id": "qwen3vl_4b_te",
+      "label": "Qwen3-VL 4B text encoder (Flux 3 Klein, Krea 2)",
+      "loader": "CLIPLoader.clip_name",
+      "match": "qwen3vl_4b_int8_convrot.safetensors",
+      "alt": [
+        "qwen3vl_4b_fp8_scaled.safetensors"
+      ],
+      "folder": "text_encoders",
+      "url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/588feaf955b08b9ac4723eeb751752ab045dba71/text_encoders/qwen3vl_4b_int8_convrot.safetensors",
+      "size": 4860000000,
+      "sha256": "32de113cbf8282b02cbff0794b637b9d6676da09314a1db5a30bcea9bf4ee01c",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Flux 3 Klein and Krea 2 pictures (Create → Image)",
+      "pictureFamilies": [
+        "flux3",
+        "krea2"
+      ]
+    },
+    {
+      "id": "krea2_unet",
+      "label": "Krea 2 Turbo (int8)",
+      "loader": "UNETLoader.unet_name",
+      "match": "krea2_turbo_int8_convrot.safetensors",
+      "folder": "diffusion_models/Krea 2",
+      "url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/588feaf955b08b9ac4723eeb751752ab045dba71/diffusion_models/krea2_turbo_int8_convrot.safetensors",
+      "size": 13490000000,
+      "sha256": "8e4eeda70dd5037ab1ba2bef6b417f9f901e26093117cf397f741fc1fdaaf3f1",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Krea 2 pictures (Create → Image)",
+      "pictureFamilies": [
+        "krea2"
+      ],
+      "accept": [
+        "^krea2"
+      ],
+      "acceptPath": [
+        "^krea ?2[\\\\/]"
+      ]
+    },
+    {
+      "id": "moss_unet",
+      "label": "Moss Image (int8)",
+      "loader": "UNETLoader.unet_name",
+      "match": "moss_image_sft_int8_convrot.safetensors",
+      "folder": "diffusion_models/moss",
+      "url": "https://huggingface.co/Comfy-Org/MOSS-Image/resolve/2929efe3cdd506c0a430bcfca70a9a8d805cc095/diffusion_models/moss_image_sft_int8_convrot.safetensors",
+      "size": 5410000000,
+      "sha256": "b4d1475bc7eeffd7b809e82ea13a1fba1fb85c4e18365af3813722faa5c0fe4f",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Moss pictures (Create → Image)",
+      "pictureFamilies": [
+        "moss"
+      ],
+      "accept": [
+        "^moss[-_]image"
+      ],
+      "acceptPath": [
+        "^moss[\\\\/]"
+      ]
+    },
+    {
+      "id": "moss_te",
+      "label": "Moss text encoder (Qwen 3.5 9B w4a8)",
+      "loader": "CLIPLoader.clip_name",
+      "match": "qwen3.5_9b_w4a8_gptq.safetensors",
+      "alt": [
+        "qwen3.5_9b_uncensored_int8_convrot.safetensors",
+        "qwen3.5_9b_int8_convrot.safetensors"
+      ],
+      "folder": "text_encoders",
+      "url": "https://huggingface.co/Comfy-Org/MOSS-Image/resolve/2929efe3cdd506c0a430bcfca70a9a8d805cc095/text_encoders/qwen3.5_9b_w4a8_gptq.safetensors",
+      "size": 7340000000,
+      "sha256": "4cc6a1543ad2061806da46f35f90cadb4801dcba246c44782cf42ec0feb6407c",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Moss pictures (Create → Image)",
+      "pictureFamilies": [
+        "moss"
+      ]
+    },
+    {
+      "id": "moss_vae",
+      "label": "Moss VAE (Flux.2 small)",
+      "loader": "VAELoader.vae_name",
+      "match": "flux2-vae_small.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Comfy-Org/MOSS-Image/resolve/2929efe3cdd506c0a430bcfca70a9a8d805cc095/vae/flux2-vae_small.safetensors",
+      "size": 250000000,
+      "sha256": "d8d52ba036475f5fb07c8b435e176d3d97ebfa82f0d1a1c317f9cc1e25bd013b",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Moss pictures (Create → Image)",
+      "pictureFamilies": [
+        "moss"
+      ],
+      "alt": [
+        "flux2-vae.safetensors"
+      ]
+    },
+    {
+      "id": "qwen21_unet",
+      "label": "Qwen Image 2.1 (int8)",
+      "loader": "UNETLoader.unet_name",
+      "match": "qwen_image_2.1_int8_convrot.safetensors",
+      "folder": "diffusion_models/Qwen",
+      "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/aacf31a6d48e707f352ecba714cee0680da3479b/diffusion_models/qwen_image_2.1_int8_convrot.safetensors",
+      "size": 7256783064,
+      "sha256": "cb74113cb03faecd79611b01fd7fd642f0aa60d6f0b95086abee214d75eaa57d",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Qwen Image 2.1 pictures (Create → Image)",
+      "pictureFamilies": [
+        "qwen21"
+      ],
+      "accept": [
+        "^qwen[-_]image[-_]2\\.1(?!.*vae)"
+      ],
+      "acceptPath": [
+        "^qwen[\\\\/]qwen[-_]image[-_]2\\.1"
+      ]
+    },
+    {
+      "id": "qwen21_vae",
+      "label": "Qwen Image 2.1 VAE",
+      "loader": "VAELoader.vae_name",
+      "match": "qwen_image_2.1_vae_bf16.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/aacf31a6d48e707f352ecba714cee0680da3479b/vae/qwen_image_2.1_vae_bf16.safetensors",
+      "size": 675509688,
+      "sha256": "bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9",
+      "needed_for": [
+        "images"
+      ],
+      "optional": true,
+      "optionalFor": "Qwen Image 2.1 pictures (Create → Image)",
+      "pictureFamilies": [
+        "qwen21"
+      ]
     }
   ],
   "node_packs": [
@@ -478,10 +1541,12 @@
       "label": "IV Studio nodes (latent cache, shot list)",
       "classes": [
         "IVLatentCache",
-        "IVShotList"
+        "IVShotList",
+        "IVFreeMemory"
       ],
       "dir": "ComfyUI-IV-Studio",
       "bundled": "comfy-nodes/ComfyUI-IV-Studio",
+      "version": 2,
       "url": "https://github.com/hollisorg/iv-studio/tree/main/resources/comfy-nodes/ComfyUI-IV-Studio",
       "for": "Shots"
     },
@@ -541,6 +1606,7 @@
       ],
       "url": "https://github.com/D3voz/comfyui-h3-oneclick-swap",
       "dir": "comfyui-h3-oneclick-swap",
+      "cloud": false,
       "git": "https://github.com/D3voz/comfyui-h3-oneclick-swap",
       "commit": "e44a56e92920000e675d14be484aea0d7498d63e",
       "for": "Replace"
@@ -554,6 +1620,7 @@
       ],
       "url": "https://github.com/Carasibana/ComfyUI-H3-FaceRefine",
       "dir": "ComfyUI-H3-FaceRefine",
+      "cloud": false,
       "git": "https://github.com/Carasibana/ComfyUI-H3-FaceRefine",
       "commit": "d8521d14fe0d721d80cd9417fff5a559cbc21aba",
       "for": "Replace"
@@ -565,6 +1632,7 @@
       ],
       "url": "https://github.com/D3voz/comfyui-image-detail-contrast",
       "dir": "comfyui-image-detail-contrast",
+      "cloud": false,
       "git": "https://github.com/D3voz/comfyui-image-detail-contrast",
       "commit": "485a5e246424ce012b998862b45f06d21e8d63b2",
       "for": "Replace"
@@ -576,6 +1644,7 @@
       ],
       "url": "https://github.com/orion4d/Orion4D_FXMax",
       "dir": "Orion4D_FXMax",
+      "cloud": false,
       "git": "https://github.com/orion4d/Orion4D_FXMax",
       "commit": "7048e8423ad7d1a6a52119d0d4870c2b7fc2885f",
       "for": "Replace"
@@ -587,6 +1656,7 @@
       ],
       "url": "https://github.com/xmarre/ComfyUI-Spectrum-MiniMax-H3",
       "dir": "ComfyUI-Spectrum-MiniMax-H3",
+      "cloud": false,
       "git": "https://github.com/xmarre/ComfyUI-Spectrum-MiniMax-H3",
       "commit": "806fe498d574a726fecb8818917f00a4b993fd77",
       "for": "Replace"
@@ -625,6 +1695,32 @@
       "dir": "ComfyUI-Viggle-Remake",
       "bundled": "comfy-nodes/ComfyUI-Viggle-Remake",
       "for": "Replace"
+    },
+    {
+      "label": "LTX-Video (Lightricks)",
+      "classes": [
+        "LTXICLoRALoaderModelOnly",
+        "LTXAddVideoICLoRAGuide",
+        "LTXVSetAudioRefTokens"
+      ],
+      "url": "https://github.com/Lightricks/ComfyUI-LTXVideo",
+      "dir": "ComfyUI-LTXVideo",
+      "git": "https://github.com/Lightricks/ComfyUI-LTXVideo",
+      "commit": "44c8a36b7c31ee00b4271daed11dc2a4aa481140",
+      "for": "Dub and VFX"
+    },
+    {
+      "label": "H3 Contact Sheet",
+      "classes": [
+        "H3ContactSheet",
+        "H3ContactSheetDecode"
+      ],
+      "url": "https://github.com/matlowai/ComfyUI-H3-ContactSheet",
+      "dir": "ComfyUI-H3-ContactSheet",
+      "git": "https://github.com/matlowai/ComfyUI-H3-ContactSheet",
+      "commit": "3c8c8c66e69362e5abf9cf4c4e693baddab90ca3",
+      "for": "Turnaround sheets",
+      "cloud": false
     }
   ]
 }

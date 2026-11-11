@@ -9,8 +9,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
-import { launchApp } from './driver.mjs'
-import { traceRows } from './trace.mjs'
+import { Cdp, launchApp } from './driver.mjs'
+import { POLLED, traceRows } from './trace.mjs'
 import { checkRoute, makeFixtures, musicObjectInfo, ROUTES, tempBase, waitFor, writeShinobi, writeSizzle } from './pages.mjs'
 
 const PROMPT = 'integrated_multimodal_description: [Shot 1] A courier runs across a rooftop at dusk.\n\noverall_soundscape: Wind and footsteps.\n\nnon_diegetic_music: N/A'
@@ -81,6 +81,9 @@ describe('page tier: every sidebar page opens', () => {
   test('[page:voices] opens from the Audio sidebar with no console error or crash', async () => void (await route('voices')))
   test('[page:lines] opens from the Audio sidebar with no console error or crash', async () => void (await route('lines')))
   test('[page:music] opens from the Audio sidebar with no console error or crash', async () => void (await route('music')))
+  test('[page:audio] opens from the Audio sidebar with no console error or crash', async () => void (await route('audio')))
+  test('[page:sounds] opens from the Audio sidebar with no console error or crash', async () => void (await route('sounds')))
+  test('[page:effects] opens from the Workflows page with no console error or crash', async () => void (await route('effects')))
 
   test('a page error thrown in a fixture makes that route fail with the error text, on both attempts', async () => {
     const inject = `setTimeout(() => { throw new Error('fixture page error: the loras page broke') }, 0)`
@@ -230,7 +233,9 @@ describe('page tier: every sidebar page opens', () => {
   test('[page:settings][ipc:update:state][ipc:update:check][ipc:update:install] say an unpackaged build is a development build and never install', async () => {
     const state = await api('update.state')
     assert.equal(state.status, 'dev')
-    assert.equal(state.manual, process.platform === 'darwin')
+    // v1.1.3: a Mac copy updates itself (macupdater.js), so no platform is manual; mac says which updater it uses
+    assert.equal(state.manual, false)
+    assert.equal(state.mac, process.platform === 'darwin')
     assert.equal((await api('update.check')).status, 'dev')
     assert.equal(await api('update.install'), false)
   })
@@ -439,6 +444,124 @@ describe('page tier: every sidebar page opens', () => {
     assert.ok(media.duration > 5)
     assert.equal(edit.clips.length, 1)
     assert.equal((await api('shinobi.addToEdit', fixtures.clip)).name, 'Shinobi cut', 'no name gives the default')
+  })
+
+  // ---------- v1.1.3's page-only channels: the chat window, the H3 terms, ComfyUI's install folder, files and secrets ----------
+  // runs an expression in the popped-out chat window (index.html#chat), which is a second page on the same DevTools port
+  const inChatWindow = async (expression) => {
+    const list = await fetch(`http://127.0.0.1:${app.cdpPort}/json/list`).then((r) => r.json())
+    const t = list.find((x) => x.type === 'page' && /index\.html#chat/.test(x.url))
+    assert.ok(t, 'the chat window is open')
+    const cdp = await Cdp.connect(t.webSocketDebuggerUrl)
+    try {
+      const r = await cdp.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
+      if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text)
+      return r.result.value
+    } finally {
+      cdp.close()
+    }
+  }
+
+  test('[page:library][ipc:chat:popout][ipc:chat:popped][ipc:chat:pin][ipc:chat:forwardAsk][ipc:chat:dock][event:chat:popped][event:chat:docked][event:chat:ask] pop the chat out into its own window, pin it, hand it an ask, and dock it back', async () => {
+    await app.evaluate(`(() => { window.__popped = []; window.__docked = []; window.__offP = window.ivstudio.chat.onPopped((v) => window.__popped.push(v)); window.__offD = window.ivstudio.chat.onDocked((v) => window.__docked.push(v)); return true })()`)
+    assert.equal(await api('chat.popped'), false)
+    assert.equal(await api('chat.forwardAsk', { id: 'ask-1', what: 'delete a take' }), false, 'with no chat window there is nowhere to send an ask')
+    assert.equal(await api('chat.popout'), true)
+    await waitFor('the window to hear the chat popped out', () => app.evaluate(`window.__popped.includes(true)`))
+    assert.equal(await api('chat.popped'), true)
+    await waitFor('the chat window to load', async () => {
+      try {
+        return await inChatWindow(`!!window.ivstudio`)
+      } catch {
+        return false
+      }
+    })
+    // the chat window makes its own start-up calls (settings, the agents, the chat); let them end so the row's trace is the same every run
+    const calls = () => app.ipcTrace().filter((c) => !POLLED.includes(c.channel)).length
+    await waitFor('the chat window\'s start-up calls to finish', async () => {
+      const n = calls()
+      await new Promise((r) => setTimeout(r, 1500))
+      return calls() === n
+    }, { timeoutMs: 20000 })
+    await inChatWindow(`(() => { window.__asks = []; window.ivstudio.chat.onAsk((d) => window.__asks.push(d)); return true })()`)
+    assert.equal(await api('chat.forwardAsk', { id: 'ask-1', what: 'delete a take' }), true)
+    assert.deepEqual(await waitFor('the chat window to get the ask', () => inChatWindow(`window.__asks.length ? window.__asks : null`)), [{ id: 'ask-1', what: 'delete a take' }])
+    assert.equal(await api('chat.pin', true), true)
+    assert.equal(await api('chat.pin', false), false)
+    assert.equal(await api('chat.dock'), true)
+    await waitFor('the window to hear the chat docked', () => app.evaluate(`window.__popped.at(-1) === false && window.__docked.includes(true)`))
+    assert.equal(await api('chat.popped'), false)
+    // docking with no chat window open only tells the main window
+    const docked = await app.evaluate(`window.__docked.length`)
+    assert.equal(await api('chat.dock'), true)
+    await waitFor('a second docked event', () => app.evaluate(`window.__docked.length === ${docked + 1}`))
+    await app.evaluate(`(window.__offP(), window.__offD(), true)`)
+  })
+
+  test('[page:library][ipc:chat:setContext][ipc:chat:openInApp][event:app:open] keep what the window shows for the chat, and open a place in the app from the chat', async () => {
+    assert.equal(await api('chat.setContext', { page: 'library', shotId: 'abc' }), true)
+    assert.equal(await api('chat.setContext', 'not an object'), true, 'anything but an object clears it')
+    await app.evaluate(`(() => { window.__open = []; window.__offO = window.ivstudio.chat.onOpenInApp((w) => window.__open.push(w)); return true })()`)
+    assert.equal(await api('chat.openInApp', { page: 'library' }), true)
+    assert.deepEqual(await waitFor('the window to be asked to open the library', () => app.evaluate(`window.__open.length ? window.__open : null`)), [{ page: 'library' }])
+    await app.evaluate(`(window.__offO(), true)`)
+  })
+
+  test('[page:library][ipc:files:open] opens a file the chat attached with the system viewer, and refuses one that is gone', async () => {
+    const file = dataFile('open-me.txt')
+    fs.writeFileSync(file, 'x')
+    assert.equal(await api('files.open', file), true)
+    assert.deepEqual(traceOf('shell.openPath').at(-1).arg, file)
+    await rejects(`window.ivstudio.files.open(${JSON.stringify(dataFile('gone.txt'))})`, /That file is gone/)
+  })
+
+  test('[page:settings][ipc:settings:setOpenaiSecrets] keeps the prompt writer key and headers sealed, refuses a header that is not one, and an empty one removes it', async () => {
+    const saved = await api('settings.setOpenaiSecrets', { key: 'dummy-openai-key-value', headers: 'X-Api-Version: 2' })
+    assert.deepEqual([saved.hasOpenaiKey, saved.hasOpenaiHeaders], [true, true])
+    assert.ok(!('openaiKey' in saved) && !('openaiHeaders' in saved), 'the window never gets them')
+    const disk = settingsOnDisk()
+    assert.ok(disk.openaiKey && !String(disk.openaiKey).includes('dummy-openai-key-value'), 'the key is kept sealed, not as typed')
+    assert.ok(disk.openaiHeaders && !String(disk.openaiHeaders).includes('X-Api-Version'), 'the headers are kept sealed')
+    await rejects(`window.ivstudio.settings.setOpenaiSecrets({ headers: 'not a header line' })`, /isn.t a header/)
+    const cleared = await api('settings.setOpenaiSecrets', { key: '', headers: '' })
+    assert.deepEqual([cleared.hasOpenaiKey, cleared.hasOpenaiHeaders], [false, false])
+  })
+
+  test('[page:settings][ipc:terms:report][ipc:terms:openLicense] report misuse by mail to the abuse address, and open the MiniMax H3 licence copied into the data folder', async () => {
+    assert.equal(await api('terms.report'), 'abuse@infinitevariance.ai')
+    assert.match(traceOf('shell.openExternal').at(-1).arg, /^mailto:abuse@infinitevariance\.ai\?subject=/)
+    assert.equal(await api('terms.openLicense'), true)
+    const copied = dataFile('licenses', 'MiniMax-H3-LICENSE.txt')
+    assert.ok(fs.statSync(copied).size > 100, 'the licence is copied beside the data')
+    assert.deepEqual(traceOf('shell.openPath').at(-1).arg, copied)
+  })
+
+  test('[page:setup][ipc:comfy:chooseInstallFolder] asks where to put ComfyUI with a folder dialog that can make a folder, and gives back the canned one', async () => {
+    const folder = await api('comfy.chooseInstallFolder')
+    assert.equal(path.basename(folder), 'ComfyUI-install-here')
+    const dialog = traceOf('dialog.showOpenDialog').find((t) => t.title === 'Where to put ComfyUI')
+    assert.deepEqual(dialog.properties, ['openDirectory', 'createDirectory'])
+  })
+
+  test('[page:project][ipc:productions:shotList] saves the film\'s shot list where the save dialog says, as Markdown or as a spreadsheet', async () => {
+    const md = await api('productions.shotList', records.project.id, 'md')
+    assert.equal(path.basename(md), 'Rig film - shot list.md')
+    assert.ok(traceOf('dialog.showSaveDialog').some((t) => t.title === 'Save the shot list'))
+    assert.match(fs.readFileSync(md, 'utf8'), /Rig film/)
+    const csv = await api('productions.shotList', records.project.id, 'csv')
+    assert.ok(fs.readFileSync(csv, 'utf8').startsWith('﻿'), 'a spreadsheet copy starts with the byte-order mark Excel needs')
+  })
+
+  test('[page:sounds][ipc:sounds:toEdit] puts a finished sound on a new edit, on A2 under the music, and refuses one with no take', async () => {
+    const id = 'rigsnd01'
+    fs.mkdirSync(dataFile('sounds'), { recursive: true })
+    const finished = { id, name: 'Rig rain', kind: 'ambience', description: 'rain on a tin roof', seconds: 10, takes: 1, seed: 1, projectId: null, jobId: 'none', status: 'success', files: [{ file: fixtures.song, duration: 10 }], createdAt: new Date().toISOString() }
+    fs.writeFileSync(dataFile('sounds', 'sounds.json'), JSON.stringify([finished]))
+    const edit = await api('sounds.toEdit', id)
+    assert.equal(edit.name, 'Rig rain')
+    assert.deepEqual(edit.clips.map((c) => c.track), ['A2'])
+    await rejects(`window.ivstudio.sounds.toEdit('${id}', 3)`, /has not finished yet/)
+    await rejects(`window.ivstudio.sounds.toEdit('nope')`, /No sound nope/)
   })
 
   test('every route result is written as evidence', async () => {

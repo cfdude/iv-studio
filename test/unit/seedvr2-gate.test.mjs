@@ -47,15 +47,16 @@ describe('capabilities().gpuKind', () => {
   })
 })
 
-// A stand-in `this`: caps from a device list; getJob stops the method right after the gate.
-const stub = (devices, remote = false) => ({
-  comfy: { remote },
+// A stand-in `this`: caps from a device list; getJob stops the method right after the gate. hosted: Comfy Cloud
+// (remote and hosted); ownCloud: the person's own RunPod or Modal (remote, not hosted).
+const stub = (devices, hosted = false, ownCloud = false) => ({
+  comfy: { remote: hosted || ownCloud, hosted, ownCloud },
   capabilities: async () => capabilities({}, { devices }),
   getJob: () => {
     throw new Error(STOP)
   }
 })
-const stubFinish = (devices, remote) => ({ ...stub(devices, remote), getJob: () => ({ kind: 'previews', plan: {} }) })
+const stubFinish = (devices, hosted, ownCloud) => ({ ...stub(devices, hosted, ownCloud), getJob: () => ({ kind: 'previews', plan: {} }) })
 
 describe('enhanceFinal', () => {
   test('mps refuses SeedVR2 before looking at the job', async () => {
@@ -74,13 +75,16 @@ describe('enhanceFinal', () => {
   test('DLSS enhance is not gated', async () => {
     await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps]), { jobId: 'j', engine: 'dlss' }), { message: STOP })
   })
-  test('a remote ComfyUI keeps today\'s message, on any GPU', async () => {
-    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps], true), { jobId: 'j', engine: 'seedvr2' }), { message: /runs on this computer's ComfyUI only|Enhance runs on this computer/ })
+  test('Comfy Cloud keeps its own message, on any GPU', async () => {
+    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps], true), { jobId: 'j', engine: 'seedvr2' }), { message: /^Enhance runs on this computer's ComfyUI or your own cloud/ })
+  })
+  test('the person\'s own cloud on cuda gets past the gate', async () => {
+    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([cuda], false, true), { jobId: 'j', engine: 'seedvr2' }), { message: STOP })
   })
 })
 
 describe('finishCandidate', () => {
-  const fin = (devices, remote, finish) => Studio.prototype.finishCandidate.call(stubFinish(devices, remote), { jobId: 'j', fps: 0, ...finish })
+  const fin = (devices, hosted, finish, ownCloud = false) => Studio.prototype.finishCandidate.call(stubFinish(devices, hosted, ownCloud), { jobId: 'j', fps: 0, ...finish })
   test('mps refuses the SeedVR2 enhancer', async () => {
     await assert.rejects(fin([mps], false, { enhancer: 'seedvr2' }), { message: SEEDVR2_MPS_MESSAGE })
   })
@@ -90,7 +94,10 @@ describe('finishCandidate', () => {
   test('the DLSS enhancer on mps is not gated', async () => {
     await assert.rejects(fin([mps], false, { enhancer: 'dlss' }), (err) => err.message !== SEEDVR2_MPS_MESSAGE)
   })
-  test('a remote ComfyUI keeps today\'s message, on any GPU', async () => {
-    await assert.rejects(fin([mps], true, { enhancer: 'seedvr2' }), { message: /cloud finishes with its own upscaler/ })
+  test('Comfy Cloud keeps its own message, on any GPU', async () => {
+    await assert.rejects(fin([mps], true, { enhancer: 'seedvr2' }), { message: /not on Comfy Cloud/ })
+  })
+  test('an own cloud that reports an Apple GPU is still refused SeedVR2', async () => {
+    await assert.rejects(fin([mps], false, { enhancer: 'seedvr2' }, true), { message: SEEDVR2_MPS_MESSAGE })
   })
 })

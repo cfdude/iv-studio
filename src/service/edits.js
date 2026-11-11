@@ -52,6 +52,17 @@ export function filterScriptFlag(ffmpeg) {
 
 export const editLength = (e) => e.clips.reduce((m, c) => Math.max(m, clipEnd(c)), 0)
 
+// The end card (settings.endCard, off unless the person turns it on in the editor): "Made with IV Studio" on black
+// for a moment after the last clip, as one more title. It is added to the export only, never saved into the
+// timeline, and it shows even when the titles track is hidden.
+export const END_CARD = { text: 'Made with IV Studio', seconds: 2.5, fade: 0.4, size: 7 }
+export function withEndCard(e) {
+  if (!e.settings?.endCard || !e.clips.length) return e
+  const start = editLength(e)
+  const card = { id: 'end-card', track: 'T1', media: null, start, in: 0, out: END_CARD.seconds, fadeIn: END_CARD.fade, fadeOut: END_CARD.fade, endCard: true, text: { content: END_CARD.text, size: END_CARD.size, position: 'center', box: false } }
+  return { ...e, clips: [...e.clips, card] }
+}
+
 // An edit's picture for the list: the first video or picture on a video track (earliest first), if its file is there.
 function coverOf(e) {
   const clip = [...(e.clips || [])].filter((c) => String(c.track || '').startsWith('V') && e.media?.[c.media]).sort((a, b) => a.start - b.start).find((c) => ['video', 'picture', 'image'].includes(e.media[c.media].kind) || /\.(mp4|mov|webm|m4v|png|jpe?g|webp)$/i.test(e.media[c.media].path || ''))
@@ -174,7 +185,7 @@ export class Edits {
       audio.push({ i: input++, c })
     }
     // Titles: each text goes through a file, so no quoting of the user's words is needed.
-    const titles = shown(tracks, 'T1') ? e.clips.filter((c) => c.track === 'T1' && c.text?.content) : []
+    const titles = e.clips.filter((c) => c.track === 'T1' && c.text?.content && (c.endCard || shown(tracks, 'T1')))
     titles.forEach((c, k) => {
       const tf = path.join(textDir, `title${k}.txt`)
       fs.writeFileSync(tf, c.text.content)
@@ -218,7 +229,7 @@ export class Edits {
     const work = path.join(this.dir, 'work', id)
     fs.rmSync(work, { recursive: true, force: true })
     fs.mkdirSync(work, { recursive: true })
-    const { args, total } = this.exportArgs(e, outFile, work)
+    const { args, total } = this.exportArgs(withEndCard(e), outFile, work)
     const t0 = Date.now()
     await new Promise((resolve, reject) => {
       const p = spawn(this.ffmpeg, args, { windowsHide: true })

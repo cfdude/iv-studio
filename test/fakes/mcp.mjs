@@ -10,19 +10,21 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { SECRET_NAMES } from '../../src/service/secrets.js'
+import { H3_TERMS_VERSION } from '../../src/service/terms.js'
 import { guardState } from './ports.mjs'
 import { withShims } from './shims.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(here, '../..')
 
-// The settings every test run is seeded with (design D8): the fake, temp folders, no key or token.
+// The settings every test run is seeded with (design D8): the fake, temp folders, no key or token, and MiniMax H3's
+// terms already agreed (the person does that once in the window; pass h3Terms: null to test the gate itself).
 export function seedSettings(dir, { comfyUrl, extra = {} }) {
   const folders = { comfyFolder: path.join(dir, 'comfy'), videosFolder: path.join(dir, 'videos') }
   for (const f of Object.values(folders)) fs.mkdirSync(f, { recursive: true })
   fs.writeFileSync(
     path.join(dir, 'settings.json'),
-    JSON.stringify({ comfyUrl, ...folders, outputFolder: '', comfyAutoStart: false, comfyLauncher: '', ...Object.fromEntries(SECRET_NAMES.map((k) => [k, null])), ...extra }, null, 2)
+    JSON.stringify({ comfyUrl, ...folders, outputFolder: '', comfyAutoStart: false, comfyLauncher: '', ...Object.fromEntries(SECRET_NAMES.map((k) => [k, null])), h3Terms: { version: H3_TERMS_VERSION, at: '2026-01-01T00:00:00.000Z' }, ...extra }, null, 2)
   )
 }
 

@@ -39,11 +39,29 @@
     "cloud:provider",
     "cloud:clearToken",
     "projects:list",
-    "jobs:watch"
+    "jobs:watch",
+    "files:open",
+    "terms:report",
+    "terms:openLicense",
+    "comfy:chooseInstallFolder",
+    "productions:shotList",
+    "settings:setOpenaiSecrets",
+    "chat:popout",
+    "chat:popped",
+    "chat:pin",
+    "chat:forwardAsk",
+    "chat:dock",
+    "chat:setContext",
+    "chat:openInApp",
+    "sounds:toEdit"
   ],
   "events": [
     "edits:changed",
-    "update:changed"
+    "update:changed",
+    "chat:popped",
+    "chat:docked",
+    "chat:ask",
+    "app:open"
   ],
   "reasons": {
     "app:info": "Electron glue: reads app.getVersion() and the running process, which only the packaged app has",
@@ -86,7 +104,24 @@
     "cloud:clearToken": "safeStorage: clears a sealed cloud token, reading the OS key store for which are saved",
     "projects:list": "Electron glue: main's projection of the Studio's projects for the window",
     "jobs:watch": "Electron glue: main's pending set and its pump, which send job events to the window",
+    "files:open": "shell open: shell.openPath opens a file the chat attached with the system viewer",
+    "terms:report": "shell open: shell.openExternal starts a mail to the abuse address",
+    "terms:openLicense": "shell open: copies the bundled MiniMax H3 licence and opens it with the system viewer",
+    "comfy:chooseInstallFolder": "native dialog: asks where to put ComfyUI with an open dialog that can make a folder",
+    "productions:shotList": "native dialog: asks where to save the shot list with a save dialog, then writes it there",
+    "settings:setOpenaiSecrets": "safeStorage: seals the prompt writer's key and headers with the OS key store before they are written",
+    "chat:popout": "window state: opens the chat in its own window",
+    "chat:popped": "window state: says whether the chat's own window is open",
+    "chat:pin": "window state: keeps the chat window above the others",
+    "chat:forwardAsk": "window state: hands an ask to the chat window and brings it to the front",
+    "chat:dock": "window state: closes the chat window and tells the main window to show the chat again",
+    "chat:setContext": "Electron glue: keeps what the window shows in main's chatContext for the next chat message",
+    "chat:openInApp": "window state: asks the main window to open a place in the app and brings it to the front",
+    "sounds:toEdit": "Electron glue: putOnEdit is main's closure that puts a file on the open edit",
     "edits:changed": "window state: main sends it to the window when an edit changes; only a window receives it",
-    "update:changed": "Electron glue: sent by the packaged app's updater to the window"
+    "update:changed": "Electron glue: sent by the packaged app's updater to the window",
+    "chat:docked": "window state: main sends it to the main window when the chat docks back; only a window receives it",
+    "chat:ask": "window state: main sends it to the chat window only, with an ask to answer",
+    "app:open": "window state: main sends it to the main window when the chat asks to open a place in the app"
   }
 }

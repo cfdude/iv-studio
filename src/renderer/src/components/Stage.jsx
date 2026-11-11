@@ -1,17 +1,12 @@
-import { useEffect, useRef } from 'react'
 import { ART } from './Hero'
 import Help from './Help'
+import MotionCanvas, { CREAM, PINK, RED, rand, rgba } from './MotionCanvas'
+import { HERO_EFFECTS } from './heroMotion'
 
-// The Workflows tools' start: a tall banner with the tool's own animation behind it (fire for Sizzle, a beat for
-// Reel, film for Sequences, blade cuts for Shinobi, a scanning swap for Replace), the title and the tool's main bar
-// centered on it. Canvas 2D, paused when the window is hidden or the banner is off screen, and one still frame for
-// reduced motion.
-
-const RED = [244, 72, 89]
-const PINK = [241, 157, 172]
-const CREAM = [244, 236, 220]
-const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`
-const rand = (a, b) => a + Math.random() * (b - a)
+// The Workflows tools' and audio pages' start: a tall banner with the page's own animation behind it (fire for
+// Sizzle, a beat for Reel, film for Sequences, blade cuts for Shinobi, a scanning swap for Replace, speech for Voices,
+// a waveform for Lines, rings for Music, ripples for Sounds), the title and the page's main bar centered on it. The
+// engine (pausing off screen, a still frame for Reduce motion) is MotionCanvas.jsx.
 
 // Each effect: make(w, h) -> state; draw(ctx, state, w, h, t) where t is seconds.
 const EFFECTS = {
@@ -116,6 +111,47 @@ const EFFECTS = {
       })
     }
   },
+  // a picture bursting: every second and a half, confetti and star sparks fly out from the middle and fall (no flash
+  // of light with them: nothing on a banner may flash, for people with photosensitive epilepsy)
+  burst: {
+    make: () => ({ bits: [], last: -1 }),
+    draw(ctx, s, w, h, t, dt) {
+      const cx = w / 2
+      const cy = h * 0.5
+      const n = Math.floor(t / 1.5)
+      if (n !== s.last) {
+        s.last = n
+        for (let i = 0; i < 70; i++) {
+          const a = rand(0, Math.PI * 2)
+          const v = rand(120, 520)
+          s.bits.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, rot: rand(0, 6), vr: rand(-8, 8), size: rand(4, 11), life: 0, max: rand(1.4, 2.6), star: Math.random() < 0.3, c: [RED, PINK, CREAM][Math.floor(rand(0, 3))] })
+        }
+      }
+      s.bits = s.bits.filter((b) => (b.life += dt) < b.max)
+      for (const b of s.bits) {
+        b.vy += 260 * dt
+        b.vx *= 1 - 0.8 * dt
+        b.x += b.vx * dt
+        b.y += b.vy * dt
+        b.rot += b.vr * dt
+        const a = 1 - b.life / b.max
+        ctx.save()
+        ctx.translate(b.x, b.y)
+        ctx.rotate(b.rot)
+        ctx.fillStyle = rgba(b.c, 0.85 * a)
+        if (b.star) {
+          ctx.beginPath()
+          for (let k = 0; k < 8; k++) {
+            const r = k % 2 ? b.size * 0.35 : b.size
+            ctx.lineTo(Math.cos((k * Math.PI) / 4) * r, Math.sin((k * Math.PI) / 4) * r)
+          }
+          ctx.closePath()
+          ctx.fill()
+        } else ctx.fillRect(-b.size / 2, -b.size / 4, b.size, b.size / 2)
+        ctx.restore()
+      }
+    }
+  },
   // two strips of film running past, frames lit in turn
   film: {
     make: () => ({}),
@@ -149,7 +185,7 @@ const EFFECTS = {
     make: (w, h) => ({ cuts: [], petals: Array.from({ length: 40 }, () => petal(w, h, true)), next: 0 }),
     draw(ctx, s, w, h, t, dt) {
       if (t > s.next) {
-        s.next = t + rand(0.5, 1.3)
+        s.next = t + rand(0.9, 1.8)
         const y = rand(h * 0.1, h * 0.9)
         const tilt = rand(-0.35, 0.35) * h
         s.cuts.push({ y0: y - tilt, y1: y + tilt, born: t })
@@ -161,7 +197,7 @@ const EFFECTS = {
         const x1 = w * k
         const g = ctx.createLinearGradient(0, 0, x1, 0)
         g.addColorStop(0, rgba(RED, 0))
-        g.addColorStop(1, rgba(CREAM, 0.9 * fade))
+        g.addColorStop(1, rgba(CREAM, 0.55 * fade))
         ctx.strokeStyle = g
         ctx.lineWidth = 2.5 * fade + 0.5
         ctx.beginPath()
@@ -218,6 +254,121 @@ const EFFECTS = {
       ctx.fillStyle = g
       ctx.fillRect(lx - 70, 0, 140, h)
     }
+  },
+  // Voices: soft bands of a speaking voice breathing out from the middle, swelling with each phrase and settling
+  speech: {
+    make: () => ({ bands: Array.from({ length: 6 }, (_, i) => ({ f: 0.9 + i * 0.37, seed: Math.random() * 10 })), phrase: 0, next: 0, from: 0, to: 1 }),
+    draw(ctx, s, w, h, t) {
+      if (t >= s.next) (s.from = s.to), (s.to = rand(0.35, 1)), (s.phrase = t), (s.next = t + rand(1.5, 2.5))
+      const k = Math.min(1, (t - s.phrase) / 0.6)
+      const swell = s.from + (s.to - s.from) * (k * k * (3 - 2 * k))
+      const cy = h * 0.52
+      const step = 6
+      s.bands.forEach((b, i) => {
+        const amp = h * (0.05 + 0.035 * i) * swell * (0.75 + 0.25 * Math.sin(t * 2.3 + b.seed))
+        const c = i % 3 === 2 ? CREAM : i % 2 ? PINK : RED
+        ctx.strokeStyle = rgba(c, 0.5 - i * 0.055)
+        ctx.lineWidth = 2.2 - i * 0.22
+        ctx.beginPath()
+        for (let x = 0; x <= w; x += step) {
+          const u = x / w - 0.5
+          const env = Math.exp(-u * u * 9) // strongest in the middle, fading to the edges
+          const y = cy + Math.sin(x * 0.018 * b.f + t * (2.4 + i * 0.5) + b.seed) * amp * env
+          x ? ctx.lineTo(x, y) : ctx.moveTo(x, y)
+        }
+        ctx.stroke()
+      })
+    }
+  },
+  // Lines: a spoken line's waveform scrolling right to left past a fixed playhead
+  scope: {
+    make: (w) => ({ cols: [], x: 0, word: 0, gap: 0, colW: 4, span: Math.ceil(w / 4) + 2 }),
+    draw(ctx, s, w, h, t, dt) {
+      // fill new columns at the right edge: words (loud bursts) with short pauses between them
+      s.x += dt * 120
+      while (s.x >= s.colW) {
+        s.x -= s.colW
+        if (s.gap > 0) s.gap--, s.cols.push(0.03)
+        else {
+          if (s.word <= 0) s.word = Math.round(rand(8, 26))
+          const p = 1 - Math.abs((s.word % 13) / 13 - 0.5) * 2
+          s.cols.push(Math.min(1, 0.25 + 0.6 * p * rand(0.6, 1.2)))
+          if (--s.word <= 0) s.gap = Math.round(rand(2, 9))
+        }
+        if (s.cols.length > s.span) s.cols.shift()
+      }
+      // a band along the bottom of the banner, under the title and the bar
+      const cy = h * 0.86
+      const head = w * 0.62
+      for (let i = 0; i < s.cols.length; i++) {
+        const x = w - (s.cols.length - i) * s.colW - s.x
+        const v = s.cols[i] * h * 0.1
+        const near = Math.max(0, 1 - Math.abs(x - head) / 60)
+        ctx.fillStyle = x < head ? rgba(RED, 0.55 + near * 0.3) : rgba(PINK, 0.22)
+        ctx.fillRect(x, cy - v, s.colW - 1.5, v * 2)
+      }
+      ctx.fillStyle = rgba(CREAM, 0.85)
+      ctx.fillRect(head - 1, h * 0.72, 2, h * 0.28)
+      ctx.beginPath()
+      ctx.arc(head, h * 0.72, 4, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  },
+  // Music: rings rolling out from the centre on the beat (120 BPM) over faint record grooves turning slowly
+  rings: {
+    make: () => ({ rings: [], last: -1 }),
+    draw(ctx, s, w, h, t, dt) {
+      const cx = w / 2
+      const cy = h * 0.52
+      const turn = t * 0.35
+      for (let r = 40; r < Math.max(w, h) * 0.75; r += 14) {
+        ctx.strokeStyle = rgba(PINK, 0.06 + 0.04 * Math.sin(r * 0.3))
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.arc(cx, cy, r, turn + r * 0.01, turn + r * 0.01 + Math.PI * 1.6)
+        ctx.stroke()
+      }
+      const beat = Math.floor(t * 2)
+      if (beat !== s.last) (s.last = beat), s.rings.push({ r: 34, a: beat % 4 === 0 ? 0.7 : 0.45 })
+      s.rings = s.rings.filter((r) => (r.a -= dt * 0.4) > 0)
+      for (const r of s.rings) {
+        r.r += dt * 200
+        ctx.strokeStyle = rgba(RED, r.a)
+        ctx.lineWidth = 2.5
+        ctx.beginPath()
+        ctx.arc(cx, cy, r.r, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+    }
+  },
+  // Sounds: an impact somewhere every second or so, three ripples spreading from it from a soft glow
+  ripple: {
+    make: () => ({ hits: [], next: 0 }),
+    draw(ctx, s, w, h, t) {
+      if (t >= s.next) (s.next = t + rand(0.8, 1.6)), s.hits.push({ x: rand(w * 0.08, w * 0.92), y: rand(h * 0.2, h * 0.85), born: t })
+      s.hits = s.hits.filter((p) => t - p.born < 3)
+      for (const p of s.hits) {
+        const age = t - p.born
+        if (age < 0.8) {
+          // a glow that rises and falls over most of a second, never a flash
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 60)
+          g.addColorStop(0, rgba(CREAM, 0.18 * Math.sin((age / 0.8) * Math.PI)))
+          g.addColorStop(1, rgba(RED, 0))
+          ctx.fillStyle = g
+          ctx.fillRect(p.x - 60, p.y - 60, 120, 120)
+        }
+        for (let k = 0; k < 3; k++) {
+          const a = age - k * 0.22
+          if (a <= 0) continue
+          const fade = Math.max(0, 1 - a / 2.6)
+          ctx.strokeStyle = rgba(k ? PINK : RED, 0.6 * fade)
+          ctx.lineWidth = 2 - k * 0.5
+          ctx.beginPath()
+          ctx.ellipse(p.x, p.y, a * 150, a * 150 * 0.55, 0, 0, Math.PI * 2)
+          ctx.stroke()
+        }
+      }
+    }
   }
 }
 function ember(w, h, anywhere) {
@@ -227,68 +378,15 @@ function petal(w, h, anywhere) {
   return { x: rand(0, w), y: anywhere ? rand(-h, h) : rand(-40, -10), r: rand(3, 7), vy: rand(18, 45), f: rand(0.6, 1.6), seed: rand(0, 10), a: rand(0, 6), spin: rand(-1.5, 1.5), c: Math.random() < 0.6 ? RED : PINK }
 }
 
-function Canvas({ effect }) {
-  const ref = useRef(null)
-  useEffect(() => {
-    const canvas = ref.current
-    const fx = EFFECTS[effect]
-    if (!canvas || !fx) return
-    const ctx = canvas.getContext('2d')
-    const still = document.documentElement.classList.contains('rm') || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    let w = 0
-    let h = 0
-    let state = null
-    let raf = 0
-    let visible = true
-    let last = performance.now()
-    let t = 0
-    const size = () => {
-      const r = canvas.getBoundingClientRect()
-      const dpr = Math.min(2, window.devicePixelRatio || 1)
-      w = r.width
-      h = r.height
-      canvas.width = Math.round(w * dpr)
-      canvas.height = Math.round(h * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      state = fx.make(w, h)
-    }
-    const frame = (now) => {
-      const dt = Math.min(0.05, (now - last) / 1000)
-      last = now
-      t += dt
-      ctx.clearRect(0, 0, w, h)
-      fx.draw(ctx, state, w, h, t, dt)
-      if (!still && visible && !document.hidden) raf = requestAnimationFrame(frame)
-    }
-    const resume = () => {
-      cancelAnimationFrame(raf)
-      last = performance.now()
-      raf = requestAnimationFrame(frame)
-    }
-    size()
-    if (still) {
-      // a settled still: run the effect a few seconds without drawing to screen in between
-      for (let i = 0; i < 120; i++) (t += 1 / 30), ctx.clearRect(0, 0, w, h), fx.draw(ctx, state, w, h, t, 1 / 30)
-    } else resume()
-    const ro = new ResizeObserver(() => (size(), still && fx.draw(ctx, state, w, h, t, 0)))
-    ro.observe(canvas)
-    const io = new IntersectionObserver(([e]) => {
-      visible = e.isIntersecting
-      if (visible && !still) resume()
-    })
-    io.observe(canvas)
-    const vis = () => !document.hidden && visible && !still && resume()
-    document.addEventListener('visibilitychange', vis)
-    return () => (cancelAnimationFrame(raf), ro.disconnect(), io.disconnect(), document.removeEventListener('visibilitychange', vis))
-  }, [effect])
-  return <canvas ref={ref} className="stage-canvas" aria-hidden="true" />
-}
+// The page motions (heroMotion.js) work here too, centred and bigger (big: livelier) on a tall banner.
+const tallSubject = (canvas) => ({ x: canvas.clientWidth / 2, y: canvas.clientHeight * 0.5, r: Math.min(canvas.clientWidth * 0.16, canvas.clientHeight * 0.4), big: true })
 
 export default function Stage({ effect, art, title, kicker, back, help, children }) {
+  const own = EFFECTS[effect]
   return (
-    <header className={`stage stage-${effect}`}>
+    <header className={`stage stage-${effect} stage-art-${art}`}>
       <div className="stage-art" aria-hidden="true" style={ART[art] ? { backgroundImage: `url("${ART[art]}")` } : undefined} />
-      <Canvas effect={effect} />
+      <MotionCanvas fx={own || HERO_EFFECTS[effect]} className="stage-canvas" anchorOf={own ? null : tallSubject} />
       <div className="stage-shade" aria-hidden="true" />
       {back && (
         <button className="link-btn mono hero-back" onClick={back.onClick}>

@@ -6,10 +6,12 @@ and the start command `bash -c "<unpack IV_BUNDLE into /opt/iv> && python3 /opt/
 Standard library only: it runs before anything is installed.
 
   1. gate.py starts at once on port 8189, so IV Studio can follow the boot through /iv/health
-  2. the first time (or after an update changes cloud.json): a Python, torch, ComfyUI at its pinned tag and
-     every pinned node pack, installed into /workspace/iv on the volume, so later pods skip it
-  3. every H3 model the volume lacks, downloaded into /workspace/models and checked against the SHA-256
-     Hugging Face publishes (the same list Modal's fetch_models uses)
+  2. the first time (or after an update changes cloud.json or the node packs): a Python, torch, ComfyUI at its
+     pinned tag and every cloud node pack (ivcloud.py), installed into /workspace/iv on the volume, so later
+     pods skip it
+  3. the models setup needs (H3's) that the volume lacks, downloaded into /workspace/models and checked against
+     their SHA-256 (the same list Modal's fetch_models uses). Other models come later, through the gate's
+     /iv/fetch, the first time a render needs them
   4. ComfyUI on 127.0.0.1:8188, reading models through extra_model_paths.yaml (/models -> /workspace/models),
      with its input and output folders on the volume
 The gate deletes the pod after IV_IDLE_SECONDS with nothing to do; the volume keeps everything.
@@ -21,9 +23,10 @@ import shutil
 import subprocess
 import sys
 import time
-import urllib.error
 import urllib.request
 from pathlib import Path
+
+import ivcloud
 
 HERE = Path(__file__).parent
 W = Path("/workspace/iv")
@@ -32,7 +35,8 @@ PY = VENV / "bin" / "python"
 COMFY = W / "comfy"
 MODELS = Path("/workspace/models")
 STATUS = Path("/tmp/iv-status.json")
-CLOUD = json.loads((HERE / "cloud.json").read_text())
+CLOUD, MANIFEST = ivcloud.load(HERE)
+PACKS = ivcloud.cloud_packs(MANIFEST)
 
 
 def status(stage, detail="", **extra):
@@ -52,7 +56,7 @@ def start_gate():
         import aiohttp  # noqa: F401
     except ImportError:
         sh(f"{sys.executable} -m pip install -q --break-system-packages aiohttp")
-    env = {**os.environ, "IV_PLATFORM": "runpod", "IV_STATUS_FILE": str(STATUS), "IV_MODELS_DIR": str(MODELS)}
+    env = {**os.environ, "IV_PLATFORM": "runpod", "IV_STATUS_FILE": str(STATUS), "IV_MODELS_DIR": str(MODELS), "PYTHONPATH": str(HERE)}
     return subprocess.Popen([sys.executable, str(HERE / "gate.py")], env=env)
 
 
@@ -64,8 +68,8 @@ def system_packages():
 
 
 def stamp():
-    """What the install on the volume must match: this version's cloud.json."""
-    return hashlib.sha256((HERE / "cloud.json").read_bytes()).hexdigest()[:16]
+    """What the install on the volume must match: this version's cloud.json and cloud node packs."""
+    return hashlib.sha256((HERE / "cloud.json").read_bytes() + json.dumps(PACKS, sort_keys=True).encode()).hexdigest()[:16]
 
 
 def wait_for_other_install():
@@ -99,81 +103,44 @@ def install():
         shutil.rmtree(VENV, ignore_errors=True)
         shutil.rmtree(COMFY, ignore_errors=True)
         sh(f"uv venv {VENV} --python 3.12 --seed")
-        torch = CLOUD.get("torch", {"index": "https://download.pytorch.org/whl/cu128", "packages": ["torch", "torchvision", "torchaudio"]})
+        torch = CLOUD["torch"]
         sh(f"uv pip install --python {PY} {' '.join(torch['packages'])} --index-url {torch['index']}")
-        comfy = CLOUD.get("comfyui", {"repo": "https://github.com/Comfy-Org/ComfyUI", "tag": "v0.42.5"})
+        comfy = CLOUD["comfyui"]
         status("installing", f"ComfyUI {comfy['tag']}")
         sh(f"git clone --depth 1 --branch {comfy['tag']} {comfy['repo']} {COMFY}")
-        sh(f"uv pip install --python {PY} -r {COMFY}/requirements.txt")
-        packs = CLOUD.get("packs", [])
-        for i, p in enumerate(packs, 1):
-            status("installing", f"node pack {i} of {len(packs)}: {p['dir']}")
-            dest = COMFY / "custom_nodes" / p["dir"]
-            if "git" in p:
-                sh(f"git clone {p['git']} {dest} && git -C {dest} checkout -q {p['commit']}")
-            else:
-                # registry archives are usually zips whatever their extension says; try zip, then tar
-                sh(f"mkdir -p {dest} && curl -fsSL {p['registry']} -o /tmp/pack && (unzip -q -o /tmp/pack -d {dest} || tar -xzf /tmp/pack -C {dest}) && rm /tmp/pack")
-            if (dest / "requirements.txt").exists():
-                sh(f"uv pip install --python {PY} -r {dest}/requirements.txt")
+        sh(f"grep -viE '^[[:space:]]*(torch|torchvision|torchaudio)([^A-Za-z0-9_.-]|$)' {COMFY}/requirements.txt > /tmp/comfy-req.txt && uv pip install --python {PY} -r /tmp/comfy-req.txt")
+        cmds = ivcloud.pack_commands(PACKS, str(COMFY / "custom_nodes"), f"uv pip install --python {PY}")
+        downloaded = [p for p in PACKS if not p.get("bundled")]
+        for i, p in enumerate(downloaded):
+            status("installing", f"node pack {i + 1} of {len(downloaded)}: {p['dir']}")
+            sh(cmds[2 * i])
+            sh(cmds[2 * i + 1])
         (W / "stamp").write_text(stamp())
     finally:
         lock.unlink(missing_ok=True)
 
 
-def hf_sha256(url):
-    """SHA-256 Hugging Face publishes for an LFS file (X-Linked-ETag), or None."""
-
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *args, **kwargs):
-            return None
-
-    try:
-        r = urllib.request.build_opener(NoRedirect).open(urllib.request.Request(url, method="HEAD"), timeout=30)
-        headers = r.headers
-    except urllib.error.HTTPError as e:
-        headers = e.headers
-    etag = (headers.get("X-Linked-ETag") or "").strip('"')
-    return etag if len(etag) == 64 else None
-
-
 def fetch_models():
-    manifest = json.loads((HERE / "models.json").read_text())
-    # optional models (character design stills) run on the local PC only, as on Modal
-    models = [m for m in manifest["models"] if not m.get("optional")] + CLOUD.get("extraModels", [])
-    missing = [m for m in models if not (MODELS / m["folder"] / m["match"]).exists()]
-    for i, m in enumerate(missing, 1):
-        dest = MODELS / m["folder"] / m["match"]
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        part = dest.with_name(dest.name + ".part")
-        want = hf_sha256(m["url"]) if "huggingface.co" in m["url"] else None
-        h = hashlib.sha256()
-        try:
-            r = urllib.request.urlopen(m["url"], timeout=60)
-        except urllib.error.HTTPError as e:
-            raise RuntimeError(f"{m['label']}: the host answered {e.code} for {m['url']}") from None
-        with r, open(part, "wb") as f:
-            total = int(r.headers.get("Content-Length") or 0)
-            got, last = 0, 0.0
-            while chunk := r.read(1 << 22):
-                f.write(chunk)
-                h.update(chunk)
-                got += len(chunk)
-                if time.time() - last > 5:
-                    pct = int(got * 100 / total) if total else 0
-                    status("models", f"{m['label']} ({i} of {len(missing)}), {pct}%", model=m["id"], percent=pct, done=len(models) - len(missing) + i - 1, total=len(models))
-                    last = time.time()
-        if want and h.hexdigest() != want:
-            part.unlink()
-            raise RuntimeError(f"{m['label']} did not match its published checksum; it was removed.")
-        part.replace(dest)
-        print(f"[iv] model ready: {m['label']}{' (checksum verified)' if want else ''}", flush=True)
+    """The models setup needs that the volume lacks (ivcloud.setup_models), each checked against its SHA-256."""
+    models = ivcloud.setup_models(CLOUD, MANIFEST)
+    have = len(ivcloud.present(models, MODELS))
+    token = os.environ.get("HF_TOKEN") or None
+
+    def say(e):
+        if e["state"] == "downloading":
+            status("models", f"{e['label']} ({e['index']} of {e['count']}), {e['percent']}%", model=e["id"], percent=e["percent"], done=have + e["index"] - 1, total=len(models))
+        elif e["state"] == "done":
+            print(f"[iv] model ready: {e['label']} (checksum verified)", flush=True)
+
+    ivcloud.fetch([m for m in models if not ivcloud.target(MODELS, m).exists()], MODELS, token=token, progress=say)
 
 
 def start_comfy():
-    nodes = COMFY / "custom_nodes" / "ComfyUI-IV-Studio"  # this version's own small node pack, every boot
-    shutil.rmtree(nodes, ignore_errors=True)
-    shutil.copytree(HERE / "ComfyUI-IV-Studio", nodes)
+    for p in PACKS:  # the packs that ship inside IV Studio (its own, Viggle Remake's), this version's, every boot
+        if p.get("bundled") and (HERE / p["dir"]).exists():
+            nodes = COMFY / "custom_nodes" / p["dir"]
+            shutil.rmtree(nodes, ignore_errors=True)
+            shutil.copytree(HERE / p["dir"], nodes)
     for d in ("input", "output"):
         (W / "data" / d).mkdir(parents=True, exist_ok=True)
     if not Path("/models").exists():

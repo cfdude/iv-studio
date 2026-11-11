@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { media } from '../media'
 import { Progress } from './Shot'
+import Failure from './Failure'
 import Hero from './Hero'
 import Stage from './Stage'
 import { ToolShelf, ShelfTile, Step, Choices, WorkflowNeeds } from './FlowKit'
@@ -255,8 +256,8 @@ function ShotRow({ seqId, i, shot, state, live, onStart, notify, flush }) {
       </div>
       <Progress job={pj} />
       <Progress job={fj} />
-      {pj?.status === 'error' && <p className="notice">{pj.error}</p>}
-      {fj?.status === 'error' && <p className="notice">{fj.error}</p>}
+      {pj?.status === 'error' && <Failure job={pj} notify={notify} />}
+      {fj?.status === 'error' && <Failure job={fj} notify={notify} />}
       {previews.length > 0 && !state?.fresh && (
         <>
           <div className={`candidates n${previews.length}`}>
@@ -407,6 +408,9 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
 
   if (!seq || !view) return null
   const char = characters.find((c) => c.id === seq.character)
+  // a sequence renders its character with a LoRA (sequence.js refuses RefMod-only characters), so only those are offered
+  const withLora = characters.filter((c) => c.lora)
+  const refmodOnly = characters.filter((c) => !c.lora && c.refmod)
   const total = shots.length * seq.shotSeconds
   const takeRunning = view.versions.some((v) => v.kind === 'take' && v.job && !DONE.includes((live[v.job.id] || v.job).status))
 
@@ -464,8 +468,14 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
       <Step n={3} title="Look and size" sub="Who plays it, its LoRAs, the frame, the size and each shot's length.">
         <div className="row">
           <span className="row-label">Character</span>
-          <Seg value={seq.character} options={[...characters.map((c) => [c.id, c.name.split(' ')[0]]), ['none', 'None']]} onChange={(character) => edit({ character })} />
+          <Seg value={seq.character} options={[...withLora.map((c) => [c.id, c.name.split(' ')[0]]), ['none', 'None']]} onChange={(character) => edit({ character })} />
         </div>
+        {refmodOnly.length > 0 && (
+          <p className="small dim seq-refmod-note">
+            {refmodOnly.map((c) => c.name.split(' ')[0]).join(', ')} {refmodOnly.length === 1 ? 'is a RefMod character' : 'are RefMod characters'}: a sequence needs a character with a LoRA, so {refmodOnly.length === 1 ? 'that one plays' : 'they play'} in Create instead.
+            {char && !char.lora && ' This sequence still names one; pick another or None.'}
+          </p>
+        )}
         <div className="row seq-loras">
           <span className="row-label">LoRAs</span>
           <div className="lora-tray">
@@ -578,7 +588,7 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
                 )}
               </div>
               <Progress job={j} />
-              {j?.status === 'error' && <p className="notice">{j.error}</p>}
+              {j?.status === 'error' && <Failure job={j} notify={notify} />}
               {v.prompt && <p className="mono dim small">{v.prompt}</p>}
               {panel?.versionId === v.id && panel.kind === 'retake' ? (
                 <RetakePanel version={ver} onStart={onStart} notify={notify} />
@@ -612,7 +622,7 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
                   )}
                 </div>
                 <Progress job={j} />
-                {j?.status === 'error' && <p className="notice">{j.error}</p>}
+                {j?.status === 'error' && <Failure job={j} notify={notify} />}
                 {r.file && <video className="final-video" src={media(r.file.url)} controls preload="metadata" />}
               </div>
             )

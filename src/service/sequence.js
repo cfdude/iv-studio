@@ -6,6 +6,7 @@
 //   renderout - optional colour smoothing across the joins (H3 Chain Normalize), then the DLSS pass
 // Shot by shot rendering reuses the IV Studio workflow's own Continue mode (see studio.js).
 import { resolveFrames, resolveSize } from './plan.js'
+import { sections } from './lint.js'
 
 export const SHOT_SECONDS = [10, 15] // H3 Multishot's verified windows (243 and 362 frames); 5 s shots clip their joins
 export const RETAKE_MODES = {
@@ -44,6 +45,21 @@ export function cleanSequenceLoras(loras) {
 export const SAVES = { master: 'save', final: 'final' }
 
 const fill = (text, character) => (character ? text.replaceAll('{char}', character.trigger) : text)
+
+// One shot of a one-take script. With a voice attached, H3 Multishot writes the reference (ref2va) sections
+// itself (subject_definitions, summary, retention_analysis, non_diegetic_music: N/A) and puts the shot's text
+// in detailed_description, so the shot goes as plain text: the description with its sound folded in. Sent as
+// written, IV Studio's own section names ended up inside detailed_description (GitHub #14). With no
+// reference attached there is nothing for those sections to define, and the written prompt goes as it is.
+export function takeShot(prompt, { wrapped = false } = {}) {
+  const text = String(prompt || '').trim()
+  if (!wrapped) return text
+  const s = sections(text)
+  const body = s.integrated_multimodal_description ?? s.detailed_description ?? s._head
+  if (!body) return text
+  const sound = s.overall_soundscape && !/^n\/?a\.?$/i.test(s.overall_soundscape) ? `\n\nThe sound: ${s.overall_soundscape}` : ''
+  return `${body}${sound}`
+}
 
 // Loaders shared by every sequence graph: ref2va (it carries identity and voice across a chain),
 // the turbo LoRA, the character LoRA, then the sequence's extra LoRAs.
@@ -97,7 +113,7 @@ export function takeGraph({ template, seq, character, name, voiceRef, unet }) {
     clip: ['clip', 0],
     video_vae: ['vvae', 0],
     audio_vae: ['avae', 0],
-    script: seq.shots.map((s) => fill(s.prompt.trim(), character)).join('\n---\n'),
+    script: seq.shots.map((s) => fill(takeShot(s.prompt, { wrapped: !!voiceRef }), character)).join('\n---\n'),
     shot_count: 0,
     width,
     height,

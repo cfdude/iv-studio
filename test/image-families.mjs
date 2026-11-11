@@ -2,6 +2,7 @@
 // the graphs they build.
 //   node test/image-families.mjs
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import { familyOfModel, imageGraph, IMAGE_FAMILIES } from '../src/service/images.js'
 
 let n = 0
@@ -46,6 +47,20 @@ ok('H3 still: the shot’s text mode cut short, turbo LoRA first, a middle frame
   assert.equal(pick.batch_index, Math.floor(h3.frames / 2))
   assert.equal(Object.values(g).find((x) => x.class_type === 'CLIPLoader').inputs.type, 'minimax')
   assert.equal(Object.values(g).find((x) => x.class_type === 'BasicScheduler').inputs.scheduler, 'beta')
+})
+
+// GitHub #20: a picture model's files that Setup downloads must be ones the picture code takes, or Setup says
+// "installed" and Create → Image and Projects say "missing" (Z-Image's text encoder was the fp8 file)
+ok('every picture-model file Setup downloads is one its family accepts', () => {
+  const manifest = JSON.parse(fs.readFileSync(new URL('../resources/models.json', import.meta.url), 'utf8'))
+  const fileOf = (id) => {
+    const m = manifest.models.find((x) => x.id === id)
+    return m && (m.filename || m.url.split('/').pop().split('?')[0])
+  }
+  const z = IMAGE_FAMILIES.find((f) => f.id === 'zimage')
+  assert.ok(z.te.files.includes(fileOf('zimage_te')), `zimage text encoder ${fileOf('zimage_te')} not in ${z.te.files}`)
+  assert.ok(z.vae.includes(fileOf('zimage_vae')), `zimage vae ${fileOf('zimage_vae')}`)
+  assert.ok(z.unet.test(fileOf('zimage')), `zimage model ${fileOf('zimage')}`)
 })
 
 console.log(`\n${n} checks passed`)

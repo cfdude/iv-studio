@@ -1,7 +1,7 @@
 // The prompt checker (src/service/lint.js): each rule on a prompt that breaks it, and a clean prompt that passes.
 //   node test/lint.mjs
 import assert from 'node:assert/strict'
-import { blocking, firstLastLine, FIRST_FRAME_LINE, lintPrompt, sections } from '../src/service/lint.js'
+import { blocking, firstLastLine, FIRST_FRAME_LINE, lintPrompt, negativePhrases, sections } from '../src/service/lint.js'
 import { backdropInShots, keepIdeaLine, keepIdeaMedium } from '../src/service/prompter.js'
 
 let n = 0
@@ -127,5 +127,20 @@ ok('references: shots set in the picture’s own backdrop are sent back, unless 
   assert.deepEqual(backdropInShots(draft('The queen steps out of a taxi into the rain.'), 'The queen walks through a rainy neon-lit city street at night.'), [])
   assert.deepEqual(backdropInShots(draft('The queen dances on the top of a pyramid above the desert.'), 'The queen dances on top of a pyramid.'), [])
   assert.deepEqual(backdropInShots({ subjects: [{ definition: 'the throne room in <Picture 2>', backdrop: '' }], shots: [{ description: 'A throne room.' }] }, 'She sits on the throne.'), [])
+})
+ok('"no X": negatives are listed with positive wording; house sentences and spoken lines are left alone', () => {
+  const p = CLEAN.replace('at a bus stop at night.', 'at a bus stop at night. No photographs appear anywhere, and {char} never looks at the camera. A street without people.')
+  const f = lintPrompt(p, { mode: 'text', seconds: 8, character: tess }).find((x) => x.code === 'negative-wording')
+  assert.ok(f, 'found')
+  assert.equal(f.level, 'warning')
+  assert.match(f.message, /"No photographs appear anywhere" \(try: bare, plain walls\)/)
+  assert.match(f.message, /"never looks at the camera" \(try: eyes on something/)
+  assert.match(f.message, /"without people" \(try: an empty street/)
+  assert.equal(f.fix, undefined, 'no automatic rewrite')
+  const house = CLEAN.replace('at a bus stop at night.', 'at a bus stop at night. There is no writing anywhere in the picture. One continuous shot, no cuts. No one speaks. Nobody speaks in this shot: no dialogue, only the sounds of the place. This carries straight on from the previous shot as one unbroken take: no cut, the same camera.')
+  assert.deepEqual(negativePhrases(house), [], JSON.stringify(negativePhrases(house)))
+  assert.deepEqual(negativePhrases('[Shot 1] She says: <d>[English] No, I never said that.</d> She no longer waits.'), [], 'spoken words and grammar are not things to show')
+  assert.deepEqual(negativePhrases('retention_analysis: identity - not changed\n\nnon_diegetic_music: No music'), [], 'meta sections are skipped')
+  assert.deepEqual(negativePhrases("[Shot 1] She doesn't smile.").map((x) => x.instead), ['a calm, neutral expression'])
 })
 console.log(`${n} checks passed`)

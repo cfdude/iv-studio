@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { finishFor, previewFor, SPEED_IDS, SPEEDS } from '../../../service/speed'
 import { createPortal } from 'react-dom'
 import Hero from './Hero'
+import GetComfy from './GetComfy'
 import { StepHead } from './CreateKit'
 import { startTour } from '../tours'
+import { setSimpleWords, simpleWords } from '../words'
 import { highContrast, setContrast } from '../a11y'
+import { UsageAsk } from './Privacy'
+import { openStarter } from './Starters'
+import { AgentRows, useAgentSetup } from './AgentSetup'
+import { openH3Terms, useH3Terms } from './H3Terms'
 
 // The welcome wizard (Check my PC): opens on first launch, and again from Settings. It reads this computer
 // (hardware:scan; nothing leaves the PC), says plainly what it can do, suggests a way of working (this PC, the
@@ -56,9 +63,19 @@ export default function Welcome({ onClose, go, notify, first }) {
   const [packs, setPacks] = useState(true)
   const [started, setStarted] = useState(null) // what Download started
   const [comfyStarting, setComfyStarting] = useState(false)
-  // Higher contrast text (a11y.js), offered on the first page; saved with the rest
+  // how much they know about AI video and pictures, and Simple words (words.js), which follows the answer
+  const [level, setLevel] = useState(null)
+  const [simple, setSimple] = useState(simpleWords)
+  const words = (on) => (setSimple(on), setSimpleWords(on))
   const [hc, setHc] = useState(highContrast)
   const contrast = (on) => (setHc(on), setContrast(on))
+  const knows = (id) => (setLevel(id), words(id === 'new'))
+  // anonymous usage counting (Privacy.jsx): off unless they say yes here; an earlier yes stays yes
+  const [count, setCount] = useState(false)
+  const countWas = useRef(null)
+  useEffect(() => {
+    window.ivstudio.usage.status().then((s) => ((countWas.current = s.choice), setCount(s.choice === 'on')), () => {})
+  }, [])
   const body = useRef(null)
   const at = STEPS.findIndex(([id]) => id === step)
   const stepRef = useRef(step)
@@ -98,15 +115,20 @@ export default function Welcome({ onClose, go, notify, first }) {
   }, [])
 
   const rec = data?.rec
-  const installs = data?.scan?.installs || {}
+  // Claude Code and Codex: what the scan found, plus anything installed from the "Do you use..." card since
+  const agents = useAgentSetup()
+  const scanInstalls = data?.scan?.installs || {}
+  const installs = { ...scanInstalls, claude: scanInstalls.claude || !!agents?.claude?.installed, codex: scanInstalls.codex || !!agents?.codex?.installed }
   const scanned = data && shown >= rows.length
 
   async function finish(target, cloudWizard = false) {
     try {
-      await window.ivstudio.hardware.apply({ shotPrefs: prefs, promptEngine: writer !== data?.promptEngine ? writer : undefined, hardware: summaryOf(data), highContrast: hc })
+      await window.ivstudio.hardware.apply({ shotPrefs: prefs, promptEngine: writer !== data?.promptEngine ? writer : undefined, hardware: summaryOf(data), plainWords: simple, highContrast: hc, ...(level ? { aiLevel: level } : {}) })
     } catch (e) {
       notify?.(e.message)
     }
+    // the answer to "Help improve IV Studio?" is saved here, once they've seen the question
+    if (countWas.current === null || (countWas.current === 'on') !== count) await window.ivstudio.usage.set(count).catch(() => {})
     window.dispatchEvent(new CustomEvent('iv:settings'))
     onClose()
     if (target === 'tour') setTimeout(() => startTour('full'), 400)
@@ -116,7 +138,7 @@ export default function Welcome({ onClose, go, notify, first }) {
   async function skip() {
     if (stepRef.current === 'done') return finish()
     try {
-      await window.ivstudio.hardware.apply({ highContrast: hc })
+      await window.ivstudio.hardware.apply({ plainWords: simple, highContrast: hc, ...(level ? { aiLevel: level } : {}) })
     } catch {}
     window.dispatchEvent(new CustomEvent('iv:settings'))
     onClose()
@@ -180,12 +202,12 @@ export default function Welcome({ onClose, go, notify, first }) {
           </ol>
 
           <div className="welcome-body" key={`b-${step}`}>
-            {step === 'hello' && <Hello hc={hc} contrast={contrast} />}
+            {step === 'hello' && <Hello level={level} knows={knows} simple={simple} words={words} hc={hc} contrast={contrast} />}
             {step === 'scan' && <Scan rows={rows} shown={shown} error={error} retry={scan} />}
             {step === 'pc' && rec && <YourPc rec={rec} scan={data.scan} />}
-            {step === 'way' && rec && <Way rec={rec} way={way} setWay={setWay} prefs={prefs} setPrefs={setPrefs} writer={writer} setWriter={setWriter} installs={installs} scan={data.scan} notify={notify} />}
+            {step === 'way' && rec && <Way rec={rec} way={way} setWay={setWay} prefs={prefs} setPrefs={setPrefs} writer={writer} setWriter={setWriter} installs={installs} agents={agents} scan={data.scan} notify={notify} />}
             {step === 'get' && rec && <Get rec={rec} way={way} pick={pick} setPick={setPick} packs={packs} setPacks={setPacks} installs={installs} scan={data.scan} started={started} download={download} startComfy={startComfy} comfyStarting={comfyStarting} rescan={scan} notify={notify} />}
-            {step === 'done' && rec && <Done rec={rec} way={way} prefs={prefs} writer={writer} started={started} onTour={() => finish('tour')} />}
+            {step === 'done' && rec && <Done rec={rec} way={way} prefs={prefs} writer={writer} started={started} onTour={() => finish('tour')} count={count} setCount={setCount} />}
           </div>
         </div>
 
@@ -217,7 +239,8 @@ export default function Welcome({ onClose, go, notify, first }) {
                     Set up the cloud{way === 'cloud' ? ' →' : ''}
                   </button>
                 )}
-                <button className={`btn ${way === 'cloud' ? '' : 'btn-primary'}`} onClick={() => finish('create')}>
+                {/* Create opens with the first starter filled in (starters.js), ready to hunt */}
+                <button className={`btn ${way === 'cloud' ? '' : 'btn-primary'}`} onClick={() => finish('create').then(() => setTimeout(() => openStarter('first'), 600))}>
                   Make your first shot{way === 'cloud' ? '' : ' →'}
                 </button>
               </>
@@ -230,7 +253,13 @@ export default function Welcome({ onClose, go, notify, first }) {
   )
 }
 
-function Hello({ hc, contrast }) {
+const LEVELS = [
+  ['new', 'New to it', 'I haven’t made AI video or pictures before.'],
+  ['some', 'Tried a little', 'I’ve used an app or two.'],
+  ['lots', 'Know it well', 'LoRAs, seeds and samplers are old friends.']
+]
+
+function Hello({ level, knows, simple, words, hc, contrast }) {
   const what = [
     ['Shots', 'Write an idea, hunt a few takes, pick one and finish it at full size.'],
     ['Characters and voices', 'Your own cast, with faces, voices and trained looks.'],
@@ -251,16 +280,37 @@ function Hello({ hc, contrast }) {
       <p className="wel-lede">
         First, a quick look at this computer: its graphics card, memory and free space. IV Studio reads them here and keeps them here, then suggests how to work and what to download. It takes a few seconds.
       </p>
-      <label className="switch-toggle wel-a11y">
-        <input type="checkbox" checked={hc} onChange={(e) => contrast(e.target.checked)} />
-        <span className="switch-track">
-          <span className="switch-knob" />
-        </span>
-        <span>
-          <strong>Higher contrast text</strong>
-          <span className="dim small">Grey text turns close to white, so it’s easier to read. Settings → Accessibility also has bigger text, less motion and clearer focus outlines.</span>
-        </span>
-      </label>
+      <div className="wel-know">
+        <h3>How much do you know about making AI video and pictures?</h3>
+        <div className="wel-ways wel-levels">
+          {LEVELS.map(([id, title, desc]) => (
+            <button key={id} className={`wel-way ${level === id ? 'on' : ''}`} onClick={() => knows(id)} aria-pressed={level === id}>
+              <h3>{title}</h3>
+              <p className="dim small words-exact">{desc}</p>
+            </button>
+          ))}
+        </div>
+        <label className="switch-toggle wel-simple">
+          <input type="checkbox" checked={simple} onChange={(e) => words(e.target.checked)} />
+          <span className="switch-track">
+            <span className="switch-knob" />
+          </span>
+          <span>
+            <strong>Simple words</strong>
+            <span className="dim small words-exact">The app says “trained look” for LoRA, “variation number” for seed, “quick sharpen” for DLSS and so on. Everything else stays the same. Change it any time in Settings.</span>
+          </span>
+        </label>
+        <label className="switch-toggle wel-simple">
+          <input type="checkbox" checked={hc} onChange={(e) => contrast(e.target.checked)} />
+          <span className="switch-track">
+            <span className="switch-knob" />
+          </span>
+          <span>
+            <strong>Higher contrast text</strong>
+            <span className="dim small">Grey text turns close to white, so it’s easier to read. Settings → Accessibility also has bigger text, less motion and clearer focus outlines.</span>
+          </span>
+        </label>
+      </div>
     </section>
   )
 }
@@ -377,7 +427,13 @@ function Seg({ value, options, onChange, label }) {
   )
 }
 
-function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, scan }) {
+// a speed preset's values in the shape Check my PC saves (shotPrefs)
+function prefsForSpeed(id) {
+  const p = previewFor(id)
+  return { speed: id, previewMp: p.megapixels, quality: p.steps === 4 ? 'draft' : 'standard', finalMp: finishFor(id).megapixels }
+}
+
+function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, agents, scan, notify }) {
   const set = (p) => setPrefs((x) => ({ ...x, ...p }))
   const [videos, setVideos] = useState(null)
   useEffect(() => {
@@ -408,12 +464,16 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, s
           ))}
         </div>
       </section>
+      <section className="block create-step wel-agents">
+        <StepHead title="Do you use Claude Code or Codex?" sub="If you have either, IV Studio can use it on your own plan to write your prompts and to make a whole idea for you from the Dashboard." />
+        <AgentRows setup={agents} notify={notify} />
+        <p className="dim small wel-agents-skip">Don’t use either? That’s fine: skip this. The Local writer works without them, and you can add them any time in Settings → Agents.</p>
+      </section>
       <section className="block create-step">
         <StepHead title="Defaults for your shots" sub="Set to suit this computer. Every shot can still change them." />
         <div className="wel-segs">
-          <Seg label="Previews" value={prefs.previewMp} onChange={(v) => set({ previewMp: v })} options={[[0.4, '0.4 MP'], [0.6, '0.6 MP'], [1, '1 MP']]} />
-          <Seg label="Preview quality" value={prefs.quality} onChange={(v) => set({ quality: v })} options={[['draft', 'Draft · quicker'], ['standard', 'Standard']]} />
-          <Seg label="Finals" value={prefs.finalMp} onChange={(v) => set({ finalMp: v })} options={[[1, '1 MP'], [1.5, '1.5 MP'], [2, '2 MP']]} />
+          <Seg label="Speed" value={prefs.speed} onChange={(v) => set(prefsForSpeed(v))} options={SPEED_IDS.map((id) => [id, `${SPEEDS[id].label}${rec.prefs.speed === id ? ' · suits this computer' : ''}`])} />
+          {SPEEDS[prefs.speed] && <p className="dim small wel-speed">{SPEEDS[prefs.speed].say} {SPEEDS[prefs.speed].trade}</p>}
           <Seg label="Enhancer" value={prefs.enhancer} onChange={(v) => set(v === 'upscale' ? { enhancer: v, upscale2x: true, fps: 48 } : { enhancer: v })} options={[['dlss', 'DLSS 5', !dlssOk && 'Needs an NVIDIA RTX card on Windows'], ['upscale', '2× upscale'], ['seedvr2', 'SeedVR2', !nvidiaOk && "Needs an NVIDIA card. It isn't available on an Apple GPU yet."]]} />
           <Seg
             label="Prompt writer"
@@ -446,7 +506,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, s
 }
 
 // No ComfyUI answering at the saved address: one found on another port ("Use it"), its address typed in, a check
-// again for a ComfyUI still loading, or Start ComfyUI.
+// again for a ComfyUI still loading, Start ComfyUI, or (none on this PC) Get ComfyUI for me.
 function FindComfy({ installs, startComfy, comfyStarting, rescan, notify }) {
   const [addr, setAddr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -502,6 +562,7 @@ function FindComfy({ installs, startComfy, comfyStarting, rescan, notify }) {
           </button>
         </div>
       </div>
+      {!installs.comfyFound && !at && <GetComfy notify={notify} recheck={rescan} />}
     </div>
   )
 }
@@ -524,7 +585,7 @@ function Get({ rec, way, pick, setPick, packs, setPacks, installs, scan, started
   return (
     <section className="block create-step">
       <StepHead n={5} title="What to download" sub="The ones for how you’ll work are ticked. Each is checked against its published fingerprint." />
-      <p className="wel-lede">IV Studio uses the ComfyUI already on this computer, wherever it is (the Desktop app, or a portable ComfyUI on another drive). These download into that ComfyUI’s models folder, so they go on its drive.</p>
+      <p className="wel-lede">IV Studio uses the ComfyUI already on this computer, wherever it is (the Desktop app, or a portable ComfyUI on another drive), or gets one for you. These download into that ComfyUI’s models folder, so they go on its drive.</p>
       {!installs.modelsKnown && <FindComfy installs={installs} startComfy={startComfy} comfyStarting={comfyStarting} rescan={rescan} notify={notify} />}
       {allHere && (
         <div className="wel-allhere">
@@ -568,12 +629,13 @@ function Get({ rec, way, pick, setPick, packs, setPacks, installs, scan, started
   )
 }
 
-function Done({ rec, way, prefs, writer, started, onTour }) {
+function Done({ rec, way, prefs, writer, started, onTour, count, setCount }) {
   const w = WAYS.find(([id]) => id === way)
   const lines = [
     ['Renders', w ? w[2] : way],
+    ['Speed', SPEEDS[prefs.speed]?.label || 'Quality'],
     ['Previews', `${prefs.previewMp} MP · ${prefs.quality === 'draft' ? 'Draft' : 'Standard'}`],
-    ['Finals', `${prefs.finalMp} MP with ${{ dlss: 'DLSS 5', upscale: 'the 2× upscale', seedvr2: 'SeedVR2' }[prefs.enhancer] || 'SeedVR2'}`],
+    ['Finals', `${prefs.finalMp} MP${SPEEDS[prefs.speed]?.upscale2x ? ' + 2x' : ''} with ${{ dlss: 'DLSS 5', upscale: 'the 2× upscale', seedvr2: 'SeedVR2' }[prefs.enhancer] || 'SeedVR2'}`],
     ['Prompt writer', WRITERS[writer]],
     ['Downloads', started ? `${gbs(started.bytes)} on the way` : way === 'cloud' ? 'In the cloud' : rec.downloads.some((g) => g.recommended) ? 'Not started' : 'All here']
   ]
@@ -588,7 +650,7 @@ function Done({ rec, way, prefs, writer, started, onTour }) {
           </div>
         ))}
       </dl>
-      <p className="wel-lede">{way === 'local' ? 'Make your first shot: write an idea, hunt a few takes and finish the one you like.' : 'Set up the cloud first (one sign-in), then make your first shot.'}</p>
+      <p className="wel-lede">{way === 'local' ? 'Make your first shot: it opens with an example already written, so you can press Hunt, pick the take you like and finish it. Or write your own.' : 'Set up the cloud first (one sign-in), then make your first shot.'}</p>
       {/* the full tour (tours.js full): page by page, and how to get each page's own tour */}
       <div className="wel-tour">
         <span className="wel-tour-q" aria-hidden="true">?</span>
@@ -600,7 +662,33 @@ function Done({ rec, way, prefs, writer, started, onTour }) {
           Take the tour →
         </button>
       </div>
+      <WelcomeTerms />
+      <UsageAsk on={count} onChange={setCount} />
     </section>
+  )
+}
+
+// MiniMax H3's terms (terms.js): read and agreed here, or at the first H3 render
+function WelcomeTerms() {
+  const terms = useH3Terms()
+  if (!terms) return null
+  return (
+    <div className="wel-tour wel-terms">
+      <span className="wel-tour-q" aria-hidden="true">
+        {terms.accepted ? '✓' : '§'}
+      </span>
+      <div>
+        <strong>The rules for MiniMax H3</strong>
+        <p className="small dim">
+          {terms.accepted
+            ? 'You’ve agreed to IV Studio’s terms for H3. They’re in Settings › About whenever you want them.'
+            : 'Shots are made with MiniMax H3. Before the first one, read its rules (real people only with consent, nothing involving minors, say it’s AI when you post it) and agree once.'}
+        </p>
+      </div>
+      <button className="btn" onClick={() => openH3Terms({ accepted: terms.accepted })}>
+        {terms.accepted ? 'Read them' : 'Read and agree →'}
+      </button>
+    </div>
   )
 }
 

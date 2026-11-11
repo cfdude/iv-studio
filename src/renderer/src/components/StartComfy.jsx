@@ -29,3 +29,48 @@ export default function StartComfy({ notify, recheck, className = 'btn btn-small
     </button>
   )
 }
+
+// "Restart ComfyUI": after installing node packs or models, or when ComfyUI misbehaves. ComfyUI-Manager's own
+// restart when it's there, else IV Studio stops this ComfyUI and starts it again with your launcher
+// (main: comfy:restart). When ComfyUI is rendering it asks first: the button turns into "Restart anyway".
+export function RestartComfy({ notify, recheck, className = 'btn btn-small', label = 'Restart ComfyUI' }) {
+  const [state, setState] = useState(null) // null | 'restarting' | { busy: message }
+  useEffect(
+    () =>
+      window.ivstudio.comfy.onState((s) => {
+        if (s.state === 'restarting') setState('restarting')
+        if (s.state === 'up' || s.state === 'failed') setState((x) => (x === 'restarting' ? null : x))
+      }),
+    []
+  )
+  async function restart(force = false) {
+    setState('restarting')
+    try {
+      const r = await window.ivstudio.comfy.restart({ force })
+      if (r?.busy) return setState({ busy: r.message })
+      setState(null)
+      notify?.(r?.restarted ? `ComfyUI restarted in ${r.seconds} s.` : 'ComfyUI started.', 'info')
+      recheck?.()
+    } catch (err) {
+      setState(null)
+      notify?.(err.message)
+    }
+  }
+  if (state?.busy)
+    return (
+      <span className="restart-ask">
+        <span className="small pink">{state.busy}</span>
+        <button className={`${className} danger`} onClick={() => restart(true)}>
+          Restart anyway
+        </button>
+        <button className="link-btn mono small" onClick={() => setState(null)}>
+          Wait
+        </button>
+      </span>
+    )
+  return (
+    <button className={className} disabled={state === 'restarting'} onClick={() => restart(false)} title="Restart this computer’s ComfyUI, e.g. after installing node packs or models">
+      {state === 'restarting' ? 'Restarting ComfyUI…' : label}
+    </button>
+  )
+}

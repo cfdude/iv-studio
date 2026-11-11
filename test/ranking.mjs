@@ -5,7 +5,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
-import { combine, DEFAULT_WEIGHTS, heardScore, Ranker, relativeSharpness, spokenLines } from '../src/service/ranking.js'
+import { spawnSync } from 'node:child_process'
+import { asksForCuts, cleanStretch, combine, DEFAULT_WEIGHTS, findCuts, greyDiff, h3Stretch, heardScore, HELD, Ranker, relativeSharpness, spokenLines } from '../src/service/ranking.js'
 import { capabilities, withLivePreview } from '../src/service/remote.js'
 
 let n = 0
@@ -49,6 +50,77 @@ await ok('picks move the weights towards what set the pick apart', () => {
   assert.ok(w.likeness > DEFAULT_WEIGHTS.likeness && w.words < DEFAULT_WEIGHTS.words && w.motion === DEFAULT_WEIGHTS.motion)
   assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'rank-weights.json'), 'utf8')).picks, 1)
   fs.rmSync(root, { recursive: true, force: true })
+})
+await ok('cuts: one frame unlike the one before, standing alone', () => {
+  const calm = Array.from({ length: 124 }, (_, i) => (i ? 0.8 + (i % 3) * 0.2 : 0))
+  assert.deepEqual(findCuts(calm), [], 'steady motion has no cut')
+  const cut = calm.slice()
+  cut[72] = 13
+  cut[73] = 2.4
+  assert.deepEqual(findCuts(cut), [{ frame: 72, time: 3, score: 13 }])
+  const flash = calm.slice()
+  ;[110, 111, 112, 115, 116].forEach((i, k) => (flash[i] = [5.5, 10.4, 5.5, 6.3, 9.4][k]))
+  assert.deepEqual(findCuts(flash), [], 'a burst of bright frames is not a cut')
+  // a one-frame flicker: scdet scores the jump, not the jump back; the raw differences show both
+  const flick = calm.slice()
+  flick[53] = 8.4
+  const mafd = calm.map((x) => x + 0.5)
+  mafd[53] = 9
+  mafd[54] = 8.8
+  assert.deepEqual(findCuts(flick, 24, mafd), [], 'a flicker that jumps straight back is not a cut')
+  const stays = mafd.slice()
+  stays[54] = 0.9
+  assert.equal(findCuts(flick, 24, stays).length, 1, 'a change that stays is')
+  const edge = calm.slice()
+  edge[1] = 30
+  assert.deepEqual(findCuts(edge), [], 'the first frames are skipped')
+})
+await ok('the clean stretch, and the same cut to the 17n+5 grid', () => {
+  assert.deepEqual(cleanStretch([], 124), { start: 0, end: 124, from: 0, to: 5.167, seconds: 5.17 })
+  const c = cleanStretch([{ frame: 72 }], 124)
+  assert.deepEqual([c.start, c.end, c.seconds], [0, 72, 3])
+  assert.deepEqual(h3Stretch(c), { start: 0, end: 56, from: 0, to: 2.333, frames: 56 }, 'the opening stretch keeps its start')
+  const late = cleanStretch([{ frame: 20 }], 124)
+  assert.deepEqual([late.start, late.end], [20, 124])
+  assert.deepEqual(h3Stretch(late), { start: 34, end: 124, from: 1.417, to: 5.167, frames: 90 }, 'a closing stretch keeps its end')
+  assert.equal(h3Stretch({ start: 0, end: 21 }), null, 'too short for H3')
+})
+await ok('prompts that ask for cuts are left alone', () => {
+  assert.equal(asksForCuts('[Shot 1] Wide. [Shot 2] Close-up.'), true)
+  assert.equal(asksForCuts('At 00:03 it cuts to a close-up of her face.'), true)
+  assert.equal(asksForCuts('[Shot 1] One continuous take of Tess at the bus stop.'), false)
+  assert.equal(asksForCuts('She cuts the bread.'), false)
+})
+await ok('frames held: grey difference against the HELD line', () => {
+  assert.equal(greyDiff(Buffer.from([10, 20, 30]), Buffer.from([12, 18, 30])), 1.3)
+  assert.equal(greyDiff(null, Buffer.from([1])), null)
+  assert.equal(HELD, 12)
+})
+const ff = ffmpegStatic.ffmpegPath.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
+await ok('real clips: a hard cut is found, a dissolve is missed (as documented), a held first frame is seen', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ivs-cuts-'))
+  const mk = (name, args) => {
+    const r = spawnSync(ff, ['-y', '-hide_banner', '-loglevel', 'error', ...args, path.join(dir, name)], { windowsHide: true })
+    assert.equal(r.status, 0, String(r.stderr))
+    return path.join(dir, name)
+  }
+  const src = ['-f', 'lavfi', '-i', 'testsrc2=s=320x180:r=24:d=2', '-f', 'lavfi', '-i', 'mandelbrot=s=320x180:r=24']
+  const hard = mk('hard.mp4', [...src, '-filter_complex', '[1]trim=duration=2,setpts=PTS-STARTPTS[b];[0][b]concat=n=2:v=1[v]', '-map', '[v]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p'])
+  const dissolve = mk('dissolve.mp4', [...src, '-filter_complex', '[1]trim=duration=2,setpts=PTS-STARTPTS[b];[0][b]xfade=transition=fade:duration=1:offset=1[v]', '-map', '[v]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p'])
+  const first = mk('first.png', ['-i', hard, '-frames:v', '1'])
+  const other = mk('other.png', ['-f', 'lavfi', '-i', 'color=c=red:s=320x180', '-frames:v', '1'])
+  const r = new Ranker({ studio: () => null, dataDir: dir, ffmpeg: ff })
+  const h = await r.cuts(hard)
+  assert.equal(h.cuts.length, 1, JSON.stringify(h.cuts))
+  assert.ok(Math.abs(h.cuts[0].time - 2) < 0.1)
+  assert.deepEqual([h.clean.start, h.clean.end], [0, 48])
+  assert.equal(h.h3.frames, 39)
+  const d = await r.cuts(dissolve)
+  assert.equal(d.cuts.length, 0, 'a dissolve is not caught')
+  const held = await r.heldFrames(hard, first, other, { width: 320, height: 180 })
+  assert.equal(held.opens.held, true, JSON.stringify(held))
+  assert.equal(held.ends.held, false, JSON.stringify(held))
+  fs.rmSync(dir, { recursive: true, force: true })
 })
 const clip = process.argv[2]
 if (clip && fs.existsSync(clip))

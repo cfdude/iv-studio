@@ -13,7 +13,7 @@ import { spawn } from 'node:child_process'
 import { DIRECTING, DIRECTING_SOURCE } from './directing.js'
 import { harnessJson } from './harness.js'
 import { lintPrompt } from './lint.js'
-import { cleanPrompt, cpuOptions, DEFAULT_LOCAL_MODEL, ensureOllama, normalizeDialogue, ollamaStatus, ollamaUrl } from './prompter.js'
+import { cleanPrompt, localChat, localWriterModel, normalizeDialogue } from './prompter.js'
 import { spokenLines } from './ranking.js'
 
 export const ISSUE_KINDS = ['identity', 'wardrobe', 'logo', 'anatomy', 'contact', 'space', 'order', 'emotion', 'words', 'sound', 'other']
@@ -207,29 +207,17 @@ export class Reviewer {
   }
 
   async local({ brief, images, list, model }) {
-    await ensureOllama()
-    const name = model || DEFAULT_LOCAL_MODEL
-    const info = (await ollamaStatus()).models.find((m) => m.name === name)
-    if (!info) throw new Error(`The writer model ${name} isn't in Ollama yet. Install it in Settings → Prompt writer.`)
-    if (!info.vision) throw new Error(`${name} can't see pictures, so it can't review a take. Choose a vision model, Claude Code or Codex in Settings → Prompt writer.`)
-    const r = await fetch(`${ollamaUrl()}/api/chat`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: name,
-        stream: false,
-        format: reviewSchema(),
-        keep_alive: 0,
-        options: { temperature: 0.3, num_ctx: 16384, ...cpuOptions(await this.studio().gpuBusy().catch(() => false)) },
-        messages: [
-          { role: 'system', content: reviewSystem() },
-          { role: 'user', content: `${brief}\n\nThe images attached are frames from the take, in order:\n${list}`, images: images.map((im) => im.data) }
-        ]
-      }),
-      signal: AbortSignal.timeout(900000)
+    const { name } = await localWriterModel(model, { needsEyes: 'review a take' })
+    return localChat({
+      model: name,
+      system: reviewSystem(),
+      schema: reviewSchema(),
+      temperature: 0.3,
+      ctx: 16384,
+      cpu: await this.studio().gpuBusy().catch(() => false),
+      timeoutMs: 900000,
+      messages: [{ role: 'user', content: `${brief}\n\nThe images attached are frames from the take, in order:\n${list}`, images: images.map((im) => im.data) }]
     })
-    if (!r.ok) throw new Error(`Ollama: ${(await r.text()).slice(0, 300)}`)
-    return JSON.parse(String((await r.json()).message?.content || '{}').replace(/<think>[\s\S]*?<\/think>/gi, ''))
   }
 
   // Bounds and words tidied; a revised prompt goes through the checker's eyes ({char} kept, dialogue tags fixed).

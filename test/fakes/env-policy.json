@@ -88,6 +88,126 @@
       "name": "IV_STUDIO_FAKE_HARDWARE",
       "why": "a test that wants a fake sets it itself",
       "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_LLM_KEY",
+      "why": "OpenAI-compatible prompt writer credential",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "IV_STUDIO_LLM_HEADERS",
+      "why": "OpenAI-compatible prompt writer headers, which can carry a credential",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "HF_TOKEN",
+      "why": "Hugging Face credential",
+      "source": "src/service/models.js"
+    },
+    {
+      "name": "HUGGING_FACE_HUB_TOKEN",
+      "why": "Hugging Face credential",
+      "source": "src/service/models.js"
+    },
+    {
+      "name": "IV_STUDIO_AGENT_TOKEN",
+      "why": "the app spend desk credential an agent is handed",
+      "source": "src/service/spending.js"
+    },
+    {
+      "name": "IV_STUDIO_AGENT_APP",
+      "why": "points at a running app spend desk",
+      "source": "src/service/spending.js"
+    },
+    {
+      "name": "IV_STUDIO_USAGE_URL",
+      "why": "points a test copy at a usage server; unset, a test copy sends nothing",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_BETA_URL",
+      "why": "points a test copy at a beta sign-up server; unset, a test copy sends nothing",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_COMFY_API",
+      "why": "points at a Comfy.org account API; unset, the real api.comfy.org is used and the guard refuses it",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_AGENT_RUN",
+      "why": "the agent context the app gives its own MCP child (an agent run or chat); a test that wants it sets it itself",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "IV_STUDIO_AGENT_JOBS",
+      "why": "the agent context the app gives its own MCP child (an agent run or chat); a test that wants it sets it itself",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "IV_STUDIO_AGENT_ASK",
+      "why": "the agent context the app gives its own MCP child (an agent run or chat); a test that wants it sets it itself",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "IV_STUDIO_AGENT_ASK_MS",
+      "why": "the agent context the app gives its own MCP child (an agent run or chat); a test that wants it sets it itself",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "IV_STUDIO_CHAT_ID",
+      "why": "the agent context the app gives its own MCP child (an agent run or chat); a test that wants it sets it itself",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "IV_STUDIO_AGENT_NAME",
+      "why": "the agent context the app gives its own MCP child (an agent run or chat); a test that wants it sets it itself",
+      "source": "src/service/activity.js"
+    },
+    {
+      "name": "IV_STUDIO_TEST_HOME",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_TEST_INSTALL",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_TEST_AGENT",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_TEST_CHAT",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_TEST_BALANCE",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_FAKE_CLOUD_PREP",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_PRETEND_NO_COMFY",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_COMFY_INSTALL_NOSTART",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_UPDATE_SELFTEST",
+      "why": "installs an update as soon as one is found; a test that wants it sets it itself",
+      "source": "src/main/updater.js"
     }
   ],
   "pin": [
@@ -134,6 +254,12 @@
       "to": "missing-file",
       "why": "else the real ~/.modal.toml is read",
       "source": "src/service/cloud.js:266"
+    },
+    {
+      "name": "HF_HOME",
+      "to": "dir",
+      "why": "else the real Hugging Face login token under it is read",
+      "source": "src/service/models.js:34"
     }
   ],
   "keep": [

@@ -1,24 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { selectionFor } from './selection'
+import { setSimpleWords } from './words'
 import { applyA11y } from './a11y'
 import { SetupPill } from './components/SetupProgress'
+import { AgentPill, useAgentRun } from './components/AgentRun'
+import ChatPanel, { ChatButton, useChat } from './components/ChatPanel'
+import { spotTour } from './tours'
 import { CharacterList, CharacterTrainer } from './components/Characters'
 import Create from './components/Create'
 import ivMark from './assets/iv-mark.png'
 import ivMarkClosed from './assets/iv-mark-closed.png'
 import { ConfirmHost, ask } from './components/Confirm'
+import CloudModels from './components/CloudModels'
+import { H3TermsHost } from './components/H3Terms'
 import Library from './components/Library'
 import Cloud, { CloudMeter } from './components/Cloud'
 import StartComfy from './components/StartComfy'
 import SystemMeter from './components/SystemMeter'
+import { BalanceChip } from './components/ComfyAccount'
 import { EditEditor, EditList } from './components/Edit'
 import { SequenceEditor, SequenceList } from './components/Sequences'
 import Settings from './components/Settings'
 import { ShinobiList, ShinobiProject } from './components/Shinobi'
 import Replace from './components/Replace'
 import Reel from './components/Reel'
+import Effects from './components/Effects'
 import Workflows from './components/Workflows'
 import { LinesPage, VoicesPage } from './components/Voices'
 import { MusicPage } from './components/Music'
+import { SoundsPage } from './components/Sounds'
+import AudioHome from './components/AudioHome'
 import MediaLibrary from './components/MediaLibrary'
 import Dashboard from './components/Dashboard'
 import TourHost from './components/Tour'
@@ -53,14 +64,16 @@ const SECTIONS = {
     ['settings', 'Settings']
   ],
   audio: [
+    ['audio', 'Audio'],
     ['voices', 'Voices'],
     ['lines', 'Lines'],
     ['music', 'Music'],
+    ['sounds', 'Sounds'],
     ['characters', 'Characters'],
     ['settings', 'Settings']
   ]
 }
-const SUBPAGES = { settings: ['setup'], library: ['shot'], projects: ['project'], edits: ['edit'], characters: ['character'], workflows: ['sequences', 'sequence', 'shinobi', 'shinobi-film', 'replace', 'reel', 'sizzle', 'sizzle-project', 'rebuild', 'rebuild-project'] }
+const SUBPAGES = { settings: ['setup'], library: ['shot'], projects: ['project'], edits: ['edit'], characters: ['character'], workflows: ['sequences', 'sequence', 'shinobi', 'shinobi-film', 'replace', 'reel', 'effects', 'sizzle', 'sizzle-project', 'rebuild', 'rebuild-project'] }
 const savedSection = () => {
   try {
     return localStorage.getItem('iv.section') === 'audio' ? 'audio' : 'video'
@@ -85,11 +98,79 @@ export default function App() {
       localStorage.setItem('iv.createKind', kind)
     } catch {}
   }
-  const [page, setPage] = useState(() => (savedSection() === 'audio' ? 'voices' : 'home'))
+  const [page, setPage] = useState(() => (savedSection() === 'audio' ? 'audio' : 'home'))
+  // the Dashboard's agent run, for the title bar's pill while it works (AgentRun.jsx)
+  const agentStatus = useAgentRun()
+  // The page's own width without its scrollbar (--page-w), for the tall banners that run edge to edge: 100vw can't
+  // know whether the page has a scrollbar, and was 15 px too wide when it did.
+  const pageWatch = useRef(null)
+  const watchPage = useCallback((el) => {
+    pageWatch.current?.disconnect()
+    pageWatch.current = null
+    if (!el) return
+    const set = () => document.documentElement.style.setProperty('--page-w', `${el.clientWidth}px`)
+    set()
+    pageWatch.current = new ResizeObserver(set)
+    pageWatch.current.observe(el)
+  }, [])
+  // the chat panel with the person's own agent (ChatPanel.jsx); open or closed is remembered
+  const [chatStatus, reloadChat] = useChat()
+  const [chatOpen, setChatOpen] = useState(() => {
+    try {
+      return localStorage.getItem('iv.chatOpen') === '1'
+    } catch {
+      return false
+    }
+  })
+  // the chat popped out into its own window (ChatWindow.jsx): the title-bar button brings that window forward
+  const [chatPopped, setChatPopped] = useState(false)
+  const poppedRef = useRef(false)
+  poppedRef.current = chatPopped
+  useEffect(() => {
+    window.ivstudio.chat.popped().then(setChatPopped, () => {})
+    const offPop = window.ivstudio.chat.onPopped((on) => setChatPopped(!!on))
+    // put back in the app from its own window: the panel opens here
+    const offDock = window.ivstudio.chat.onDocked(() => {
+      poppedRef.current = false
+      setChatPopped(false)
+      toggleChat(true)
+    })
+    return () => (offPop(), offDock())
+  }, [])
+  const toggleChat = (on) => {
+    if (on && poppedRef.current) {
+      window.ivstudio.chat.popout().catch(() => {})
+      return
+    }
+    setChatOpen(on)
+    try {
+      localStorage.setItem('iv.chatOpen', on ? '1' : '0')
+    } catch {}
+    if (on) reloadChat()
+  }
+  // a question from a button elsewhere ("Ask Claude Code to fix it", ChatPanel askAgent): open the chat and hand it over
+  const [chatAsk, setChatAsk] = useState(null)
+  useEffect(() => {
+    const onAsk = (e) => {
+      // with the chat in its own window, the question goes there
+      if (poppedRef.current) return void window.ivstudio.chat.forwardAsk(e.detail).catch(() => {})
+      setChatAsk({ ...e.detail, at: Date.now() })
+      toggleChat(true)
+    }
+    window.addEventListener('iv:ask', onAsk)
+    // "show me where" from the chat (show_in_app): a one-step tour that goes to the page and lights the part up
+    const offShow = window.ivstudio.chat.onShow((show) => {
+      const tour = spotTour(show || {})
+      if (tour) window.dispatchEvent(new CustomEvent('iv:tour', { detail: tour }))
+    })
+    return () => (window.removeEventListener('iv:ask', onAsk), offShow())
+  }, [])
   // a spoken line or a song on its way to Create's voice line (Lines or Music > Use in a shot)
   const [lineForCreate, setLineForCreate] = useState(null)
   // a LoRA on its way to Create's LoRA tray (LoRAs > Use in a shot)
   const [loraForCreate, setLoraForCreate] = useState(null)
+  const [loraForImage, setLoraForImage] = useState(null)
+  const [pictureForImage, setPictureForImage] = useState(null)
   // a picture from Create -> Image on its way to a shot's first frame (Use in a shot)
   const [pictureForCreate, setPictureForCreate] = useState(null)
   // a character picked on the dashboard (New shot with them)
@@ -232,9 +313,9 @@ export default function App() {
       switchSection('video')
       return setPage('create')
     }
-    if (item.kind === 'music') {
+    if (item.kind === 'music' || item.kind === 'sound') {
       switchSection('audio')
-      return setPage('music')
+      return setPage(item.kind === 'sound' ? 'sounds' : 'music')
     }
     if (item.kind === 'replace') {
       switchSection('video')
@@ -252,8 +333,12 @@ export default function App() {
     switchSection('video')
     setPage('create')
   }
+  // a LoRA for a picture model goes to Create -> Image (that model's tray); H3's to the shot tray
   const addLoraToCreate = (lora) => {
-    setLoraForCreate(lora)
+    const picture = lora.family && lora.family !== 'h3'
+    if (picture) setLoraForImage(lora)
+    else setLoraForCreate(lora)
+    pickCreateKind(picture ? 'image' : 'video')
     switchSection('video')
     setPage('create')
   }
@@ -263,6 +348,24 @@ export default function App() {
     if (project.sequenceId) return openSequence(project.sequenceId, { runId: run.id, prompt: prompt || null })
     setRunForCreate({ request: run.plan.request, asked: prompt ? { ...(run.plan.asked || {}), prompt } : run.plan.asked, projectId: project.id, projectName: project.name })
     pickCreateKind('video')
+    switchSection('video')
+    setPage('create')
+  }
+  // A new shot that starts where a finished version ends: Continue mode with the version as its source video, or
+  // Frames mode with its last frame as the first frame. The run's character, LoRAs, shape, size and length come
+  // along; the prompt starts empty, because it says what happens next (Write it for me looks at the last frame).
+  const shotFromVersion = (run, how, file) => {
+    const q = run.plan?.request || {}
+    const media = how === 'continue' ? [{ kind: 'video', path: file }] : [{ kind: 'picture', path: file }]
+    setRunForCreate({ request: { ...q, mode: how === 'continue' ? 'continue' : 'frames', media, prompt: '' }, asked: null, projectId: null, projectName: '', from: how })
+    pickCreateKind('video')
+    switchSection('video')
+    setPage('create')
+  }
+  // a picture (a version's last frame) to change in Create -> Image's Edit
+  const pictureToEdit = (file) => {
+    setPictureForImage(file)
+    pickCreateKind('image')
     switchSection('video')
     setPage('create')
   }
@@ -309,18 +412,18 @@ export default function App() {
   const [welcome, setWelcome] = useState(null)
   const [cloudWiz, setCloudWiz] = useState(false)
   useEffect(() => {
-    window.ivstudio.settings.get().then((s) => (applyA11y(s), !s.onboarded && setWelcome('first')), () => {})
-    // Settings → Accessibility (a11y.js), whenever the settings change (Settings, Check my PC)
-    const a11y = () => window.ivstudio.settings.get().then(applyA11y, () => {})
-    window.addEventListener('iv:settings', a11y)
+    window.ivstudio.settings.get().then((s) => (setSimpleWords(s.plainWords), applyA11y(s), !s.onboarded && setWelcome('first')), () => {})
+    // Simple words (words.js) and Settings → Accessibility (a11y.js), whenever the settings change (Settings, Check my PC)
+    const words = () => window.ivstudio.settings.get().then((s) => (setSimpleWords(s.plainWords), applyA11y(s)), () => {})
+    window.addEventListener('iv:settings', words)
     const open = () => setWelcome('again')
     window.addEventListener('iv:welcome', open)
     // the cloud setup wizard: from Check my PC and the Cloud page
     const cloud = () => setCloudWiz(true)
     window.addEventListener('iv:cloud-wizard', cloud)
-    return () => (window.removeEventListener('iv:welcome', open), window.removeEventListener('iv:cloud-wizard', cloud), window.removeEventListener('iv:settings', a11y))
+    return () => (window.removeEventListener('iv:welcome', open), window.removeEventListener('iv:cloud-wizard', cloud), window.removeEventListener('iv:settings', words))
   }, [])
-  const ctx = { setup, caps: setup?.caps, remote: !!setup?.remote, recheck, checking, characters, setCharacters, notify, openShot, editRun, openSequence, openProject, openEdit, openCharacter, openShinobi, jobs, setJobs, info, go: setPage, sendToCreate, addLoraToCreate, pictureToShot, focus, setFocus, openSizzle, openRebuild,remakeClip, replaceSeed }
+  const ctx = { setup, caps: setup?.caps, remote: !!setup?.remote, ownCloud: !!setup?.remote && !setup?.hosted, recheck, checking, characters, setCharacters, notify, openShot, editRun, openSequence, openProject, openEdit, openCharacter, openShinobi, jobs, setJobs, info, go: setPage, sendToCreate, addLoraToCreate, pictureToShot, shotFromVersion, pictureToEdit, focus, setFocus, openSizzle, openRebuild,remakeClip, replaceSeed }
   const missing = setup?.items?.filter((i) => i.status === 'missing').length || 0
   // ComfyUI on this PC isn't there: the title bar offers to start it (not when it's running but busy)
   const comfyDown = !setup?.remote && setup?.items?.some((i) => i.id === 'comfyui' && i.status !== 'ok' && !i.busy)
@@ -342,21 +445,51 @@ export default function App() {
     }
   }
 
+  // what the chat is told about the page (agentchat.js contextLine); with the chat in its own window, this page and
+  // the selection on it (selection.js) go to the main process as they change, for messages sent from there
+  const chatContext = { page, section, projectId: page === 'shot' ? projectId : null, productionId: page === 'project' ? productionId : null, sequenceId: page === 'sequence' ? sequenceId : null, editId: page === 'edit' ? editId : null, sizzleId: page === 'sizzle-project' ? sizzleId : null, rebuildId: page === 'rebuild-project' ? rebuildId : null, shinobiId: page === 'shinobi-film' ? shinobiId : null, trainingId: page === 'character' ? trainingId : null }
+  const ctxKey = JSON.stringify(chatContext)
+  useEffect(() => {
+    if (!chatPopped) return
+    const push = () => window.ivstudio.chat.setContext({ ...chatContext, selection: selectionFor(chatContext.page) }).catch(() => {})
+    push()
+    window.addEventListener('iv:selection', push)
+    return () => window.removeEventListener('iv:selection', push)
+  }, [ctxKey, chatPopped])
+  // a link in the chat or its Activity tab (ActivityLog.jsx openOf), here or from the chat's own window
+  const openRef = (kind, id) => {
+    if (kind === 'shot') return openShot(id)
+    if (kind === 'edit') return openEdit(id)
+    if (kind === 'film') return openProject(id)
+    if (kind === 'sequence') return openSequence(id)
+    if (kind === 'shots') return (switchSection('video'), setPage('library'))
+    if (kind === 'images') return (pickCreateKind('image'), switchSection('video'), setPage('create'))
+    if (['music', 'lines', 'voices'].includes(kind)) return (switchSection('audio'), setPage(kind))
+  }
+  const openRefNow = useRef(openRef)
+  openRefNow.current = openRef
+  useEffect(() => window.ivstudio.chat.onOpenInApp((w) => w?.kind && openRefNow.current(w.kind, w.id)), [])
   return (
-    <div className={`app ${incognito ? 'incognito' : ''} ${focus && page === 'edit' ? 'app-focus' : ''} ${info?.platform === 'darwin' ? 'mac' : ''}`}>
+    <div className={`app ${incognito ? 'incognito' : ''} ${focus && page === 'edit' ? 'app-focus' : ''} ${info?.platform === 'darwin' ? 'mac' : ''} ${chatOpen && !chatPopped ? 'chat-on' : ''}`}>
       <header className="titlebar">
         <img className="brand-logo" src={incognito ? ivMarkClosed : ivMark} alt="Infinite Variance" />
         <span className="mono brand-text">Infinite Variance</span>
         <span className="mono dim brand-text">/ Studio</span>
-        {info?.testCopy && <span className="mono test-copy">Test copy · separate data</span>}
+        {info?.testCopy && (
+          <span className="mono test-copy">
+            Test copy<span className="test-copy-more"> · separate data</span>
+          </span>
+        )}
         {info && (
           <button className={`incognito-switch mono ${incognito ? 'on' : ''}`} onClick={switchIncognito} title={incognito ? 'Leave Incognito (restarts IV Studio)' : 'Go Incognito: a private space (restarts IV Studio)'}>
             <span className="switch-track">
               <span className="switch-knob" />
             </span>
-            Incognito
+            <span className="incognito-label">Incognito</span>
           </button>
         )}
+        <AgentPill status={agentStatus} onOpen={() => window.dispatchEvent(new CustomEvent('iv:go', { detail: { page: 'home', section: 'video' } }))} />
+        <ChatButton open={chatOpen && !chatPopped} popped={chatPopped} busy={!!chatStatus?.chat?.busy} onClick={() => toggleChat(!chatOpen)} />
         <div className={`engine-badge ${setup ? (ready ? 'ready' : 'error') : ''}`}>
           <span className="dot" />
           {setup?.remote && <span className="mono cloud-badge">Cloud</span>}
@@ -371,6 +504,7 @@ export default function App() {
           {setup?.items?.find((i) => i.id === 'gpu') && <span className="mono dim engine-gpu">{setup.items.find((i) => i.id === 'gpu').detail}</span>}
           <SetupPill onOpen={() => setPage('cloud')} />
           {setup?.remote ? <CloudMeter onOpen={() => setPage('cloud')} /> : setup && <SystemMeter notify={notify} />}
+          <BalanceChip />
         </div>
       </header>
       <nav className="nav">
@@ -400,18 +534,20 @@ export default function App() {
         </div>
       </nav>
       {/* keyed by page: each page change remounts it, so the themed page-in animation plays (studio.css .page-anim) */}
-      <main key={page} className={`page page-anim ${page === 'edit' ? 'page-editor' : ''}`}>
+      <main key={page} ref={watchPage} className={`page page-anim ${page === 'edit' ? 'page-editor' : ''}`}>
         {page === 'home' && <Dashboard {...ctx} start={startTool} startShotWith={startShotWith} news={unseenNews(info?.version, seenNews)} dismissNews={() => markNewsSeen(info?.version)} />}
         {page === 'create' &&
           (createKind === 'image' ? (
-            <Images {...ctx} kindSwitch={<CreateKind kind={createKind} onKind={pickCreateKind} />} />
+            <Images {...ctx} kindSwitch={<CreateKind kind={createKind} onKind={pickCreateKind} />} incomingLora={loraForImage} clearIncomingLora={() => setLoraForImage(null)} incomingPicture={pictureForImage} clearIncomingPicture={() => setPictureForImage(null)} />
           ) : (
             <Create {...ctx} kindSwitch={<CreateKind kind={createKind} onKind={pickCreateKind} />} incomingLine={lineForCreate} clearIncomingLine={() => setLineForCreate(null)} incomingLora={loraForCreate} clearIncomingLora={() => setLoraForCreate(null)} incomingPicture={pictureForCreate} clearIncomingPicture={() => setPictureForCreate(null)} incomingCharacter={characterForCreate} clearIncomingCharacter={() => setCharacterForCreate(null)} incomingRun={runForCreate} clearIncomingRun={() => setRunForCreate(null)} />
           ))}
         {page === 'loras' && <LorasPage {...ctx} />}
+        {page === 'audio' && <AudioHome {...ctx} />}
         {page === 'voices' && <VoicesPage {...ctx} />}
         {page === 'lines' && <LinesPage {...ctx} />}
         {page === 'music' && <MusicPage {...ctx} />}
+        {page === 'sounds' && <SoundsPage {...ctx} />}
         {page === 'media' && <MediaLibrary {...ctx} />}
         {page === 'library' && <Library {...ctx} />}
         {page === 'shot' && projectId && <Shot key={projectId} projectId={projectId} {...ctx} />}
@@ -424,6 +560,7 @@ export default function App() {
         {page === 'workflows' && <Workflows {...ctx} />}
         {page === 'replace' && <Replace {...ctx} />}
         {page === 'reel' && <Reel {...ctx} />}
+        {page === 'effects' && <Effects {...ctx} />}
         {page === 'shinobi' && <ShinobiList {...ctx} />}
         {page === 'sizzle' && <SizzleList {...ctx} />}
         {page === 'sizzle-project' && sizzleId && <SizzleProject key={sizzleId} sizzleId={sizzleId} {...ctx} />}
@@ -436,7 +573,23 @@ export default function App() {
         {page === 'cloud' && <Cloud {...ctx} />}
         {page === 'settings' && <Settings {...ctx} />}
       </main>
+      {chatOpen && !chatPopped && (
+        <ChatPanel
+          status={chatStatus}
+          reload={reloadChat}
+          onClose={() => toggleChat(false)}
+          context={chatContext}
+          go={setPage}
+          notify={notify}
+          ask={chatAsk}
+          clearAsk={() => setChatAsk(null)}
+          openShot={openShot}
+          openRef={openRef}
+        />
+      )}
       <ConfirmHost />
+      <CloudModels />
+      <H3TermsHost />
       {cloudWiz && <CloudWizard onClose={() => (setCloudWiz(false), recheck?.(), window.dispatchEvent(new CustomEvent('iv:cloud-changed')))} notify={notify} recheck={recheck} info={info} />}
       <TourHost />
       {welcome && <Welcome first={welcome === 'first'} onClose={() => (setWelcome(null), recheck?.())} go={setPage} notify={notify} />}

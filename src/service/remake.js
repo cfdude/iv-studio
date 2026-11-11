@@ -23,7 +23,7 @@ import path from 'node:path'
 import { harnessJson } from './harness.js'
 import { IMAGE_ASPECTS } from './images.js'
 import { probe } from './media.js'
-import { DEFAULT_LOCAL_MODEL, ensureOllama, ollamaStatus, ollamaUrl } from './prompter.js'
+import { localChat, localWriterModel } from './prompter.js'
 import { comboOptions } from './setup.js'
 
 export const REMAKE_KINDS = ['swap', 'change']
@@ -212,6 +212,8 @@ export class Remake {
 
   // The int8 file for a kind on this ComfyUI (any folder), and what else Remake needs that it lacks.
   async check(kind = 'swap') {
+    // Comfy Cloud has no Viggle Remake; the person's own cloud (RunPod, Modal) downloads it the first time it's used
+    if (this.studio.comfy.hosted) return { ready: false, cloud: true, error: 'Replace doesn’t run on Comfy Cloud: it needs Viggle Remake. Use this computer, or your own cloud on RunPod or Modal.', packs: [], models: [], unet: null }
     const info = await this.studio.comfy.objectInfo()
     const unets = comboOptions(info, 'UNETLoader', 'unet_name') || []
     const unet = unets.find((u) => u.replace(/\\/g, '/').split('/').pop() === MODEL[kind]) || null
@@ -260,7 +262,7 @@ export class Remake {
   async painter() {
     if (!this.images) throw new Error('Painting needs IV Studio’s picture tools.')
     const st = await this.images.status()
-    if (st.remote) throw new Error('Remake paints its frames on this computer’s ComfyUI. Switch to "This computer" on the Cloud page.')
+    if (st.error) throw new Error(st.error)
     const fam = ['qwen21', 'flux2', 'flux3'].map((id) => st.families.find((f) => f.id === id && f.edit && f.models.length)).find(Boolean)
     if (!fam) throw new Error('Painting needs a picture editor: Qwen Image 2.1, Flux.2 Klein or Flux 3 Klein. Set one up in Settings → Setup.')
     return { family: fam.id, model: fam.models.find((m) => !/uc-/i.test(m)) || fam.models[0] }
@@ -395,23 +397,8 @@ export class Remake {
   }
 
   async local({ system, user, images, model }) {
-    await ensureOllama()
-    const name = model || DEFAULT_LOCAL_MODEL
-    const info = (await ollamaStatus()).models.find((m) => m.name === name)
-    if (!info) throw new Error(`The writer model ${name} isn't in Ollama yet. Install it in Settings → Prompt writer.`)
-    if (!info.vision) throw new Error(`${name} can't see pictures. Choose a vision model, Claude Code or Codex in Settings → Prompt writer.`)
-    const r = await fetch(`${ollamaUrl()}/api/chat`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: name, stream: false, format: SCHEMA, keep_alive: 0, options: { temperature: 0.4, num_ctx: 24576, num_predict: 6000 }, messages: [{ role: 'system', content: system }, { role: 'user', content: user, images: images.map((i) => i.data) }] }),
-      signal: AbortSignal.timeout(900000)
-    })
-    if (!r.ok) throw new Error(`Ollama: ${(await r.text()).slice(0, 300)}`)
-    try {
-      return JSON.parse((await r.json()).message?.content || '')
-    } catch {
-      throw new Error('The writer returned something unreadable. Try again.')
-    }
+    const { name } = await localWriterModel(model, { needsEyes: 'write a Remake prompt' })
+    return localChat({ model: name, system, schema: SCHEMA, temperature: 0.4, ctx: 24576, maxTokens: 6000, timeoutMs: 900000, messages: [{ role: 'user', content: user, images: images.map((i) => i.data) }] })
   }
 
   async jpeg(file, frame) {

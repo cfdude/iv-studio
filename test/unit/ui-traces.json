@@ -1,6 +1,14 @@
 {
   "journey:edit_video": [
     {
+      "channel": "recipes:list",
+      "args": "[]"
+    },
+    {
+      "channel": "agentRun:status",
+      "args": "[]"
+    },
+    {
       "channel": "library:all",
       "args": "[]"
     },
@@ -89,16 +97,28 @@
       "args": "[]"
     },
     {
+      "channel": "craft:slate",
+      "args": "[]"
+    },
+    {
       "channel": "cast:list",
       "args": "[]"
     },
     {
       "channel": "render:plan",
-      "args": "[{aspect:string,character:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,steps:number,voiceLine:null},{megapixels:number}]"
+      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null},{megapixels:number,upscale2x:boolean}]"
     },
     {
       "channel": "loras:yours",
       "args": "[]"
+    },
+    {
+      "channel": "render:plan",
+      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null},{megapixels:number,upscale2x:boolean}]"
+    },
+    {
+      "channel": "timing:estimate",
+      "args": "[{fps:number,kind:string,megapixels:number,previews:number,seconds:number,steps:number}]"
     },
     {
       "channel": "characters:list",
@@ -209,6 +229,14 @@
   ],
   "journey:show_me_around": [
     {
+      "channel": "recipes:list",
+      "args": "[]"
+    },
+    {
+      "channel": "agentRun:status",
+      "args": "[]"
+    },
+    {
       "channel": "library:all",
       "args": "[]"
     },
@@ -265,6 +293,7 @@
       "args": "[string]"
     }
   ],
+  "page:audio": [],
   "page:character": [
     {
       "channel": "settings:get",
@@ -335,6 +364,10 @@
   ],
   "page:cloud": [
     {
+      "channel": "usage:status",
+      "args": "[]"
+    },
+    {
       "channel": "cloud:status",
       "args": "[]"
     },
@@ -361,16 +394,28 @@
       "args": "[]"
     },
     {
+      "channel": "craft:slate",
+      "args": "[]"
+    },
+    {
       "channel": "cast:list",
       "args": "[]"
     },
     {
       "channel": "render:plan",
-      "args": "[{aspect:string,character:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,steps:number,voiceLine:null},{megapixels:number}]"
+      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null},{megapixels:number,upscale2x:boolean}]"
     },
     {
       "channel": "loras:yours",
       "args": "[]"
+    },
+    {
+      "channel": "render:plan",
+      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null},{megapixels:number,upscale2x:boolean}]"
+    },
+    {
+      "channel": "timing:estimate",
+      "args": "[{fps:number,kind:string,megapixels:number,previews:number,seconds:number,steps:number}]"
     },
     {
       "channel": "images:toEdit",
@@ -411,7 +456,23 @@
       "args": "[]"
     },
     {
+      "channel": "account:state",
+      "args": "[]"
+    },
+    {
       "channel": "update:state",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:status",
+      "args": "[]"
+    },
+    {
+      "channel": "recipes:list",
+      "args": "[]"
+    },
+    {
+      "channel": "agentRun:status",
       "args": "[]"
     },
     {
@@ -424,6 +485,14 @@
     },
     {
       "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "terms:state",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:popped",
       "args": "[]"
     },
     {
@@ -449,21 +518,13 @@
       "args": "[]"
     }
   ],
-  "page:home": [
+  "page:effects": [
     {
-      "channel": "settings:get",
+      "channel": "recipes:list",
       "args": "[]"
     },
     {
-      "channel": "app:info",
-      "args": "[]"
-    },
-    {
-      "channel": "cloud:status",
-      "args": "[]"
-    },
-    {
-      "channel": "update:state",
+      "channel": "agentRun:status",
       "args": "[]"
     },
     {
@@ -480,6 +541,76 @@
     },
     {
       "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "clipfx:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "clipfx:status",
+      "args": "[]"
+    },
+    {
+      "channel": "clipfx:runs",
+      "args": "[]"
+    }
+  ],
+  "page:home": [
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "app:info",
+      "args": "[]"
+    },
+    {
+      "channel": "cloud:status",
+      "args": "[]"
+    },
+    {
+      "channel": "account:state",
+      "args": "[]"
+    },
+    {
+      "channel": "update:state",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:status",
+      "args": "[]"
+    },
+    {
+      "channel": "recipes:list",
+      "args": "[]"
+    },
+    {
+      "channel": "agentRun:status",
+      "args": "[]"
+    },
+    {
+      "channel": "library:all",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "terms:state",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:popped",
       "args": "[]"
     },
     {
@@ -503,6 +634,90 @@
     {
       "channel": "projects:list",
       "args": "[]"
+    },
+    {
+      "channel": "chat:popped",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:forwardAsk",
+      "args": "[{id:string,what:string}]"
+    },
+    {
+      "channel": "chat:popout",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:setContext",
+      "args": "[{editId:null,page:string,productionId:null,projectId:null,rebuildId:null,section:string,selection:null,sequenceId:null,shinobiId:string,sizzleId:null,trainingId:null}]"
+    },
+    {
+      "channel": "chat:popped",
+      "args": "[]"
+    },
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "app:info",
+      "args": "[]"
+    },
+    {
+      "channel": "agents:setup",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:status",
+      "args": "[]"
+    },
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "agents:setup",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:forwardAsk",
+      "args": "[{id:string,what:string}]"
+    },
+    {
+      "channel": "chat:pin",
+      "args": "[boolean]"
+    },
+    {
+      "channel": "chat:dock",
+      "args": "[]"
+    },
+    {
+      "channel": "agents:setup",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:popped",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:dock",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:setContext",
+      "args": "[{page:string,shotId:string}]"
+    },
+    {
+      "channel": "chat:setContext",
+      "args": "[string]"
+    },
+    {
+      "channel": "chat:openInApp",
+      "args": "[{page:string}]"
+    },
+    {
+      "channel": "files:open",
+      "args": "[string]"
     }
   ],
   "page:lines": [
@@ -530,10 +745,14 @@
     },
     {
       "channel": "loras:search",
-      "args": "[{cursor:null,limit:number,query:string,sort:string,tag:string}]"
+      "args": "[{cursor:null,family:string,limit:number,query:string,sort:string,tag:string}]"
     }
   ],
   "page:media": [
+    {
+      "channel": "library:describeStatus",
+      "args": "[]"
+    },
     {
       "channel": "library:all",
       "args": "[]"
@@ -548,7 +767,7 @@
     },
     {
       "channel": "library:toEdit",
-      "args": "[{at:string,detail:string,duration:number,file:{path:string},group:string,key:string,label:string,rank:number,set:string,setName:string,type:string,variant:string}]"
+      "args": "[{about:null,at:string,detail:string,duration:number,file:{path:string},group:string,key:string,label:string,rank:number,set:string,setName:string,type:string,variant:string}]"
     }
   ],
   "page:music": [
@@ -597,6 +816,10 @@
     {
       "channel": "productions:get",
       "args": "[string]"
+    },
+    {
+      "channel": "productions:shotList",
+      "args": "[string,string]"
     }
   ],
   "page:projects": [
@@ -711,11 +934,35 @@
       "args": "[]"
     },
     {
+      "channel": "agents:setup",
+      "args": "[]"
+    },
+    {
+      "channel": "account:state",
+      "args": "[]"
+    },
+    {
+      "channel": "agents:setup",
+      "args": "[]"
+    },
+    {
       "channel": "agents:info",
       "args": "[]"
     },
     {
+      "channel": "usage:status",
+      "args": "[]"
+    },
+    {
       "channel": "update:state",
+      "args": "[]"
+    },
+    {
+      "channel": "terms:state",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:spending",
       "args": "[]"
     },
     {
@@ -833,11 +1080,35 @@
     {
       "channel": "settings:set",
       "args": "[{incognito:boolean}]"
+    },
+    {
+      "channel": "settings:setOpenaiSecrets",
+      "args": "[{headers:string,key:string}]"
+    },
+    {
+      "channel": "settings:setOpenaiSecrets",
+      "args": "[{headers:string}]"
+    },
+    {
+      "channel": "settings:setOpenaiSecrets",
+      "args": "[{headers:string,key:string}]"
+    },
+    {
+      "channel": "terms:report",
+      "args": "[]"
+    },
+    {
+      "channel": "terms:openLicense",
+      "args": "[]"
     }
   ],
   "page:setup": [
     {
       "channel": "models:status",
+      "args": "[]"
+    },
+    {
+      "channel": "comfy:chooseInstallFolder",
       "args": "[]"
     }
   ],
@@ -916,6 +1187,40 @@
     },
     {
       "channel": "sizzle:get",
+      "args": "[string]"
+    }
+  ],
+  "page:sounds": [
+    {
+      "channel": "sounds:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "sounds:status",
+      "args": "[]"
+    },
+    {
+      "channel": "sounds:list",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "models:status",
+      "args": "[]"
+    },
+    {
+      "channel": "sounds:toEdit",
+      "args": "[string]"
+    },
+    {
+      "channel": "sounds:toEdit",
+      "args": "[string,number]"
+    },
+    {
+      "channel": "sounds:toEdit",
       "args": "[string]"
     }
   ],

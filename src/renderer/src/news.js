@@ -2,6 +2,95 @@
 // version's once, until it's dismissed; Settings → Updates lists the last few versions'.
 export const NEWS = [
   {
+    version: '1.1.3',
+    items: [
+      { text: 'Talk to the chat: press the mic, say what you want, and press send. IV Studio’s own speech recognition writes it down on your computer. Talking while the agent works stops its answer and sends your new words.' },
+      { text: 'Read aloud: the speaker in the chat’s header reads each reply in one of your voices (Audio → Voices).' },
+      { text: 'A cleaner chat: your messages and the agent’s in bubbles with times, each agent in its own colour, and one rounded box to write in.' },
+      { text: 'Pop the chat out into its own window (the arrow in its header), keep it on top, and put it back in the app when you’re done. It still knows what’s open in IV Studio.' },
+      { text: 'Activity: a tab in the chat that lists everything agents did in IV Studio (the chat, Dashboard ideas, and Claude Desktop, Codex or any agent using IV Studio from outside), with links to what they made and Undo for changes to an edit.' },
+      { text: 'The chat knows more about what you’re looking at: the version you picked on a shot, the clip and playhead in the editor, the item open in the Library, how Create is set up, what’s rendering, and the last render that failed.' },
+      { text: 'See how full the agent’s working memory is, and this chat’s usage, in the chat’s header. You’ll see a note when it summarizes earlier messages to make room.' },
+      { text: 'Create → Image: a model that isn’t set up opens what it needs, with one button that downloads it. Flux.2 Klein, Flux 3 Klein, Krea 2, Moss and Qwen Image 2.1 can now be downloaded from IV Studio.' },
+      { text: 'Setup: each optional tool says what it does and where to find it, and lists its files. The Needs you / Everything bar stays at the top as you scroll. A Hugging Face login for gated models (Flux, the LTX effects) can be saved right there, for this computer and the cloud.' },
+      { text: 'Fixed: Z-Image Turbo installed from Setup now works in Create → Image and Projects (they were looking for a different text encoder file).' }
+    ]
+  },
+  {
+    version: '1.1.2',
+    items: [
+      { text: 'The portable Windows copy now updates itself like the installed one: a new version downloads in the background and Update to … restarts into it, keeping your data folder. (From 1.1.1 or older, unzip 1.1.2 over the folder once.)' },
+      { text: 'Fixed: an update download could stop just short of the end and never finish.' }
+    ]
+  },
+  {
+    version: '1.1.1',
+    items: [
+      { text: 'Continue from this: every finished version can start a new Continue shot that carries it on, with the same character, LoRAs and shape.' },
+      { text: 'Continue shots made in Create now hunt 1 to 3 takes and finish like any shot: the picked take is refined at full size and joined to the source, so the final is the whole continued video.' },
+      { text: 'Use the last frame: save a finished version’s final frame as a picture in the Library, then start a new shot from it or change it in Create → Image.' },
+      { text: 'Sequences’ character list shows only characters with a LoRA, and says which reference-pack characters it can’t use.' }
+    ]
+  },
+  {
+    version: '1.1.0',
+    items: [
+      { text: 'The rules for MiniMax H3: before your first H3 render, IV Studio shows them in plain words and asks you to agree to its terms once. Read them again, or report misuse, in Settings › About.' },
+      { text: 'Chat with your own Claude Code or Codex: the Chat button in the title bar. It can use everything IV Studio does and knows which page you’re on. Before anything that deletes, costs money, installs or changes a setting, it asks you first.' },
+      { text: 'Ask it from anywhere: Ask … to fix it on a failed render, to pick the best take on a shot, or about a picture in the Library. Drop pictures, videos, sound or a script into the chat.' },
+      { text: 'Show me where: ask where something is, and IV Studio goes there and lights it up.' },
+      { text: 'Edit by talking: on an edit, press Ask … and say “tighten the middle” or “put captions on” (captions are new). Every change can be undone from the chat.' },
+      { text: 'Recipes: say “save this as a recipe” and it becomes a button on the Dashboard that does it again.' },
+      { text: 'Overnight batches: up to 12 variations of an idea render while you’re away, and a report with the best takes is waiting in the chat.' },
+      { text: 'A short film in one conversation: Make one with … on Projects takes an idea to a rough cut, stopping for your OK at each step.' },
+      { text: 'A spending limit for the chat in Settings → Agents, off unless you turn it on. Seedance works from the chat too.' },
+      { text: 'Let Claude Code or Codex make a Dashboard idea for you, and install either one from Check my computer or Settings → Agents.' },
+      { text: 'MiniMax H3 Image in Create → Image: big 4, 8 or 16 MP pictures that follow long descriptions. It needs ComfyUI 0.45 or newer and a 22 GB download.' },
+      { text: 'Nearly everything now runs on your own RunPod or Modal: pictures, effects, music, sounds, voices, Replace and more. The models it needs download the first time, after you agree.' },
+      { text: 'Want IV Studio to run the cloud for you? Join the cloud beta on the Cloud page or in Settings → Privacy.' },
+      { text: 'A new look: tall animated banners on every page and an Audio front page. Nothing flashes, and every page fits smaller windows. Banner searches have a Search button.' },
+      { text: 'Settings → Setup is tidier, with Restart ComfyUI in one click.' },
+      { text: 'Start from an example: Create now offers six ready-made shots that fill in a working prompt, and the welcome wizard’s “Make your first shot” opens the first one ready to hunt.' },
+      { text: 'A failed render now says what went wrong in plain words (out of memory, a missing model or node pack, a full drive, credits) with a button for the fix. ComfyUI’s own message is still there under Details.' },
+      { text: 'Hunt and Finish say how long they will take on your machine, worked out from your own earlier renders, and what a cloud render will cost.' },
+      { text: 'The editor can add a “Made with IV Studio” end card to an export (Edit settings → End card). It is off unless you turn it on.' },
+      { text: 'Settings → Privacy: IV Studio sends nothing about how you use it unless you turn on “Help improve IV Studio”, which counts only opens and renders, never prompts, pictures or files.' },
+      { text: 'Effects on any clip in the editor (right-click → Effects…): dubbing into any language with new lip movement, clean plates, day to night, water, SDR to HDR, background removal and smooth or slow motion. Built on Freefield’s apps.' },
+      { text: 'Workflows → Effects turns a photo into an effect clip, a transformation or a transition. Audio → Sounds makes sound effects, ambiences and loops with Stable Audio 3, ready for A2.' },
+      { text: 'Picture tools in Create → Image: inpaint by painting over a part, relight, remove the background, upscale 2× or 4×, and depth or normal maps.' },
+      { text: 'LoRAs for every model, not just H3: pick MiniMax H3, LTX-2.5, Wan 2.1, Flux 3 Klein, Flux.2 Klein, Krea 2, Qwen Image 2.1, Z-Image, SDXL or Moss, find its LoRAs on Civitai and use them in that model’s tray.' },
+      { text: 'Closing and reopening IV Studio while ComfyUI starts no longer starts a second ComfyUI.' },
+      { text: 'Film craft in Projects, after Sam Wasserman’s Slate: coverage plans for a scene (dialogue, entrance, parallel action and more), a continuity check like a script supervisor’s, a Lookbook from any film or cinematographer, and a shot list as a document or CSV.' },
+      { text: 'Cinematography and prompt tools in Create and on every film shot: 165 setups (film stocks, lenses, light, camera rigs, moods), a director’s note, Tighten, Enrich, a new angle and 3 variants, with earlier versions kept.' },
+      { text: 'Projects writes the script and plans the storyboard with your chosen prompt writer, Claude Code and Codex included.' },
+      { text: 'A new prompt writer: OpenAI-compatible. Point it at llama.cpp, llama-swap, vLLM, LM Studio, LiteLLM, OpenAI or any server with the OpenAI API, with an optional key and extra headers (Settings → Prompt writer).' },
+      { text: 'Fixed: a switch (like Music’s Instrumental) could scroll the whole window, pushing the title bar off screen. Sequences with a voice no longer send the prompt’s section names twice.' },
+      { text: 'Seedance 2.5 in Create: a model switch beside MiniMax H3, on your Comfy.org credits. Cheap 480p drafts or 720p and 1080p takes, 4 to 30 seconds; the price shows first and you confirm before anything is charged.' },
+      { text: 'Your Comfy account in Settings and the title bar, with every paid partner model priced before it runs.' },
+      { text: 'Free finishes for Seedance takes on your own graphics card (SeedVR2, DLSS 5, or an H3 redraw), and a strength for each upscaler.' },
+      { text: 'Speed presets (Quality, Balanced, Fast, Low memory) so smaller cards render too. Check my computer picks one for you.' },
+      { text: 'Compare up to four versions in sync: side by side, as a wipe or in a grid, zoomed on the same spot.' },
+      { text: 'The Library shows how each render was made: model, size, seed, finish, render time, cost and the prompt.' },
+      { text: 'Simple words for people new to AI video, and Get ComfyUI for me when there isn’t one yet.' },
+      { text: 'Mac copies now install their own updates, like Windows and Linux.' },
+      { text: 'Character training moves to Fizgig 9; RunPod training starts from Fizgig’s own template. Settings → About → Credits lists everything IV Studio is built on.' },
+      { text: 'Takes that cut away: when a one-shot take cuts to a close-up nobody asked for, the take card says when, it scores lower, and you can keep the part before or after the cut. In First / last frame mode, each take says whether it really opens and ends on your pictures.' },
+      { text: 'The prompt checker warns about “no …” wording: H3 has no negative prompt, so “no photographs” can put photographs on the wall. It suggests what to write instead.' },
+      { text: 'Premiere / Resolve in the editor: the timeline as files Premiere Pro, DaVinci Resolve and Final Cut open, with every clip copied beside them and zipped to send.' },
+      { text: 'LoRAs → Recommended: a shelf of H3 LoRAs we’ve tried (camera moves, natural speech, motion repair, physics, first-person, 360° orbit, transformations), each with how to use it.' },
+      { text: 'Turnaround sheets on Characters: five views of a character turning around, from their face picture.' },
+      { text: 'Search the Library by what’s in a file: while nothing renders, your prompt writer looks at each video and picture, so “red car” finds one (Settings → Prompt writer turns it off).' },
+      { text: 'Soft mouth: a reference video’s mouths are blurred first, so the new face doesn’t mouth its words (Create’s References mode and Replace).' },
+      { text: 'Dailies after an overnight batch: a reel of every take with a card for each (seed and checks), and notes on what to look at first.' }
+    ]
+  },
+  {
+    version: '1.0.9',
+    items: [
+      { text: 'Shut down GPU on Modal works again: newer Modal tools asked “Are you sure?” with nobody there to answer, and the stop failed. Guided tours show their cards on every step.' }
+    ]
+  },
+  {
     version: '1.0.8',
     items: [
       { text: 'Settings → Accessibility: bigger text, higher contrast text, reduce motion, clear focus outlines and underlined links. Secondary text is easier to read for everyone, too.' },

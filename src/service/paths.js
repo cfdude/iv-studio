@@ -69,7 +69,9 @@ export function resourcesDir(hint) {
 // comfyApiKey and civitaiKey are stored encrypted by the app (Electron safeStorage); they're never sent to the window.
 // civitaiMature: mature LoRAs from civitai.red on the LoRAs page, off unless the person turns it on.
 // civitaiUnblur: with civitaiMature on, mature previews show without the blur (a second, separate opt-in).
-// promptEngine: 'local' (ollamaModel), 'claude' (claudeModel) or 'codex' (codexModel) writes prompts, or 'contextir';
+// promptEngine: 'local' (ollamaModel), 'claude' (claudeModel) or 'codex' (codexModel) writes prompts, or 'contextir',
+// or 'openai': an OpenAI-compatible server (llm.js) at openaiUrl with openaiModel; openaiVision: it sees pictures;
+// openaiKey and openaiHeaders ("Name: value" lines) are stored encrypted.
 // '' as a Claude Code or Codex model means the person's own default there.
 // target: 'local' (comfyUrl) or 'cloud' (cloud.url behind the gate, cloudToken; both set by the Cloud page).
 // cloudProvider: 'modal' (cloud, cloudToken) or 'runpod' (runpod: the volume, GPU and current pod; runpodToken for
@@ -77,11 +79,12 @@ export function resourcesDir(hint) {
 // comfyFolder: the person's main ComfyUI folder; comfyLauncher: the shortcut, .bat or ComfyUI.exe that starts
 // ComfyUI ('' = the best one in comfyFolder, else the best one found on this PC); comfyAutoStart:
 // start it when IV Studio opens if it isn't running (comfylauncher.js).
+// chatBudget: the chat's spending limit { on, daily, perStep } in Comfy credits (spending.js; null = off).
 // incognito: the app works in its private set of everything made (see incognitoDir); switched by a restart.
 // outputFolder / privateFolder: the folder inside ComfyUI's output where renders save, normally and in
 // Incognito ('' = straight into output). Incognito uploads go into the same folder name under input.
 export const PRIVATE_FOLDER = 'IV Private'
-const DEFAULT_SETTINGS = { comfyUrl: 'http://127.0.0.1:8188', window: null, promptEngine: 'local', ollamaUrl: '', ollamaModel: 'huihui_ai/qwen3-vl-abliterated:8b-instruct', claudeModel: '', codexModel: '', comfyApiKey: null, target: 'local', cloud: null, cloudToken: null, cloudProvider: 'modal', runpod: null, runpodKey: null, runpodToken: null, models: {}, comfyFolder: '', comfyLauncher: '', comfyAutoStart: true, civitaiKey: null, civitaiMature: false, civitaiUnblur: false, incognito: false, outputFolder: '', privateFolder: PRIVATE_FOLDER, onboarded: null, hardware: null, shotPrefs: null, fizgigFolder: '', videosFolder: '', highContrast: false, textSize: 'normal', reduceMotion: false, focusRings: false, underlineLinks: false }
+const DEFAULT_SETTINGS = { comfyUrl: 'http://127.0.0.1:8188', window: null, promptEngine: 'local', ollamaUrl: '', ollamaModel: 'huihui_ai/qwen3-vl-abliterated:8b-instruct', claudeModel: '', codexModel: '', openaiUrl: '', openaiModel: '', openaiVision: false, openaiKey: null, openaiHeaders: null, chatBudget: null, comfyApiKey: null, comfyCloudKey: null, comfycloud: null, target: 'local', cloud: null, cloudToken: null, cloudProvider: 'modal', runpod: null, runpodKey: null, runpodToken: null, models: {}, comfyFolder: '', comfyLauncher: '', comfyAutoStart: true, civitaiKey: null, hfToken: null, hfTokenAt: null, civitaiMature: false, civitaiUnblur: false, incognito: false, outputFolder: '', privateFolder: PRIVATE_FOLDER, onboarded: null, hardware: null, shotPrefs: null, speed: null, plainWords: false, highContrast: false, aiLevel: null, fizgigFolder: '', videosFolder: '', textSize: 'normal', reduceMotion: false, focusRings: false, underlineLinks: false, usage: null, betaJoined: false, describeLibrary: true, h3Terms: null, chatWindow: null }
 
 // A folder name as ComfyUI takes it: relative to its output (or input) folder, forward slashes, nothing
 // that climbs out of it or that Windows won't allow.
@@ -223,5 +226,7 @@ export function writeSettings(patch, dir = dataDir()) {
 // The prompt writer chosen in Settings, as { engine, model }.
 export function writerOf(settings) {
   const engine = settings.promptEngine || 'local'
+  // the OpenAI-compatible server writes exactly as the local writer does; only the transport differs (llm.js)
+  if (engine === 'openai') return { engine: 'local', provider: 'openai', model: settings.openaiModel || '' }
   return { engine, model: engine === 'claude' ? settings.claudeModel || '' : engine === 'codex' ? settings.codexModel || '' : settings.ollamaModel }
 }

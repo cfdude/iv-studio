@@ -2,7 +2,9 @@
 // Projects, jobs and characters live as JSON in the data folder, so either process can pick up the
 // other's work. ComfyUI does the rendering; this records what was asked, what ran and what came out.
 import { randomUUID } from 'node:crypto'
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
+import { speaks } from './softmouth.js'
 import path from 'node:path'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { Comfy } from './comfy.js'
@@ -10,6 +12,7 @@ import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
 import { SEEDVR2_DEVICE, seedvr2Refusal } from './gpu.js'
 import { planFinish, planPreviews } from './plan.js'
+import { applyFinishSpeed, applySpeed } from './speed.js'
 import { adaptGraph, capabilities, finishCaps, LIVE_NODE, NO_RIFE, NO_UPSCALER, withLivePreview } from './remote.js'
 import { Cast, resolveMentions } from './cast.js'
 import { contextIrGraph, fromContextIr, writeHarness, writeLocal, writeStoryLocal } from './prompter.js'
@@ -18,6 +21,11 @@ import { checkSetup, comboOptions, modelFileMap, whyUnreached } from './setup.js
 import { comfyPlace, installPacks, missingPacks } from './nodepacks.js'
 import { checkUpdates, copySnapshot, MANAGER_PACK, packFolders, readRecord, reenable, restart, undo, update, writeRecord } from './comfyupdate.js'
 import { comfyUp, isDesktopLauncher, isLocalUrl } from './comfylauncher.js'
+import { finalFrom, finalGraph, graphProblems, NODES as SEEDANCE_NODES, planSeedance, SEEDANCE, seedanceGraph, seedanceMentions, sizeOf, takesFrom, FINAL_FROM_DRAFT } from './seedance.js'
+import { infoFor, priceGraph } from './pricing.js'
+import { writeSeedance } from './seedwriter.js'
+import { REFINE_DEFAULTS, refineGraph } from './h3refine.js'
+import { explainFailure } from './failures.js'
 
 const SHOT_BOILERPLATE = [/^there is no (?:writing|text|lettering)/i, /^no (?:signs|text|labels|captions|writing|lettering)\b/i, /^(?:one|a single) (?:continuous|unbroken)\b/i, /^(?:filmed|shot) (?:on|with)\b/i, /^the camera\b/i, /^(?:handheld|static|locked[- ]off)\b/i]
 // A new shot's name from its prompt: the first words of [Shot 1] (not "subject_definitions" or the frames line),
@@ -48,9 +56,25 @@ const PREVIEW_SAVES = { 1: '42', 2: '118', 3: '128' }
 // big models never share the GPU (Z-Image or MiniMax Music next to H3 overflows a 24 GB card and 64 GB of RAM).
 // Jobs of the same family keep their models: a finish reuses its preview's cached latent.
 // Create -> Image jobs are 'picture:<family>' (see images.js), so switching image models unloads too.
-const FAMILIES = { music: 'music', still: 'image', enhance: 'seedvr2', cutout: 'sam' }
-const familyOf = (kind) => FAMILIES[kind] || (String(kind).startsWith('picture:') ? String(kind) : 'h3')
+// A turnaround sheet (turnaround.js) loads its own H3 with the five-view LoRA patched in; kept beside a shot's H3 it
+// filled 64 GB of RAM and a 0.4 MP draft crawled for 10 minutes (2026-11-10), so it's a family of its own.
+const FAMILIES = { music: 'music', sound: 'sound', still: 'image', enhance: 'seedvr2', cutout: 'sam', 'clipfx:reshoot': 'h3', turnaround: 'turnaround' }
+// Clip effects (freefield.js) are their own families too: LTX-2.5 or Wan next to H3 would overflow the card.
+const familyOf = (kind) => FAMILIES[kind] || (/^(picture|clipfx):/.test(String(kind)) ? String(kind) : 'h3')
 // The UNETLoader each mode of the IV Studio workflow uses (Settings can swap its model).
+// How hard the free finish's H3 pass works on a take it didn't make (h3refine.js). Likeness to Tess's face on a
+// Seedance draft (2026-11-08): the draft 0.51-0.68; SeedVR2 1080p 0.52-0.64; H3 at 0.1 0.44-0.48, 0.2 0.38-0.44,
+// 0.4 (H3's own finish strength) 0.12-0.27; DLSS 5 to 1080p (2.25x) 0.48-0.63 in 15 s, with a speckled skin
+// texture. So SeedVR2 is the free finish's default, DLSS 5 the quick one, and H3 stays light.
+export const REFINE_STRENGTH = { light: 0.1, medium: 0.2 }
+// DLSS 5's look: its noise-reduction intensity (0-2) and style, as node inputs (or, short, for a job's record)
+export const DLSS_STYLES = ['Default', 'Natural', 'Cinematic']
+export function dlssLook({ strength = null, style = null } = {}, record = false) {
+  const out = {}
+  if (strength != null && Number.isFinite(Number(strength))) out[record ? 'strength' : 'NR Intensity'] = Math.min(2, Math.max(0, Math.round(Number(strength) * 100) / 100))
+  if (style && DLSS_STYLES.includes(style)) out[record ? 'style' : 'NR Style'] = style
+  return out
+}
 export const MODEL_NODES = { text: '101', frames: '201', reference: '301', continue: '601' }
 
 const readJson = (file, fallback) => {
@@ -75,6 +99,57 @@ const ENHANCE_MODELS = ['seedvr2_ema_3b_fp16.safetensors', 'seedvr2_ema_3b_fp8_e
 // swap half the DiT's blocks to the CPU.
 export const seedvr2Batch = (resolution) =>
   resolution > 1440 ? { batch: 5, overlap: 1, swap: 16 } : resolution > 1080 ? { batch: 9, overlap: 2, swap: 0 } : { batch: 21, overlap: 3, swap: 0 }
+
+// What the Library tells about one render (a shot's preview, final or enhanced copy), from its job and the jobs
+// above it: facts as [label, value] rows for the viewer, a short line for its tile, the prompt as asked, and its
+// size, length, model and the time it took for sorting and filtering. Nothing is guessed: a fact the job didn't
+// record is left out.
+export function renderFacts({ job, jobs = [], output = {}, request = {}, characters = [] }) {
+  const up = (x) => jobs.find((y) => y.id === x?.parent)
+  const run = job.kind === 'previews' ? job : job.kind === 'finish' ? up(job) : up(up(job))
+  const fin = job.kind === 'finish' ? job : job.kind === 'enhance' ? up(job) : null
+  const r = job.plan?.resolved || {}
+  const rr = run?.plan?.resolved || {}
+  const engine = job.plan?.engine || run?.plan?.engine || request.engine || 'h3'
+  const seedance = engine === 'seedance'
+  const candidate = output.candidate || fin?.plan?.finish?.candidate || null
+  const facts = []
+  const add = (k, v) => v != null && v !== '' && facts.push([k, String(v)])
+  const width = r.width || rr.width
+  const height = r.height || rr.height
+  const seconds = r.seconds || rr.seconds
+  const fps = (job.kind === 'finish' && fin?.plan?.finish?.fps) || r.fps || rr.fps
+  const model = seedance ? rr.model || 'Seedance 2.5' : 'MiniMax H3'
+  const MODES = { text: 'Text', reference: 'References', frames: 'First / last frame', continue: 'Continue a video' }
+  add('Model', model)
+  add('Kind', MODES[request.mode] || request.mode)
+  add('Size', width && height ? `${width} × ${height}` : null)
+  add('Length', seconds ? `${Math.round(seconds * 10) / 10} s${fps ? ` at ${fps} fps` : ''}` : null)
+  const ch = request.character && request.character !== 'none' ? characters.find((c) => c.id === request.character) : null
+  add('Character', ch?.name || null)
+  const loras = (request.extraLoras || []).filter((l) => l?.name).map((l) => `${String(l.name).split(/[\\/]/).pop().replace(/\.safetensors$/, '')}${l.strength != null && l.strength !== 1 ? ` ${l.strength}` : ''}`)
+  add('LoRAs', loras.join(', ') || null)
+  const refmods = (request.refmods || []).filter((x) => x?.name).map((x) => String(x.name).split(/[\\/]/).pop())
+  add('RefMods', refmods.join(', ') || null)
+  const seed = rr.seeds && candidate ? rr.seeds[candidate - 1] : null
+  add('Seed', seed)
+  if (!seedance && (request.steps || rr.steps)) add('Steps', request.steps || rr.steps)
+  if (job.kind === 'previews') add('Take', candidate ? `Preview ${candidate} of ${rr.previews || '?'}` : null)
+  // how it was finished, and enhanced
+  const f = fin?.plan?.finish
+  if (f) {
+    if (seedance) add('Finish', f.way === 'seedance' ? 'Seedance 1080p' : f.way === 'take' ? 'The take, as it is' : f.refiner === 'h3' || f.refiner === 'h3seedvr2' ? `H3 at ${f.megapixels || 2} MP, strength ${f.strength ?? 'light'}${f.refiner === 'h3seedvr2' ? ', then SeedVR2' : ', then DLSS 5'}` : f.refiner === 'dlss' ? 'DLSS 5' : `SeedVR2 ${f.resolution || 1080}p`)
+    else add('Finish', `${f.megapixels || 2} MP from preview ${f.candidate || 1}${f.enhancer === 'seedvr2' ? ', then SeedVR2' : f.upscale2x ? ', DLSS 5 and RTX 2×' : ', DLSS 5'}${f.dlssStrength != null ? ` (strength ${f.dlssStrength}${f.dlssStyle && f.dlssStyle !== 'Default' ? `, ${f.dlssStyle}` : ''})` : ''}${f.fps ? `, ${f.fps} fps` : ''}`)
+  }
+  const e = job.kind === 'enhance' ? job.plan?.enhance : null
+  if (e) add('Enhanced', e.engine === 'dlss' ? `DLSS 5 ${e.scale}×${e.strength != null ? `, strength ${e.strength}` : ''}${e.style && e.style !== 'Default' ? `, ${e.style}` : ''}` : `SeedVR2 ${e.resolution}p${e.detail ? `, detail ${e.detail}` : ''}`)
+  if (job.seconds) add('Render time', job.seconds >= 90 ? `${Math.floor(job.seconds / 60)} min ${job.seconds % 60} s` : `${job.seconds} s`)
+  const cost = job.plan?.cost
+  add('Cost', cost?.usd != null ? `$${cost.usd.toFixed(2)} of Comfy credits` : seedance ? null : 'Free, on this computer')
+  const prompt = run?.plan?.asked?.prompt || request.prompt || null
+  const tile = [width && height ? `${width}×${height}` : null, seconds ? `${Math.round(seconds)} s` : null, seedance ? 'Seedance' : 'H3'].filter(Boolean).join(' · ')
+  return { facts, tile, prompt, model: seedance ? 'seedance' : 'h3', width: width || null, height: height || null, duration: seconds || null, renderSeconds: job.seconds || null, cost: cost?.usd ?? null }
+}
 
 export class Studio {
   // models: { text, frames, reference, continue, take, retake } -> a UNET name per workflow (Settings).
@@ -206,7 +281,7 @@ export class Studio {
     if (!packs.length) return { results: [], restart: false }
     const place = await comfyPlace(this.comfy, folder)
     const results = await installPacks(packs, { ...place, resourcesDir: this.resourcesDir, onProgress })
-    return { customNodes: place.customNodes, python: place.python, results, restart: results.some((r) => r.status === 'installed') }
+    return { customNodes: place.customNodes, python: place.python, results, restart: results.some((r) => r.status === 'installed' || r.status === 'skipped') }
   }
 
   // ---------- updating ComfyUI, its node packs and ComfyUI-Manager (comfyupdate.js) ----------
@@ -312,8 +387,9 @@ export class Studio {
 
   // ---------- planning ----------
   // With @ mentions resolved as a render would (cast.js); notes says what they turned into.
-  planRender(asked, finish) {
-    const { request, notes } = resolveMentions(asked, this.cast.members())
+  planRender(given, finish) {
+    if (given.engine === SEEDANCE) return this.planSeedanceRender(given)
+    const { request, notes } = resolveMentions(applySpeed(given), this.cast.members())
     const plan = planPreviews(request, this.characters())
     const out = { resolved: plan.resolved, groups: plan.groups, notes, mode: request.mode }
     if (finish !== false) out.finish = planFinish(plan, { candidate: 1, ...(finish || {}) }).resolved
@@ -332,16 +408,23 @@ export class Studio {
 
   // characterOverride: a character that isn't a saved preset (a training's checkpoint under test).
   async generatePreviews(input) {
-    const { projectId, projectName, characterOverride, ...asked } = input
+    if (input.engine === SEEDANCE) return this.seedancePreviews(input)
+    const { projectId, projectName, characterOverride, ...given } = input
+    // a speed preset (speed.js) fills the preview size, steps and takes the request leaves out
+    const asked = applySpeed(given)
     // @ mentions (cast.js): the picked character's becomes {char}; anyone or anywhere else with a picture is attached
     const { request, notes } = resolveMentions(asked, this.cast.members())
     const unknown = notes.filter((n) => n.level === 'error')
     if (unknown.length) throw new Error(unknown.map((n) => n.message).join(' '))
     const project = projectId ? this.getProject(projectId) : this.createProject(projectName || shotName(request.prompt, this.characters().find((c) => c.id === request.character)))
     const media = []
+    // soft mouth (softmouth.js): a video reference's mouths blurred, so the new face doesn't mouth its words; only
+    // when the shot has no spoken line
+    const softMouth = (m) => m.kind === 'video' && m.softMouth && !speaks(request)
+    if ((request.media || []).some(softMouth) && !this.softMouth) throw new Error('Soft mouth isn’t available here.')
     for (const m of request.media || []) {
       // H3's media loader refuses a video without sound when it's told to pair it (a previs, a silent clip)
-      const local = m.file || m.path
+      const local = softMouth(m) ? (await this.softMouth(m.file || m.path)).path : m.file || m.path
       const sound = m.kind === 'video' && m.hasAudio === undefined && local && fs.existsSync(local) ? { hasAudio: (await probe(FFPROBE, local).catch(() => null))?.hasAudio ?? true } : {}
       media.push({ ...m, ...sound, file: await this.stage(local, 'minimax_h3') })
     }
@@ -351,7 +434,7 @@ export class Studio {
     const unet = this.models[plan.request.mode]
     if (unet) plan.values[`${MODEL_NODES[plan.request.mode]}.unet_name`] = unet
     // the run keeps what was asked as written (mentions and all, media as local files), for "Edit and run again"
-    plan.asked = { prompt: asked.prompt, mode: asked.mode, media: (asked.media || []).map((m) => ({ kind: m.kind, file: m.file || m.path })), voiceLine: asked.voiceLine || null }
+    plan.asked = { prompt: asked.prompt, mode: asked.mode, media: (asked.media || []).map((m) => ({ kind: m.kind, file: m.file || m.path, ...(m.softMouth ? { softMouth: true } : {}) })), voiceLine: asked.voiceLine || null }
     const run = project.jobs.length + 1
     const name = `${slug(project.name)}_${project.id}_r${run}`
     plan.values['80'] = name
@@ -362,22 +445,241 @@ export class Studio {
   planFinishJob(jobId, finish) {
     const source = this.getJob(jobId)
     if (source.kind !== 'previews') throw new Error('Needs a previews job id.')
+    if (source.plan?.engine === SEEDANCE) return this.seedanceFinishPlan(source, finish)
     return planFinish(source.plan, finish).resolved
   }
 
-  async finishCandidate({ jobId, ...finish }) {
+  // fallbackSpeed: the saved preset, for a shot made without one; the shot's own preset wins
+  async finishCandidate({ jobId, speed, fallbackSpeed, ...given }) {
     const source = this.getJob(jobId, { refresh: false })
     if (source.kind !== 'previews') throw new Error('finish_candidate needs a previews job id.')
+    if (source.plan?.engine === SEEDANCE) return this.seedanceFinish(source, given)
     const caps = await this.capabilities()
     // the 'upscale' enhancer has its own limits (Real-ESRGAN, RIFE); the others are the ComfyUI's
+    const finish = applyFinishSpeed(given, speed || source.plan.request?.speed || fallbackSpeed, finishCaps(caps, given.enhancer))
     const can = finish.enhancer === 'upscale' ? finishCaps(caps, 'upscale') : caps
     if (finish.fps && !can.fps.includes(finish.fps)) throw new Error(`This ComfyUI can make ${can.fps.filter(Boolean).join(', ') || 'no other'} fps.${!can.dlss && !can.rife ? ` ${NO_RIFE}` : ''}`)
     if (finish.upscale2x && !can.upscale2x && finish.enhancer !== 'seedvr2') throw new Error(NO_UPSCALER)
-    if (finish.enhancer === 'seedvr2' && this.comfy.remote) throw new Error('SeedVR2 runs on this computer\'s ComfyUI only; the cloud finishes with its own upscaler.')
+    if (finish.enhancer === 'seedvr2' && this.comfy.hosted) throw new Error('SeedVR2 runs on this computer\'s ComfyUI or your own cloud (RunPod, Modal), not on Comfy Cloud.')
     if (finish.enhancer === 'seedvr2' && seedvr2Refusal(caps.gpuKind)) throw new Error(seedvr2Refusal(caps.gpuKind))
     const plan = planFinish(source.plan, finish)
     plan.values['80'] = source.name
     return this.submit({ kind: 'finish', project: this.getProject(source.projectId), plan, name: source.name, parent: source.id, previewPlan: source.plan })
+  }
+
+  // ---------- Seedance 2.5 (seedance.js): the same shots on ComfyUI's ByteDance partner nodes ----------
+  // partnerKey: () => the person's Comfy.org API key (the app's sealed key, or the MCP server's environment).
+  seedanceRequest(asked) {
+    const { request, notes } = seedanceMentions(asked, this.cast.members())
+    const unknown = notes.filter((n) => n.level === 'error')
+    if (unknown.length) throw new Error(unknown.map((n) => n.message).join(' '))
+    const character = request.character && request.character !== 'none' ? this.characters().find((c) => c.id === request.character) : null
+    const plan = planSeedance(request, this.characters(), { face: character ? this.facePicture(character, this.resourcesDir) : null })
+    plan.notes = [...notes.map((n) => n.message), ...plan.notes]
+    return plan
+  }
+
+  planSeedanceRender(asked) {
+    const plan = this.seedanceRequest({ ...asked, prompt: asked.prompt || 'x' })
+    const { resolved, request } = plan
+    const finish = resolved.draft ? { ...sizeOf(FINAL_FROM_DRAFT.short, request.aspect), seconds: resolved.seconds, fps: 24 } : { width: resolved.width, height: resolved.height, seconds: resolved.seconds, fps: 24 }
+    return { resolved, groups: [], notes: plan.notes.map((message) => ({ level: 'warning', message })), mode: request.mode, engine: SEEDANCE, finish }
+  }
+
+  // The graph for a request, with the references staged into ComfyUI (or, to price it, only named).
+  async seedanceBuild(plan, name, { stage = true } = {}) {
+    const put = (f) => (stage ? this.stage(f, 'seedance') : Promise.resolve(path.basename(f || '')))
+    const staged = { pictures: [], videos: [], audios: [] }
+    for (const k of Object.keys(staged)) for (const f of plan.refs[k]) staged[k].push(await put(f))
+    const probe = { a: { class_type: plan.node.cls }, b: { class_type: 'SaveVideo' }, c: { class_type: 'PreviewAny' }, d: { class_type: 'LoadImage' }, e: { class_type: 'LoadVideo' }, f: { class_type: 'LoadAudio' } }
+    const info = await infoFor(this.comfy, probe)
+    if (!info[plan.node.cls]) throw new Error(`This ComfyUI has no ${plan.node.cls}. Seedance 2.5 needs ComfyUI 0.44 or newer (Settings → Setup → Updates).`)
+    const graph = seedanceGraph(plan, staged, info, name)
+    if (stage) {
+      const problems = graphProblems(graph, info)
+      if (problems.length) throw new Error(`Internal graph error: ${problems.join('; ')}`)
+    }
+    return { graph, info }
+  }
+
+  // What a Seedance request (Create's form) would cost: { paid, min, max, credits, label, nodes, unknown }.
+  async priceRender(asked) {
+    if (asked.engine !== SEEDANCE) return { paid: false, label: 'Free on this computer', min: 0, max: 0, nodes: [], unknown: [] }
+    const plan = this.seedanceRequest({ ...asked, prompt: asked.prompt || 'x' })
+    const { graph, info } = await this.seedanceBuild(plan, 'price', { stage: false })
+    return priceGraph(graph, info)
+  }
+
+  // What finishing a take would cost: Draft to Final for a draft, nothing for a take used as it is.
+  async priceFinish({ jobId, way = 'seedance' }) {
+    const source = this.getJob(jobId)
+    if (source.plan?.engine !== SEEDANCE || !source.plan.resolved.draft || way !== 'seedance') return { paid: false, label: 'Free', min: 0, max: 0, nodes: [], unknown: [] }
+    const graph = finalGraph('x', null, 'price')
+    const price = await priceGraph(graph, await infoFor(this.comfy, graph))
+    // ComfyUI prices Draft to Final as one flat range (any length); a 1080p Seedance 2.5 take of this draft's length
+    // and shape is the likely figure, shown beside it (the OK still has to cover the top of ComfyUI's range)
+    try {
+      const { request, resolved } = source.plan
+      const like = { t: { class_type: SEEDANCE_NODES.text, inputs: { model: 'Seedance 2.5', 'model.resolution': '1080p', 'model.ratio': request.aspect, 'model.duration': resolved.seconds, 'model.generate_audio': request.audio !== false } } }
+      const likely = await priceGraph(like, await infoFor(this.comfy, like))
+      if (likely.paid && !likely.unknown.length) price.likelyUsd = likely.max
+    } catch {}
+    return price
+  }
+
+  async seedancePreviews(input) {
+    const { projectId, projectName, spend, ...asked } = input
+    const plan = this.seedanceRequest(asked)
+    const key = this.partnerKey?.()
+    if (!key) throw new Error('Seedance runs on your Comfy.org credits: add your Comfy.org API key in Settings → Comfy account.')
+    const character = this.characters().find((c) => c.id === plan.request.character)
+    // named from the prompt as written (the role lines IV Studio adds in front would name every shot "@image1 defines…")
+    const project = projectId ? this.getProject(projectId) : this.createProject(projectName || shotName(String(asked.prompt || '').replace(/@(image|video|audio)\d+/gi, ''), character))
+    const run = project.jobs.length + 1
+    const name = `${slug(project.name)}_${project.id}_r${run}`
+    const { graph } = await this.seedanceBuild(plan, name)
+    plan.asked = { prompt: asked.prompt, mode: asked.mode, media: (asked.media || []).map((m) => ({ kind: m.kind, file: m.file || m.path })), voiceLine: asked.voiceLine || null, engine: SEEDANCE, tier: asked.tier, audio: asked.audio }
+    const promptId = await this.comfy.submit(graph, { api_key_comfy_org: key, iv_studio: { kind: 'previews', project: project.id, engine: SEEDANCE } }, { spend })
+    return this.recordJob({ kind: 'previews', projectId: project.id, name, promptId, plan: { ...plan, engine: SEEDANCE, cost: this.comfy.lastPrice || null } })
+  }
+
+  seedanceFinishPlan(source, finish = {}) {
+    const { resolved, request } = source.plan
+    const way = finish.way || (resolved.draft ? 'seedance' : 'take')
+    if (way === 'seedance' && resolved.draft) return { ...sizeOf(FINAL_FROM_DRAFT.short, request.aspect), seconds: resolved.seconds, fps: 24, way, engine: SEEDANCE }
+    if (way === 'local' && (finish.engine === 'h3' || finish.engine === 'h3seedvr2')) {
+      const then = finish.engine === 'h3seedvr2' ? 'seedvr2' : 'dlss'
+      const r = refineGraph(this.template, { source: { path: 'x', width: resolved.width, height: resolved.height, frames: resolved.frames }, prompt: 'x', name: 'x', ...this.refineOptions({ ...finish, then }) }).resolved
+      if (then === 'dlss') return { ...r, way, engine: SEEDANCE, refiner: 'h3' }
+      // H3's pass, then SeedVR2 to a short side of `resolution`
+      const short = [1080, 1440].includes(finish.resolution) ? finish.resolution : 1080
+      const k = short / Math.min(r.width, r.height)
+      return { ...r, width: Math.round((r.width * k) / 2) * 2, height: Math.round((r.height * k) / 2) * 2, h3Width: r.width, h3Height: r.height, way, engine: SEEDANCE, refiner: 'h3seedvr2' }
+    }
+    if (way === 'local') {
+      // SeedVR2 to a short side of `resolution` (1080 or 1440)
+      const short = [1080, 1440].includes(finish.resolution) ? finish.resolution : 1080
+      const k = short / Math.min(resolved.width, resolved.height)
+      return { width: Math.round((resolved.width * k) / 2) * 2, height: Math.round((resolved.height * k) / 2) * 2, seconds: resolved.seconds, fps: 24, way, engine: SEEDANCE, refiner: finish.engine === 'dlss' ? 'dlss' : 'seedvr2' }
+    }
+    return { width: resolved.width, height: resolved.height, seconds: resolved.seconds, fps: 24, way: 'take', engine: SEEDANCE }
+  }
+
+  // Finishing a Seedance take. way 'seedance' (a draft only): Draft to Final at 1080p, paid. way 'take': the take
+  // itself becomes the shot's final as it is, at once and free (Enhance can then run DLSS 5 or SeedVR2 on it here).
+  async seedanceFinish(source, { candidate = 1, way, spend, ...finishOpts } = {}) {
+    const take = (source.outputs || []).find((o) => o.kind === 'preview' && o.candidate === candidate)
+    if (!take) throw new Error(`Take ${candidate} hasn't finished.`)
+    const resolved = this.seedanceFinishPlan(source, { way, ...finishOpts })
+    if (resolved.way === 'take') {
+      const final = { ...take, kind: 'final' }
+      delete final.candidate
+      return this.recordJob({ kind: 'finish', projectId: source.projectId, name: source.name, parent: source.id, promptId: null, status: 'success', outputs: [final], plan: { engine: SEEDANCE, finish: { candidate, way: 'take' }, request: source.plan.request, resolved } })
+    }
+    if (resolved.way === 'local' && (finishOpts.engine === 'h3' || finishOpts.engine === 'h3seedvr2')) return this.refineTake(source, take, { candidate, ...finishOpts, then: finishOpts.engine === 'h3seedvr2' ? 'seedvr2' : 'dlss' })
+    if (resolved.way === 'local') {
+      // the free finish's default: the take becomes the final, and SeedVR2 (or, quicker, DLSS 5) brings it to 1080p
+      // or 1440p on this PC
+      if (this.comfy.hosted) throw new Error('The free finish runs on this computer\'s ComfyUI or your own cloud. Use Seedance 1080p, or keep the take as it is.')
+      if (this.comfy.ownCloud && resolved.refiner === 'dlss') throw new Error('DLSS 5 runs on Windows computers only. In the cloud, finish with SeedVR2, Seedance 1080p, or keep the take as it is.')
+      // refused before a job is recorded: SeedVR2 can't run on an Apple GPU
+      if (resolved.refiner !== 'dlss') {
+        const refusal = seedvr2Refusal((await this.capabilities().catch(() => ({}))).gpuKind)
+        if (refusal) throw new Error(refusal)
+      }
+      const final = { ...take, kind: 'final' }
+      delete final.candidate
+      const short = Math.min(resolved.width, resolved.height)
+      const job = this.recordJob({ kind: 'finish', projectId: source.projectId, name: source.name, parent: source.id, promptId: null, status: 'success', outputs: [final], plan: { engine: SEEDANCE, finish: { candidate, way: 'local', refiner: resolved.refiner, resolution: short }, request: source.plan.request, resolved: { width: source.plan.resolved.width, height: source.plan.resolved.height, seconds: resolved.seconds, fps: 24 } } })
+      const takeShort = Math.min(source.plan.resolved.width, source.plan.resolved.height)
+      const enhance = resolved.refiner === 'dlss' ? await this.enhanceFinal({ jobId: job.id, engine: 'dlss', scale: Math.round((short / takeShort) * 100) / 100, strength: finishOpts.dlssStrength, style: finishOpts.dlssStyle }) : await this.enhanceFinal({ jobId: job.id, engine: 'seedvr2', resolution: short, detail: finishOpts.detail })
+      return this.updateJob(job.id, { enhanceJob: enhance.id })
+    }
+    if (!take.draftTaskId) throw new Error("That take has no draft task id, so Seedance can't finish it. Use it as it is, or make it again.")
+    const key = this.partnerKey?.()
+    if (!key) throw new Error('Seedance runs on your Comfy.org credits: add your Comfy.org API key in Settings → Comfy account.')
+    const name = `${source.name}_c${candidate}`
+    const info = await infoFor(this.comfy, finalGraph('x', null, name))
+    if (!info[SEEDANCE_NODES.final]) throw new Error('This ComfyUI has no Seedance 2.5 Draft to Final node. Update ComfyUI (Settings → Setup → Updates).')
+    const graph = finalGraph(take.draftTaskId, info, name)
+    const promptId = await this.comfy.submit(graph, { api_key_comfy_org: key, iv_studio: { kind: 'finish', project: source.projectId, engine: SEEDANCE } }, { spend })
+    return this.recordJob({ kind: 'finish', projectId: source.projectId, name, parent: source.id, promptId, plan: { engine: SEEDANCE, finish: { candidate, way: 'seedance' }, request: source.plan.request, resolved, cost: this.comfy.lastPrice || null } })
+  }
+
+  // The free finish on this PC for any take that isn't H3's own (h3refine.js): H3 refines it at the finish size at
+  // a light strength, then DLSS 5. strength: 'light' keeps the face Seedance made; 'medium' adds more of H3's detail
+  // and changes faces more. character: the shot's character LoRA joins the pass when asked (useLora).
+  // strength: 'light', 'medium', or a number from 0.05 to 0.5. dlssStrength / dlssStyle: DLSS 5 after it.
+  // then: 'dlss' (DLSS 5 in the same graph) or 'seedvr2' (no DLSS; SeedVR2 runs as its own job once H3 is done)
+  refineOptions({ megapixels = REFINE_DEFAULTS.megapixels, strength = 'light', upscale2x = false, dlssStrength = null, dlssStyle = null, then = 'dlss' } = {}) {
+    if (![1, 1.5, 2].includes(megapixels)) throw new Error('The finish size is 1, 1.5 or 2 MP.')
+    const denoise = typeof strength === 'number' ? Math.min(0.5, Math.max(0.05, strength)) : REFINE_STRENGTH[strength] ?? REFINE_STRENGTH.light
+    if (then === 'seedvr2') return { megapixels, denoise, upscale2x: false, dlss: false }
+    return { megapixels, denoise, upscale2x: !!upscale2x, dlss: dlssLook({ strength: dlssStrength, style: dlssStyle }) }
+  }
+
+  async refineTake(source, take, { candidate, megapixels, strength, upscale2x, useLora = false, dlssStrength = null, dlssStyle = null, then = 'dlss', resolution = 1080, detail = 0 } = {}) {
+    if (this.comfy.remote) throw new Error('The H3 pass runs on this computer\'s ComfyUI. In the cloud, finish with SeedVR2 or Seedance 1080p, or keep the take as it is.')
+    if (!take.path || !fs.existsSync(take.path)) throw new Error('That take isn\'t on this computer yet.')
+    const caps = await this.capabilities()
+    if (then === 'seedvr2' && seedvr2Refusal(caps.gpuKind)) throw new Error(seedvr2Refusal(caps.gpuKind))
+    if (then === 'dlss' && !caps.dlss) throw new Error('The free finish needs DLSS 5 in ComfyUI (Settings → Setup).')
+    const info = await probe(FFPROBE, take.path)
+    const frames = Math.round((info.duration || source.plan.resolved.seconds) * (info.fps || 24))
+    const request = source.plan.request
+    const character = request.character && request.character !== 'none' ? this.characters().find((c) => c.id === request.character) : null
+    const name = `${source.name}_c${candidate}_h3`
+    let silence = null
+    if (!info.hasAudio) silence = await this.stage(await this.silentWav(frames / 24), 'iv_studio')
+    const { graph, resolved } = refineGraph(this.template, {
+      source: { path: take.path, width: info.width, height: info.height, frames, fps: 24 },
+      prompt: source.plan.asked?.prompt || request.prompt,
+      character: useLora && character?.lora ? character : null,
+      trigger: useLora && character?.trigger ? character.trigger : '',
+      name,
+      seed: (request.seed || 4242) + 444,
+      unet: this.models?.text || null,
+      silence,
+      ...this.refineOptions({ megapixels, strength, upscale2x, dlssStrength, dlssStyle, then })
+    })
+    const seedvr2 = then === 'seedvr2' ? { enhancer: 'seedvr2', enhanceResolution: [1080, 1440].includes(resolution) ? resolution : 1080, ...(detail ? { enhanceDetail: Math.min(1, Math.max(0, Number(detail) || 0)) } : {}) } : {}
+    await this.makeRoom('finish')
+    const promptId = await this.comfy.submit(graph, { iv_studio: { kind: 'finish', project: source.projectId, engine: SEEDANCE } })
+    return this.recordJob({ kind: 'finish', projectId: source.projectId, name, parent: source.id, promptId, plan: { engine: SEEDANCE, finish: { candidate, way: 'local', refiner: then === 'seedvr2' ? 'h3seedvr2' : 'h3', megapixels, strength, upscale2x: then === 'dlss' && !!upscale2x, useLora: !!(useLora && character?.lora), ...(then === 'dlss' && dlssStrength != null ? { dlssStrength } : {}), ...seedvr2 }, request, resolved: { ...resolved, way: 'local' } } })
+  }
+
+  // A silent WAV of `seconds`, for a take without sound (made once per length, in the data folder).
+  async silentWav(seconds) {
+    const file = path.join(this.dataDir, 'seedance', `silence_${Math.ceil(seconds * 10)}.wav`)
+    if (fs.existsSync(file)) return file
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    const ffmpeg = ffmpegStatic.ffmpegPath.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
+    await new Promise((resolve, reject) => {
+      const p = spawn(ffmpeg, ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-t', String(Math.ceil(seconds * 10) / 10), file], { windowsHide: true })
+      p.on('error', reject)
+      p.on('close', (code) => (code === 0 ? resolve() : reject(new Error('Could not make a silent track.'))))
+    })
+    return file
+  }
+
+  // Saves a job record (as submitGraph does for H3 graphs) and returns it as the window sees it.
+  recordJob({ kind, projectId, name, promptId, plan, parent = null, status = 'queued', outputs = [] }) {
+    const job = { id: randomUUID().slice(0, 12), kind, projectId, sequenceId: null, parent, name, promptId, status, createdAt: now(), where: this.comfy.remote ? 'cloud' : 'local', plan, outputs, ...(status === 'success' ? { finishedAt: now() } : {}) }
+    writeJson(this.jobFile(job.id), job)
+    if (projectId) this.touchProject(projectId, job.id)
+    return this.publicJob(job)
+  }
+
+  // Seedance's SaveVideo reports no file path, so its videos are copied into the data folder's seedance folder
+  // (also from a remote ComfyUI), where the editor, Enhance and the Library can use them.
+  async keepLocal(job) {
+    const dir = path.join(this.dataDir, 'seedance')
+    for (const o of job.outputs) {
+      if (o.path && fs.existsSync(o.path)) continue
+      try {
+        o.path = await this.localCopy(o, dir)
+      } catch {}
+    }
   }
 
   async submit({ kind, project, plan, name, parent, previewPlan }) {
@@ -427,6 +729,7 @@ export class Studio {
       promptId,
       status: 'queued',
       createdAt: now(),
+      where: this.comfy.remote ? 'cloud' : 'local',
       plan: kind === 'previews' ? plan : { ...plan, preview: undefined },
       previewPlan: previewPlan || undefined,
       outputs: []
@@ -438,19 +741,27 @@ export class Studio {
 
   // ---------- Enhance: SeedVR2 over a finished video ----------
   // A final (or any finished video of a shot) through SeedVR2 3B (numz's ComfyUI-SeedVR2_VideoUpscaler, Apache-2.0)
-  // to a short side of `resolution`, with its sound kept, as a new job of kind enhance in the same shot. On this PC
-  // only: the cloud image has no SeedVR2.
+  // to a short side of `resolution`, with its sound kept, as a new job of kind enhance in the same shot. On this PC or
+  // the person's own cloud (SeedVR2 is downloaded there the first time); DLSS 5 on Windows PCs only.
   // engine dlss: DLSS 5 with the finish's own settings (noise reduction Default 0.8), at scale 1 or 2.
-  async enhanceFinal({ jobId, engine = 'seedvr2', resolution = 1080, scale = 1 }) {
-    if (this.comfy.remote) throw new Error('Enhance runs on this computer\'s ComfyUI only.')
+  // strength (DLSS 5): its noise reduction, 0-2 (the finish uses 0.8); style: Default, Natural or Cinematic.
+  // detail (SeedVR2): its latent noise, 0-1 (0 restores faithfully; more lets it invent detail).
+  async enhanceFinal({ jobId, engine = 'seedvr2', resolution = 1080, scale = 1, strength = null, style = null, detail = 0 }) {
+    if (this.comfy.hosted) throw new Error('Enhance runs on this computer\'s ComfyUI or your own cloud (RunPod, Modal).')
     if (engine !== 'dlss') {
       const refusal = seedvr2Refusal((await this.capabilities().catch(() => ({}))).gpuKind)
       if (refusal) throw new Error(refusal)
     }
     const source = this.getJob(jobId)
     const out = source.outputs.find((o) => o.kind === 'final') || source.outputs.find((o) => o.kind === 'master')
-    if (!out?.path || !fs.existsSync(out.path)) throw new Error('That render has no finished video on this computer to enhance.')
-    if (engine === 'dlss') return this.enhanceDlss(source, out, scale)
+    const here = !!(out?.path && fs.existsSync(out.path))
+    // in the person's own cloud a render made there is read where it is (its output name); others are uploaded
+    if (!here && !(this.comfy.ownCloud && out?.url)) throw new Error('That render has no finished video on this computer to enhance.')
+    if (engine === 'dlss') {
+      if (this.comfy.ownCloud) throw new Error('DLSS 5 runs on Windows computers only. In the cloud, enhance with SeedVR2.')
+      return this.enhanceDlss(source, out, scale, { strength, style })
+    }
+    const noise = Math.min(1, Math.max(0, Number(detail) || 0))
     const info = await this.comfy.objectInfo('SeedVR2LoadDiTModel').catch(() => null)
     const dits = info?.SeedVR2LoadDiTModel?.input?.required?.model?.[1]?.options || info?.SeedVR2LoadDiTModel?.input?.required?.model?.[0] || []
     if (!info?.SeedVR2LoadDiTModel) throw new Error('SeedVR2 isn\'t installed in ComfyUI (ComfyUI-SeedVR2_VideoUpscaler).')
@@ -458,32 +769,60 @@ export class Studio {
     const fps = source.plan?.resolved?.fps || 24
     const name = `${path.basename(out.path).replace(/\.[^.]+$/, '').replace(/-audio$/, '')}_enhanced_${resolution}`
     const { batch, overlap, swap } = seedvr2Batch(resolution)
+    const src = await this.videoSource(this.comfy.ownCloud && out.url ? out : out.path)
     const graph = {
-      load: { class_type: 'VHS_LoadVideoPath', inputs: { video: out.path, force_rate: 0, custom_width: 0, custom_height: 0, frame_load_cap: 0, skip_first_frames: 0, select_every_nth: 1, format: 'AnimateDiff' } },
+      load: { class_type: src.cls, inputs: { video: src.video, force_rate: 0, custom_width: 0, custom_height: 0, frame_load_cap: 0, skip_first_frames: 0, select_every_nth: 1, format: 'AnimateDiff' } },
       dit: { class_type: 'SeedVR2LoadDiTModel', inputs: { model: dit, device: SEEDVR2_DEVICE, blocks_to_swap: swap, offload_device: 'cpu', cache_model: false, attention_mode: 'sdpa' } },
       vae: { class_type: 'SeedVR2LoadVAEModel', inputs: { model: 'ema_vae_fp16.safetensors', device: SEEDVR2_DEVICE, encode_tiled: true, decode_tiled: true, offload_device: 'cpu', cache_model: false } },
-      up: { class_type: 'SeedVR2VideoUpscaler', inputs: { image: ['load', 0], dit: ['dit', 0], vae: ['vae', 0], seed: 42, resolution, max_resolution: 0, batch_size: batch, uniform_batch_size: false, color_correction: 'lab', temporal_overlap: overlap, offload_device: 'cpu' } },
+      up: { class_type: 'SeedVR2VideoUpscaler', inputs: { image: ['load', 0], dit: ['dit', 0], vae: ['vae', 0], seed: 42, resolution, max_resolution: 0, batch_size: batch, uniform_batch_size: false, color_correction: 'lab', temporal_overlap: overlap, offload_device: 'cpu', ...(noise ? { latent_noise_scale: noise } : {}) } },
       save: { class_type: 'VHS_VideoCombine', inputs: { images: ['up', 0], audio: ['load', 2], frame_rate: fps, loop_count: 0, filename_prefix: `H3/enhanced/${name}`, format: 'video/h264-mp4', pix_fmt: 'yuv420p', crf: 16, save_metadata: true, trim_to_audio: false, pingpong: false, save_output: true } }
     }
     const project = source.projectId ? this.getProject(source.projectId) : null
-    return this.submitGraph({ kind: 'enhance', graph, projectId: project?.id || null, plan: { enhance: { engine: 'seedvr2', resolution, model: dit, from: out.path }, resolved: { ...source.plan?.resolved, fps } }, name, parent: source.id })
+    return this.submitGraph({ kind: 'enhance', graph, projectId: project?.id || null, plan: { enhance: { engine: 'seedvr2', resolution, model: dit, from: out.path || out.url, ...(noise ? { detail: noise } : {}) }, resolved: { ...source.plan?.resolved, fps } }, name, parent: source.id })
   }
 
-  async enhanceDlss(source, out, scale) {
+  async enhanceDlss(source, out, scale, { strength = null, style = null } = {}) {
     if (!(await this.capabilities()).dlss) throw new Error('DLSS 5 isn\'t installed in ComfyUI.')
     const name = `${path.basename(out.path).replace(/\.[^.]+$/, '').replace(/-audio$/, '')}_dlss_${scale}x`
     const t = this.template['50'].inputs
+    // DLSS 5 only reads videos inside ComfyUI's input or output folders, and ComfyUI doesn't say where those are. A
+    // video in IV Studio's own data folder (a Seedance take) is first saved into ComfyUI's output by VHS (which reports
+    // the path), near-lossless, and DLSS reads that copy.
+    const outside = path.resolve(out.path).toLowerCase().startsWith(path.resolve(this.dataDir).toLowerCase())
+    const fps = source.plan?.resolved?.fps || 24
     const graph = {
-      dlss: { class_type: 'DLSS5_Enhance_Video', inputs: { ...t, 'Video Path': out.path, Scale: scale, 'Target FPS': 0, 'Filename Prefix': name, 'Output Directory': 'H3/enhanced', 'Input FPS': source.plan?.resolved?.fps || 24 } },
+      ...(outside
+        ? {
+            load: { class_type: 'VHS_LoadVideoPath', inputs: { video: out.path, force_rate: 0, custom_width: 0, custom_height: 0, frame_load_cap: 0, skip_first_frames: 0, select_every_nth: 1, format: 'AnimateDiff' } },
+            copy: { class_type: 'VHS_VideoCombine', inputs: { images: ['load', 0], audio: ['load', 2], frame_rate: fps, loop_count: 0, filename_prefix: `H3/enhanced/source_${name}`, format: 'video/h264-mp4', pix_fmt: 'yuv420p', crf: 10, save_metadata: false, trim_to_audio: false, pingpong: false, save_output: true } },
+            pick: { class_type: 'VHS_SelectFilename', inputs: { filenames: ['copy', 0], index: -1 } }
+          }
+        : {}),
+      dlss: { class_type: 'DLSS5_Enhance_Video', inputs: { ...t, 'Video Path': outside ? ['pick', 0] : out.path, Scale: scale, 'Target FPS': 0, 'Filename Prefix': name, 'Output Directory': 'H3/enhanced', 'Input FPS': fps, ...dlssLook({ strength, style }) } },
       out: { class_type: 'PreviewAny', inputs: { source: ['dlss', 0] } }
     }
     const project = source.projectId ? this.getProject(source.projectId) : null
-    return this.submitGraph({ kind: 'enhance', graph, projectId: project?.id || null, plan: { enhance: { engine: 'dlss', scale, from: out.path }, resolved: source.plan?.resolved }, name, parent: source.id })
+    return this.submitGraph({ kind: 'enhance', graph, projectId: project?.id || null, plan: { enhance: { engine: 'dlss', scale, from: out.path, ...dlssLook({ strength, style }, true) }, resolved: source.plan?.resolved }, name, parent: source.id })
   }
 
   // ---------- renders, files and models (shared by the window and the MCP server) ----------
   // An output as a file on this PC: its own path when local, else downloaded from the (cloud)
   // ComfyUI into dir under the same name.
+  // A video for a graph's video loader: on this PC's ComfyUI, its path (VHS_LoadVideoPath). On the person's own cloud,
+  // a render already there by its output name ("sub/name.mp4 [output]", VHS_LoadVideo reads ComfyUI's folders), or this
+  // PC's file uploaded into ComfyUI's input. file: a path, or an output ({path, url}).
+  async videoSource(file) {
+    const p = typeof file === 'string' ? file : file?.path
+    if (!this.comfy.ownCloud) return { cls: 'VHS_LoadVideoPath', video: p }
+    if (typeof file === 'object' && file?.url) {
+      const q = new URL(file.url).searchParams
+      const sub = q.get('subfolder')
+      return { cls: 'VHS_LoadVideo', video: `${sub ? `${sub}/` : ''}${q.get('filename')} [${q.get('type') || 'output'}]` }
+    }
+    if (!p || !fs.existsSync(p)) throw new Error('That video isn\'t on this computer.')
+    return { cls: 'VHS_LoadVideo', video: await this.comfy.upload(p, 'iv_studio/sources') }
+  }
+
   async localCopy(file, dir) {
     const p = typeof file === 'string' ? file : file?.path
     if (p && fs.existsSync(p)) return p
@@ -503,6 +842,7 @@ export class Studio {
   // Every IV Studio render, newest first: shot finals and previews, sequence versions and finals.
   library() {
     const items = []
+    const chars = this.characters()
     for (const p of this.listProjects()) {
       if (p.trainingId) continue // a character training's test renders
       const jobs = this.listJobs(p.id)
@@ -530,7 +870,8 @@ export class Studio {
           const run = runRaw || 0
           const name = o.kind !== 'final' ? `Preview ${o.candidate}` : j.kind === 'enhance' ? `${fin?.name || 'Final'} · ${enhanced(j.plan?.enhance)}` : fin?.name || 'Final'
           const variant = `${run ? `Run ${run} · ` : ''}${name}`
-          items.push({ key: `${j.id}:${o.kind}:${o.candidate || ''}`, label: `${p.name} · ${variant.toLowerCase()}`, group: p.tool === 'replace' ? 'Replace' : p.sequenceId ? 'Sequence shots' : 'Shots', at: j.finishedAt || j.createdAt, file: { path: o.path, url: o.url, filename: o.filename }, set: p.sequenceId ? `sequence:${p.sequenceId}` : `project:${p.id}`, setName: p.name.replace(/ \(sequence\)$/, ''), variant: p.sequenceId ? `Shot ${variant.toLowerCase()}` : variant, rank: (o.kind === 'final' ? 0 : 10 + (o.candidate || 0)) + (run ? (runs.size - run) * 100 : 0), projectId: p.sequenceId ? null : p.id, sequenceId: p.sequenceId || null, mode: req.mode || null, character: req.character || null, aspect: req.aspect || null })
+          const about = renderFacts({ job: j, jobs, output: o, request: req, characters: chars })
+          items.push({ ...about, key: `${j.id}:${o.kind}:${o.candidate || ''}`, label: `${p.name} · ${variant.toLowerCase()}`, group: p.tool === 'replace' ? 'Replace' : p.sequenceId ? 'Sequence shots' : 'Shots', at: j.finishedAt || j.createdAt, file: { path: o.path, url: o.url, filename: o.filename }, set: p.sequenceId ? `sequence:${p.sequenceId}` : `project:${p.id}`, setName: p.name.replace(/ \(sequence\)$/, ''), variant: p.sequenceId ? `Shot ${variant.toLowerCase()}` : variant, rank: (o.kind === 'final' ? 0 : 10 + (o.candidate || 0)) + (run ? (runs.size - run) * 100 : 0), projectId: p.sequenceId ? null : p.id, sequenceId: p.sequenceId || null, mode: req.mode || null, character: req.character || null, aspect: req.aspect || null })
         }
       }
     }
@@ -588,6 +929,12 @@ export class Studio {
   async writePrompt(request, { engine = 'local', apiKey = null, model } = {}) {
     const { idea, character: charId = 'none', mode = 'text', seconds = 5, aspect = '16:9', media = [], sequence = false, previous = null } = request
     if (!idea?.trim()) throw new Error('Describe the idea first.')
+    // a Seedance 2.5 shot: its own guide and reference names (seedwriter.js); Context IR is H3's own rewriter
+    if (request.engine === SEEDANCE) {
+      const character = charId === 'none' ? null : this.characters().find((c) => c.id === charId) || null
+      const files = media.map((m) => ({ kind: m.kind, file: m.file || m.path }))
+      return writeSeedance({ engine: engine === 'contextir' ? 'local' : engine, model: engine === 'contextir' ? undefined : model, idea, mode, seconds, character, face: character ? this.facePicture(character, this.resourcesDir) : null, media: files, voiceLine: request.voiceLine || null, resourcesDir: this.resourcesDir, cpu: engine === 'local' && (await this.gpuBusy()) })
+    }
     const character = charId === 'none' ? null : this.characters().find((c) => c.id === charId) || null
     const files = media.map((m) => ({ kind: m.kind, file: m.file || m.path }))
     if (engine === 'local') return writeLocal({ idea, mode, seconds, character, sequence, previous, media: files, model, cpu: await this.gpuBusy() })
@@ -597,7 +944,8 @@ export class Studio {
     const staged = []
     for (const m of files) staged.push({ kind: m.kind, name: await this.stage(m.file, 'iv_studio') })
     const graph = contextIrGraph({ idea, mode, seconds, aspect, character, media: staged, sequence })
-    const promptId = await this.comfy.submit(graph, { api_key_comfy_org: apiKey, iv_studio: { kind: 'write_prompt' } }, { front: true })
+    // Choosing Context IR in Settings (which shows its price, a few cents a prompt) is the OK for each prompt.
+    const promptId = await this.comfy.submit(graph, { api_key_comfy_org: apiKey, iv_studio: { kind: 'write_prompt' } }, { front: true, spend: { approvedUsd: 0.25 } })
     for (let i = 0; i < 150; i++) {
       await new Promise((r) => setTimeout(r, 2000))
       const h = (await this.comfy.history(promptId))[promptId]
@@ -751,11 +1099,14 @@ export class Studio {
   // A retake of any video file (the editor's Retake): the graph Sequences use, at their defaults. The file must
   // be on the PC that runs ComfyUI.
   async retakeFile({ name, sourcePath, start, end, mode = 'both', prompt, character = 'none', seed }) {
-    if (this.comfy.remote) throw new Error('Retake in the editor needs ComfyUI on this computer for now.')
+    if (this.comfy.hosted) throw new Error('Retake in the editor runs on this computer\'s ComfyUI or your own cloud (RunPod, Modal).')
     if (!(end > start)) throw new Error('The retake must end after it starts.')
     const ch = character === 'none' ? null : this.characters().find((c) => c.id === character) || null
     const base = `${slug(name)}_${randomUUID().slice(0, 6)}`
-    const { graph } = retakeGraph({ template: this.template, seq: { ...SEQUENCE_DEFAULTS }, character: ch, name: base, sourcePath, prompt, start, end, mode, seed: seed ?? SEQUENCE_DEFAULTS.seed, unet: this.models.retake })
+    // the person's own cloud reads the clip from ComfyUI's input folder (uploaded), not from this PC's path
+    const src = await this.videoSource(sourcePath)
+    const { graph } = retakeGraph({ template: this.template, seq: { ...SEQUENCE_DEFAULTS }, character: ch, name: base, sourcePath: src.video, prompt, start, end, mode, seed: seed ?? SEQUENCE_DEFAULTS.seed, unet: this.models.retake })
+    graph.src.class_type = src.cls
     return this.submitGraph({ kind: 'retake', graph, name: base, plan: { saves: SAVES, resolved: { start, end, mode } } })
   }
 
@@ -902,6 +1253,26 @@ export class Studio {
     if (!job) throw new Error(`No job ${id}`)
     return refresh ? job : job
   }
+  // The newest render that failed in the last `withinMs` (30 minutes), for the chat's context: its name, kind,
+  // how long ago, and the reason in words (failures.js) or ComfyUI's own first line. Looks at the 40 newest jobs.
+  recentProblem({ withinMs = 30 * 60 * 1000, now = Date.now() } = {}) {
+    const dir = path.join(this.dataDir, 'jobs')
+    if (!fs.existsSync(dir)) return null
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => ({ f, t: fs.statSync(path.join(dir, f)).mtimeMs }))
+      .filter((x) => x.t > now - withinMs)
+      .sort((a, b) => b.t - a.t)
+      .slice(0, 40)
+    for (const { f, t } of files) {
+      const job = readJson(path.join(dir, f), null)
+      if (job?.status !== 'error') continue
+      const ex = explainFailure(job.error, { where: job.where, kind: job.kind })
+      return { jobId: job.id, name: job.name || null, kind: job.kind || null, minutesAgo: Math.max(0, Math.round((now - t) / 60000)), reason: ex?.title || String(job.error || 'it failed').split('\n')[0].slice(0, 200) }
+    }
+    return null
+  }
   // Adds fields to a saved job (its take ranking); returns the job as the window sees it.
   updateJob(id, patch) {
     const job = { ...this.getJob(id), ...patch }
@@ -927,12 +1298,13 @@ export class Studio {
       const t = msgs.filter((m) => ['execution_start', 'execution_success', 'execution_error'].includes(m[0])).map((m) => m[1].timestamp)
       if (t.length > 1) job.seconds = Math.round((t.at(-1) - t[0]) / 1000)
       job.outputs = this.collectOutputs(job, h.outputs || {})
+      if (job.plan?.engine === SEEDANCE) await this.keepLocal(job)
       job.finishedAt = now()
       writeJson(this.jobFile(job.id), job)
       // a finish whose enhancer is SeedVR2: its enhance step starts as soon as the finish is done
       if (job.kind === 'finish' && job.status === 'success' && job.plan?.finish?.enhancer === 'seedvr2' && !job.enhanceJob) {
         try {
-          const e = await this.enhanceFinal({ jobId: job.id, engine: 'seedvr2', resolution: job.plan.finish.enhanceResolution })
+          const e = await this.enhanceFinal({ jobId: job.id, engine: 'seedvr2', resolution: job.plan.finish.enhanceResolution, detail: job.plan.finish.enhanceDetail || 0 })
           job.enhanceJob = e.id
         } catch (err) {
           job.enhanceError = err.message
@@ -966,6 +1338,21 @@ export class Studio {
     const list = []
     const file = (f, kind, extra = {}) => ({ kind, path: f.fullpath || null, url: this.comfy.viewUrl(f), filename: f.filename, subfolder: f.subfolder, ...extra })
     const videoOf = (o) => (o?.gifs || []).filter((f) => /\.mp4$/i.test(f.filename)).sort((a, b) => /-audio/.test(b.filename) - /-audio/.test(a.filename))[0]
+    if (job.plan?.engine === SEEDANCE) {
+      // Seedance 2.5 (seedance.js): its takes, each with the draft task id a 1080p finish needs, or the final
+      if (job.kind === 'previews') for (const t of takesFrom(outputs, job.plan.resolved.previews)) list.push(file(t.file, 'preview', { candidate: t.candidate, seed: job.plan.resolved.seeds[t.candidate - 1], draftTaskId: t.draftTaskId }))
+      else if (job.plan.finish?.way === 'local') {
+        // the free finish on this PC (h3refine.js): H3's pass saved by VHS, then the path DLSS 5 answers with
+        const v = videoOf(outputs.save)
+        const p = outputs.out?.text?.[0]
+        if (v) list.push(file(v, p ? 'before_dlss' : 'final'))
+        if (p) list.push(this.fileFromPath(p, 'final'))
+      } else {
+        const f = finalFrom(outputs)
+        if (f) list.push(file(f, 'final'))
+      }
+      return list
+    }
     if (job.plan?.replace) {
       // OpenJutsu's workflows: the final video (Context Loop assembly or VHS), plus mask and "who is who" previews
       const fin = job.plan.replace.finalNode
@@ -980,6 +1367,17 @@ export class Studio {
           if (/\.(png|jpe?g|webp)$/i.test(img.filename)) list.push(file(img, 'image'))
           // core SaveVideo (Remake) lists its video under images; a LoadVideo's preview of the source is an input
           else if (/\.(mp4|webm|mov)$/i.test(img.filename) && img.type !== 'input') list.push(file(img, nid === fin ? 'final' : 'video'))
+        }
+      }
+      return list
+    }
+    if (job.plan?.clipfx) {
+      // a Freefield app (freefield.js): every saved video or picture, with the node that saved it
+      for (const [nid, out] of Object.entries(outputs)) {
+        for (const f of [...(out.gifs || []), ...(out.videos || []), ...(out.images || [])]) {
+          if (f.type === 'input' || f.type === 'temp') continue
+          if (/\.(mp4|webm|mov|mkv)$/i.test(f.filename)) list.push(file(f, 'video', { node: nid }))
+          else if (/\.(png|jpe?g|webp)$/i.test(f.filename)) list.push(file(f, 'image', { node: nid }))
         }
       }
       return list
@@ -1007,8 +1405,8 @@ export class Studio {
       if (p) list.push(this.fileFromPath(p, 'final'))
       return list
     }
-    if (job.plan?.music) {
-      // a song (Music): the SaveAudio output
+    if (job.plan?.music || job.plan?.sound) {
+      // a song (Music) or a sound (Sounds): the SaveAudio outputs
       for (const nid of Object.keys(outputs).sort()) for (const a of outputs[nid].audio || []) list.push(file(a, 'audio'))
       return list
     }
@@ -1049,8 +1447,10 @@ export class Studio {
 
   publicJob(job) {
     const { previewPlan, ...rest } = job
+    // a failed job also says what went wrong in plain words (failures.js); job.error stays as ComfyUI wrote it
+    const explain = job.status === 'error' && job.error ? explainFailure(job.error, { where: job.where, kind: job.kind }) : null
     // the request goes out whole: the shot page shows its prompt in full
-    return { ...rest, plan: { resolved: job.plan?.resolved, request: job.plan?.request, finish: job.plan?.finish, asked: job.plan?.asked, enhance: job.plan?.enhance } }
+    return { ...rest, ...(explain ? { explain } : {}), plan: { resolved: job.plan?.resolved, request: job.plan?.request, finish: job.plan?.finish, asked: job.plan?.asked, enhance: job.plan?.enhance, engine: job.plan?.engine, refs: job.plan?.refs } }
   }
 
   listJobs(projectId) {

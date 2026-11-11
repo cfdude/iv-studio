@@ -2173,5 +2173,72 @@
    "max_total_tokens": 0,
    "save_preset_as": ""
   }
+ },
+ "630": {
+  "class_type": "ImageScale",
+  "inputs": {
+   "image": [
+    "613",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "width": [
+    "631",
+    1
+   ],
+   "height": [
+    "631",
+    2
+   ],
+   "crop": "center"
+  },
+  "_meta": {
+   "title": "Source to the 2 MP size"
+  }
+ },
+ "631": {
+  "class_type": "GetImageSizeAndCount",
+  "inputs": {
+   "image": [
+    "28",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "2 MP continuation size"
+  }
+ },
+ "632": {
+  "class_type": "ImageBatch",
+  "inputs": {
+   "image1": [
+    "630",
+    0
+   ],
+   "image2": [
+    "28",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Source + 2 MP continuation"
+  }
+ },
+ "633": {
+  "class_type": "AudioConcat",
+  "inputs": {
+   "audio1": [
+    "616",
+    0
+   ],
+   "audio2": [
+    "814",
+    0
+   ],
+   "direction": "after"
+  },
+  "_meta": {
+   "title": "Source audio + finished continuation audio"
+  }
  }
 }

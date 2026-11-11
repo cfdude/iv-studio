@@ -52,7 +52,19 @@ describe('MCP film tools', { skip: process.platform === 'win32' && 'the agent CL
     fs.rmSync(`${file}.args`, { force: true })
     fs.writeFileSync(file, `#!/bin/sh\necho "$@" > "$0.args"\ncat > "$0.stdin"\n${body}`, { mode: 0o755 })
   }
-  const claudeAnswers = (obj) => shim(`cat <<'JSON'\n${JSON.stringify({ is_error: false, result: '', structured_output: obj })}\nJSON\n`)
+  const answer = (obj) => `cat <<'JSON'\n${JSON.stringify({ is_error: false, result: '', structured_output: obj })}\nJSON\n`
+  // The film's planning goes to the prompt writer chosen in Settings (here Claude Code), so the one shim answers all
+  // three asks by their schema: the script (scenes), the scene's shot list (required shots) and each shot's prompt.
+  // Every call's arguments and input are also appended to claude.log, one call per block.
+  const claudeAnswers = (obj) =>
+    shim(`{ echo "@@ARGS $*"; cat "$0.stdin"; } >> "$0.log"
+case "$*" in
+  *'"scenes"'*) ${answer(WRITTEN_SCRIPT)};;
+  *'"required":["shots"]'*) ${answer(WRITTEN_SHOTS)};;
+  *) ${answer(obj)};;
+esac
+`)
+  const calls = () => (fs.existsSync(path.join(shimDir, 'claude.log')) ? fs.readFileSync(path.join(shimDir, 'claude.log'), 'utf8').split('@@ARGS ').slice(1) : [])
   const sawInput = () => fs.readFileSync(path.join(shimDir, 'claude.stdin'), 'utf8')
   // a film with one scene and two shots, written by hand (no writer involved)
   const film = async (extra = {}) => {
@@ -194,12 +206,13 @@ describe('MCP film tools', { skip: process.platform === 'win32' && 'the agent CL
   test('[mcp:write_film_script][ipc:productions:writeScript] has the local writer draft the script from the idea, the cast and the length, and fills a place\'s look', async () => {
     const f = await ok('create_film', { name: 'Waiting', targetSeconds: 40 })
     await ok('update_film', { filmId: f.id, cast: [{ characterId: 'tess', as: 'Tess' }], look: { notes: 'Soft night light.', loras: [] } })
-    const before = ollama.requests.length
+    const before = calls().length
     const r = await ok('write_film_script', { filmId: f.id, idea: 'A woman waits for a bus that never comes.' })
-    const asked = ollama.requests.slice(before).filter((x) => x.path === '/api/chat').at(-1).json
-    assert.equal(asked.model, 'fake-vl:8b')
-    assert.match(asked.messages[1].content, /^Idea: A woman waits for a bus that never comes\.\nTitle: Waiting\nCast: Tess Marlow\nBeats: exactly 10 in all, for about 40 seconds of film\.\nLook: Soft night light\.$/)
-    assert.deepEqual(asked.format.properties.scenes.items.properties.beats.maxItems, 10)
+    // the prompt writer chosen in Settings drafts it: Claude Code here, held to the script's schema
+    const asked = calls().slice(before).find((c) => c.includes('"scenes"'))
+    assert.ok(asked, 'Claude Code was asked for the script')
+    assert.match(asked, /Idea: A woman waits for a bus that never comes\.\nTitle: Waiting\nCast: Tess Marlow\nBeats: exactly 10 in all, for about 40 seconds of film\.\nLook: Soft night light\./)
+    assert.match(asked, /"beats":\{[^]*"maxItems":10/)
     assert.equal(r.name, 'Waiting', 'a name the person gave is kept')
     assert.match(r.script.text, /^EXT\. BUS STOP - NIGHT\n\nA woman waits in the rain\.\n\nTESS\n\(to herself\)\nCome on\.\n$/)
     assert.deepEqual(r.scenes.map((s) => [s.heading, s.elements.map((e) => e.type)]), [['EXT. BUS STOP - NIGHT', ['action', 'dialogue']]])
@@ -208,7 +221,24 @@ describe('MCP film tools', { skip: process.platform === 'win32' && 'the agent CL
     // an unnamed film takes the writer's title, and with no idea the film's logline is the idea
     const g = await ok('create_film', { logline: 'A bus that never comes.' })
     assert.equal((await ok('write_film_script', { filmId: g.id })).name, 'Wet Evening')
-    assert.match(ollama.requests.at(-1).json.messages[1].content, /^Idea: A bus that never comes\./)
+    assert.match(calls().at(-1), /Idea: A bus that never comes\./)
+  })
+
+  test('[mcp:write_film_script] the local writer (Ollama) drafts it when it is the writer chosen in Settings', async () => {
+    const local = await startMcp({ comfyUrl: fake.url, settings: { ollamaUrl: ollama.url, ollamaModel: 'fake-vl:8b', promptEngine: 'local' } })
+    try {
+      const r0 = (name, args) => local.client.callTool({ name, arguments: args }).then((r) => (assert.ok(!r.isError, JSON.stringify(r.content)), r.structuredContent))
+      const f = await r0('create_film', { name: 'Waiting', targetSeconds: 40 })
+      const before = ollama.requests.length
+      const r = await r0('write_film_script', { filmId: f.id, idea: 'A woman waits for a bus that never comes.' })
+      const asked = ollama.requests.slice(before).filter((x) => x.path === '/api/chat').at(-1).json
+      assert.equal(asked.model, 'fake-vl:8b')
+      assert.match(asked.messages[1].content, /^Idea: A woman waits for a bus that never comes\.\nTitle: Waiting\nBeats: exactly 10 in all, for about 40 seconds of film\.$/)
+      assert.deepEqual(asked.format.properties.scenes.items.properties.beats.maxItems, 10)
+      assert.match(r.script.text, /^EXT\. BUS STOP - NIGHT\n/)
+    } finally {
+      await local.close()
+    }
   })
 
   test('[mcp:write_film_script] asks for an idea first, and says so when the writer is not answering', async () => {
@@ -244,9 +274,9 @@ describe('MCP film tools', { skip: process.platform === 'win32' && 'the agent CL
     assert.match(two.prompt, /overall_soundscape/)
     assert.equal(v.scenes[0].stale, false)
     // the writer was told the scene and the film, and the shot list came back through the schema it was held to
-    const asked = ollama.requests.filter((x) => x.path === '/api/chat' && x.json.format?.properties?.shots).at(-1).json
-    assert.match(asked.messages[1].content, /^Film: Untitled film/)
-    assert.deepEqual(asked.format.required, ['shots'])
+    const asked = calls().filter((c) => c.includes('"required":["shots"]')).at(-1)
+    assert.ok(asked, 'the chosen writer (Claude Code) was asked for the shot list, held to its schema')
+    assert.match(asked, /\nFilm: Untitled film/)
     assert.match(sawInput(), /It opens as the previous shot ended: She looks up the road\. A bus rolls slowly past the shelter\./, 'the last shot was written knowing how the one before ended')
   })
 

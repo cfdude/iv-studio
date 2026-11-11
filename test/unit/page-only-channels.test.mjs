@@ -84,11 +84,12 @@ describe('page-only channels', () => {
 })
 
 describe('window events', () => {
-  test('the channels main sends to the window are exactly the 28 event rows', () => {
+  // main's own send('x', …) helper, and webContents.send('x', …) on a window (chat:docked, chat:ask, app:open)
+  test('the channels main sends to the window are exactly the 47 event rows', () => {
     const main = fs.readFileSync(path.join(root, 'src/main/index.js'), 'utf8')
-    const sent = [...new Set([...main.matchAll(/(?<![.\w])send\('([^']+)'/g)].map((m) => m[1]))].sort()
+    const sent = [...new Set([...main.matchAll(/(?:(?<![.\w])|\bwebContents\.)send\('([^']+)'/g)].map((m) => m[1]))].sort()
     const exposed = parsePreload(fs.readFileSync(path.join(root, 'src/preload/index.js'), 'utf8')).filter((e) => e.kind === 'on').map((e) => e.channel).sort()
-    assert.equal(sent.length, 28)
+    assert.equal(sent.length, 47)
     assert.deepEqual(sent, exposed)
   })
 })

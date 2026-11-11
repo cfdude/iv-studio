@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { LoraPicker, loraTitle } from './Loras'
 import { ask } from './Confirm'
 import Hero from './Hero'
+import Stage from './Stage'
+import QuickBar from './AudioQuick'
 import TileDelete from './TileDelete'
 import { MediaEditor, MediaTile } from './MediaEditor'
 import { fileUrl } from './edit/model'
@@ -96,7 +98,10 @@ export function CharacterList({ openCharacter, notify, characters, setCharacters
 
   return (
     <div className="characters">
-      <Hero art="characters" title="Characters" kicker="Your recurring actors" />
+      <Stage effect="halo" art="characters" title="Characters" kicker="Your recurring actors">
+        {/* the same name as Train your own -> Design and train below: a new character to design */}
+        <QuickBar label="A new character's name" placeholder="Name a new character, e.g. Maya Ortiz" value={name} onChange={setName} goLabel="Design them" disabled={!name.trim()} onGo={create} />
+      </Stage>
       <p className="lede cast-lede">
         The people H3 plays, the same in every shot.
         <span className="lede-small dim">
@@ -288,6 +293,8 @@ export function CharacterList({ openCharacter, notify, characters, setCharacters
           install={() => install(open.id)}
           chooseLora={() => setPickFor(open.id)}
           newShot={startShotWith ? () => startShotWith(open.id) : null}
+          notify={notify}
+          go={go}
           remove={async () => {
             setEditing(null)
             setCharacters(await C.save(characters.filter((x) => x.id !== open.id)))
@@ -332,7 +339,7 @@ export function CharacterList({ openCharacter, notify, characters, setCharacters
 }
 
 // One character's settings in a pop-up: name, trigger, strength, LoRA and voice. Changes save as you type.
-function CharacterSettings({ c, face, found, isRef, chooseRefMod, offer, voices, progress, downloadLabel, picking, save, install, chooseLora, newShot, remove, onClose }) {
+function CharacterSettings({ c, face, found, isRef, chooseRefMod, offer, voices, progress, downloadLabel, picking, save, install, chooseLora, newShot, remove, onClose, notify, go }) {
   useEffect(() => {
     const esc = (e) => e.key === 'Escape' && !picking && onClose()
     window.addEventListener('keydown', esc)
@@ -399,6 +406,8 @@ function CharacterSettings({ c, face, found, isRef, chooseRefMod, offer, voices,
               </select>
             </label>
           </div>
+
+          <Turnaround c={c} face={face} notify={notify} go={go} />
 
           <div className="cast-modal-foot">
             <button
@@ -933,6 +942,13 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
 
       <section className="block create-step">
         <StepHead n={2} title="The recipe" sub="Fizgig’s own H3 recipes. Standard suits most characters." />
+        <p className="small dim train-credit">
+          Training runs on{' '}
+          <button className="link-btn" onClick={() => window.ivstudio.links.open('https://github.com/shootthesound/Fizgig')}>
+            Fizgig
+          </button>{' '}
+          by shootthesound, free and open source, on this computer, Modal and RunPod alike.
+        </p>
         <div className="train-presets">
           {PRESET_ORDER.map((k) => {
             const pe = est?.presets?.[k]
@@ -1315,5 +1331,103 @@ function Pick({ t, job, act, trainingId, go, setCharacters }) {
         </section>
       )}
     </>
+  )
+}
+
+// Turnaround sheet (turnaround.js): five views of the character, turning around, from their face picture, with
+// matlod's Turnaround LoRA and matlowai's H3 Contact Sheet nodes. Both are downloads the person makes.
+function Turnaround({ c, face, notify, go }) {
+  const [st, setSt] = useState(null)
+  const [sheets, setSheets] = useState([])
+  const [size, setSize] = useState(512)
+  const [making, setMaking] = useState(false)
+  const [getting, setGetting] = useState(null)
+  const load = () => {
+    window.ivstudio.turnaround.status().then(setSt, () => setSt({ ready: false, nodes: false, lora: null, error: true }))
+    window.ivstudio.turnaround.list(c.id).then(setSheets, () => {})
+  }
+  useEffect(() => {
+    load()
+    return window.ivstudio.loras.onRecommended((u) => {
+      if (u.id !== 'rec-turnaround') return
+      setGetting(u)
+      if (u.status === 'done') (setGetting(null), load())
+    })
+  }, [c.id])
+  async function make() {
+    setMaking(true)
+    try {
+      const sheet = await window.ivstudio.turnaround.make({ characterId: c.id, size })
+      setSheets((list) => [sheet, ...list])
+    } catch (err) {
+      notify?.(err.message)
+    } finally {
+      setMaking(false)
+    }
+  }
+  const latest = sheets[0]
+  return (
+    <section className="turnaround" aria-label="Turnaround sheet">
+      <div className="turnaround-head">
+        <span className="mono label">Turnaround sheet</span>
+        <span className="small dim">Five views of {c.name.split(' ')[0]} turning around, from the face picture. Handy for designs, references and checking a look.</span>
+      </div>
+      {!face && <p className="small dim">Add a face picture first.</p>}
+      {face && st && !st.ready && (
+        <div className="turnaround-need small">
+          <span>It needs two things on this computer:</span>
+          {!st.lora &&
+            (getting && getting.status !== 'error' ? (
+              <span className="mono">Turnaround LoRA: {getting.total ? `${Math.round((100 * getting.received) / getting.total)}%` : 'starting…'}</span>
+            ) : (
+              <button className="btn btn-small" onClick={() => window.ivstudio.loras.recommendedDownload('rec-turnaround').catch((err) => notify?.(err.message))}>
+                Get the Turnaround LoRA · {Math.round((st.size || 63e6) / 1e6)} MB
+              </button>
+            ))}
+          {!st.nodes && (
+            <button className="btn btn-small" onClick={() => go?.('setup')} title="Settings → Setup → Install missing node packs, then restart ComfyUI">
+              Install the Contact Sheet nodes in Setup
+            </button>
+          )}
+          {getting?.status === 'error' && <span className="pink">{getting.error}</span>}
+        </div>
+      )}
+      {face && st?.ready && (
+        <div className="turnaround-run">
+          <div className="segmented" role="group" aria-label="Size of each view">
+            {[512, 1024].map((x) => (
+              <button key={x} className={size === x ? 'on' : ''} onClick={() => setSize(x)} title={x === 512 ? 'About a minute on a 4090' : 'About four times as long'}>
+                {x} px
+              </button>
+            ))}
+          </div>
+          <button className="btn btn-small btn-primary" disabled={making} onClick={make}>
+            {making ? 'Making the sheet…' : sheets.length ? 'Make another' : 'Make a turnaround sheet'}
+          </button>
+        </div>
+      )}
+      {latest && (
+        <figure className="turnaround-sheet">
+          <div className="turnaround-views">
+            {latest.views.map((v) => (
+              <img key={v} src={fileUrl(v)} alt="" />
+            ))}
+          </div>
+          <figcaption className="small dim">
+            {latest.size} px a view · seed {latest.seed} ·{' '}
+            <button className="link-btn small" onClick={() => window.ivstudio.files.reveal(latest.strip || latest.views[0])}>
+              Show files
+            </button>{' '}
+            ·{' '}
+            <button className="link-btn small" onClick={() => window.ivstudio.turnaround.delete(latest.id).then(() => setSheets((l) => l.slice(1)))}>
+              Delete
+            </button>
+            {sheets.length > 1 && ` · ${sheets.length - 1} older`}
+            <br />
+            Each sheet is different. If the camera tilts instead of turning around, make another.
+          </figcaption>
+        </figure>
+      )}
+    </section>
   )
 }

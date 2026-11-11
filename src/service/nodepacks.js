@@ -99,6 +99,14 @@ export function requirementsFor(text, { git = true } = {}) {
   return { kept, skipped }
 }
 
+// The VERSION file IV Studio's own pack carries (0 when it has none: a copy from before versions).
+export function packVersion(dir) {
+  try {
+    return Number(fs.readFileSync(path.join(dir, 'VERSION'), 'utf8').trim()) || 0
+  } catch {
+    return 0
+  }
+}
 const hasGit = () => run(process.platform === 'win32' ? 'git.exe' : 'git', ['--version']).then(() => true, () => false)
 
 // Installs the packs (each { id or dir, ... } from missingPacks). onProgress gets { dir, label, step, detail }.
@@ -113,8 +121,21 @@ export async function installPacks(packs, { customNodes, python, resourcesDir, o
       const say = (step, detail) => onProgress({ dir: p.dir, label: p.label, step, detail })
       const result = { dir: p.dir, label: p.label }
       results.push(result)
+      // IV Studio's own pack is the one folder it updates in place, when the copy it carries is newer
+      if (fs.existsSync(target) && p.bundled && p.version && packVersion(target) < p.version) {
+        try {
+          say('copying', `Updating to version ${p.version}`)
+          fs.cpSync(path.join(resourcesDir, p.bundled), target, { recursive: true, force: true, filter: (x) => !x.includes('__pycache__') })
+          Object.assign(result, { status: 'installed', detail: `Updated to version ${p.version}` })
+          say('done', result.detail)
+        } catch (err) {
+          Object.assign(result, { status: 'failed', detail: err.message })
+          say('failed', err.message)
+        }
+        continue
+      }
       if (fs.existsSync(target)) {
-        Object.assign(result, { status: 'skipped', detail: `A folder named ${p.dir} is already in custom_nodes, so it was left alone. If ComfyUI still lacks its nodes, restart ComfyUI or check that folder.` })
+        Object.assign(result, { status: 'skipped', detail: `Already in custom_nodes (${p.dir}), so it was left alone. ComfyUI loads it when it restarts.` })
         say('skipped', result.detail)
         continue
       }

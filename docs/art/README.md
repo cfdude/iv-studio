@@ -104,3 +104,19 @@ Rebuild joined the Workflows page as its sixth card, with its own page banner, a
 - The app copies: `assets/pages/rebuild.webp` (1400 x 737, WebP quality 86, from the 1672 x 941 master) and
   `assets/workflows/rebuild.webp` (800 x 533, quality 80). Masters, prompts (`jobs.json`) and the review sheet
   are in `D:\H3Characters\_art\rebuild-20261108\`, outside the repo.
+## The audio side and the tall banners (2026-11-10)
+
+Matthew asked for the audio side to be themed like Workflows, then for the visual side to match, with the top bar and
+more animation; then that nothing flashes (photosensitive safety) and that Cloud be dreamy, not stormy.
+
+- ChatGPT image generation through the Codex CLI (`codex-images.ps1`), no text in the pictures, each one checked
+  for stray letters before use.
+- Audio front page banner `assets/pages/audio.webp` (1400 x 737, from banner-audio-v2) and four cards in
+  `assets/audio/` (voices, lines, music, sounds; 800 x 533). Prompts (`jobs.json`, `jobs-banner-v2.json`) are in
+  `docs/art/audio/`; the masters and review sheet are in `D:\H3Characters\_art\audio-20261110\`, outside the repo.
+- Cloud's banner was redrawn as soft drifting clouds instead of lightning: `assets/pages/cloud.webp`. The storm
+  original is kept at `docs/art/cloud-dreamy/cloud-storm-before.webp`; prompt in `docs/art/cloud-dreamy/`, master in `D:\H3Characters\_art\cloud-dreamy-20261110\`.
+- Motion is drawn on a canvas (`components/MotionCanvas.jsx`, effects in `components/heroMotion.js` and
+  `Stage.jsx`): it pauses off screen and in a hidden window and holds still under Reduce motion. Every banner was
+  measured against the WCAG 2.3.1 flash threshold (a 0.10 relative-luminance swing within half a second, in
+  341 x 256 px patches): all 23 stay under 0.07.

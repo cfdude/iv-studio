@@ -1,8 +1,11 @@
 // Readiness check: is ComfyUI up, is there a capable GPU, are the node packs and models IV Studio needs there?
 // Everything is read from ComfyUI itself (/system_stats and /object_info), so it works with any install.
 
+import fs from 'node:fs'
+import path from 'node:path'
 import { findComfyElsewhere } from './comfylauncher.js'
 import { appleUpscalerCheck, gpuCheck } from './gpu.js'
+import { packVersion } from './nodepacks.js'
 
 // Why a ComfyUI request failed, as a Setup item's status, detail and fix:
 // - busy: ComfyUI took the connection but didn't answer in time (loading, rendering or short on memory); it's running,
@@ -37,6 +40,10 @@ export function resolveModel(m, opts, chosen = {}) {
   if (exact) return { file: exact, how: 'exact' }
   const version = (m.accept || []).map((a) => new RegExp(a, 'i')).reduce((hit, re) => hit || opts.find((o) => re.test(base(o))), null)
   if (version) return { file: version, how: 'version' }
+  // acceptPath: patterns on the whole name, folder included (a picture model's fine-tunes in its own folder, as
+  // Create → Image reads the family)
+  const inFolder = (m.acceptPath || []).map((a) => new RegExp(a, 'i')).reduce((hit, re) => hit || opts.find((o) => re.test(o)), null)
+  if (inFolder) return { file: inFolder, how: 'version' }
   const pick = (PICKS[m.id] || []).map((k) => chosen[k]).find((f) => f && opts.includes(f))
   return pick ? { file: pick, how: 'picked' } : null
 }
@@ -84,6 +91,16 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
   const needed = [...new Set(Object.values(template).map((n) => n.class_type))].filter((c) => !TEMPLATE_SKIP.has(c))
   const missingClasses = needed.filter((c) => !info[c])
   const linux = !['nt', 'win32'].includes(stats.system?.os)
+  // A pack whose folder is already in custom_nodes but whose nodes ComfyUI lacks was installed after ComfyUI started:
+  // it loads on the next restart. Only this PC's ComfyUI says where its custom_nodes are.
+  let customNodes = null
+  if (!comfy.remote) {
+    try {
+      const paths = await comfy.req('/internal/folder_paths', { timeout: 8000 })
+      customNodes = (paths.custom_nodes || []).map((x) => (Array.isArray(x) ? x[0] : x)).filter(Boolean)
+    } catch {}
+  }
+  const onDisk = (dir) => !!dir && !!customNodes?.some((d) => fs.existsSync(path.join(d, dir)))
   // Shots need the packs in the workflow; the others are for one feature each (Sequences, Replace, SeedVR2...).
   for (const pack of manifest.node_packs) {
     if ((linux && pack.windowsOnly) || (!linux && pack.linuxOnly)) {
@@ -98,6 +115,15 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
       continue
     }
     const core = pack.classes.some((c) => needed.includes(c))
+    const outdated = pack.bundled && pack.version && customNodes?.some((d) => fs.existsSync(path.join(d, pack.dir)) && packVersion(path.join(d, pack.dir)) < pack.version)
+    if (miss.length && outdated) {
+      items.push({ id: `pack:${pack.label}`, label: pack.label, status: 'warn', detail: `A newer version comes with IV Studio (missing nodes: ${miss.join(', ')})`, fix: 'Install the missing node packs to update it, then restart ComfyUI.', kind: 'node_pack', for: pack.for, dir: pack.dir })
+      continue
+    }
+    if (miss.length && onDisk(pack.dir)) {
+      items.push({ id: `pack:${pack.label}`, label: pack.label, status: core ? 'missing' : 'warn', detail: 'Installed. ComfyUI loads it when it restarts.', fix: 'Restart ComfyUI to load it.', kind: 'node_pack', for: pack.for, dir: pack.dir, restartNeeded: true })
+      continue
+    }
     const status = !miss.length ? 'ok' : core ? 'missing' : 'warn'
     items.push({ id: `pack:${pack.label}`, label: pack.label, status, detail: miss.length ? `Missing nodes: ${miss.join(', ')}` : 'Installed', fix: miss.length ? (core ? 'Needed for every shot. Install the missing node packs above, then restart ComfyUI.' : `Needed for ${pack.for}.`) : undefined, kind: 'node_pack', for: pack.for, dir: pack.dir, url: /^https:/.test(pack.url) ? pack.url : undefined })
   }
@@ -110,7 +136,7 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
     const r = resolveModel(m, opts, chosen)
     const found = r?.file
     const detail = !r ? `Not found (${m.match})` : r.how === 'version' ? `${found} · another version of ${m.match}, used in its place` : r.how === 'picked' ? `${found} · your pick in Settings → Models` : found
-    items.push({ id: `model:${m.id}`, label: m.optional ? `${m.label} · for ${m.optionalFor || 'optional tools'}` : m.label, status: found ? 'ok' : m.optional ? 'warn' : 'missing', detail, fix: found ? undefined : `Download into models/${m.folder}`, kind: 'model', model: m.id, size: m.size, optional: !!m.optional, page: m.url.match(/^https:\/\/huggingface\.co\/[^/]+\/[^/]+/)?.[0] })
+    items.push({ id: `model:${m.id}`, label: m.optional ? `${m.label} · for ${m.optionalFor || 'optional tools'}` : m.label, status: found ? 'ok' : m.optional ? 'warn' : 'missing', detail, fix: found ? undefined : `Download into models/${m.folder}`, kind: 'model', model: m.id, size: m.size, optional: !!m.optional, name: m.label, for: m.optional ? m.optionalFor || 'Optional tools' : undefined, page: m.url.match(/^https:\/\/huggingface\.co\/[^/]+\/[^/]+/)?.[0], gated: m.gated || undefined })
   }
 
   const loras = comboOptions(info, 'LoraLoaderModelOnly', 'lora_name') || []

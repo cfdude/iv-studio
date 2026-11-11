@@ -9,6 +9,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
+import { bundledPacks } from './runpod.js'
 
 const WIN = process.platform === 'win32'
 // uv's own release builds, checked against the SHA-256 uv publishes next to each. The Linux and Mac ones unpack
@@ -182,18 +183,21 @@ export class Cloud {
     const d = this.deployDir
     fs.rmSync(d, { recursive: true, force: true })
     fs.mkdirSync(d, { recursive: true })
-    for (const f of ['modal_app.py', 'gate.py', 'extra_model_paths.yaml', 'cloud.json']) fs.copyFileSync(path.join(this.resourcesDir, 'cloud', f), path.join(d, f))
+    for (const f of ['modal_app.py', 'gate.py', 'ivcloud.py', 'voicehost.py', 'extra_model_paths.yaml', 'cloud.json']) fs.copyFileSync(path.join(this.resourcesDir, 'cloud', f), path.join(d, f))
     fs.copyFileSync(path.join(this.resourcesDir, 'models.json'), path.join(d, 'models.json'))
-    fs.cpSync(path.join(this.resourcesDir, 'comfy-nodes', 'ComfyUI-IV-Studio'), path.join(d, 'ComfyUI-IV-Studio'), { recursive: true, filter: (s) => !s.includes('__pycache__') })
+    fs.copyFileSync(path.join(this.resourcesDir, 'python', 'voice_server.py'), path.join(d, 'voice_server.py'))
+    for (const p of bundledPacks(this.resourcesDir)) fs.cpSync(path.join(this.resourcesDir, p.bundled), path.join(d, p.dir), { recursive: true, filter: (s) => !s.includes('__pycache__') })
   }
 
   // Builds the image (first time ~10-15 min, then cached) and publishes ComfyUI behind the gate.
   // Returns {url, token}. A new token is made each time, so an old address stops working.
-  async deploy({ gpu = 'L40S', idleSeconds = 300 } = {}) {
+  // hf: the person's Hugging Face token (for gated model files), or null.
+  async deploy({ gpu = 'L40S', idleSeconds = 300, hf = null } = {}) {
     this.stage()
     const token = randomBytes(24).toString('base64url')
     this.onLog('Saving the access token in your Modal workspace…')
     await this.modal(['secret', 'create', 'iv-studio-token', `IV_TOKEN=${token}`, '--force'], { quiet: true, secret: true })
+    await this.saveHfToken(hf)
     this.onLog('Building the cloud image and publishing ComfyUI (the first time takes 10–15 minutes)…')
     const out = await this.modal(['deploy', 'modal_app.py'], { env: { IV_GPU: gpu, IV_IDLE_SECONDS: String(idleSeconds), IV_APP_NAME: APP_NAME } })
     const url = out.match(/https:\/\/[\w.-]+\.modal\.run/)?.[0]
@@ -201,11 +205,35 @@ export class Cloud {
     return { url, token }
   }
 
-  // Downloads the H3 models into the iv-studio-models volume (CPU, once; ~60 GB).
-  fetchModels() {
+  // The person's Hugging Face token as the Modal secret iv-studio-hf ("none" without one: the download function
+  // always names the secret). Used only to download gated model files.
+  saveHfToken(hf) {
+    return this.modal(['secret', 'create', 'iv-studio-hf', `HF_TOKEN=${hf || 'none'}`, '--force'], { quiet: true, secret: true })
+  }
+
+  // Downloads models into the iv-studio-models volume on a CPU function. No ids: what setup needs (H3's, about
+  // 60 GB). ids: what a render needs the first time. onLine gets each line of the function's report.
+  fetchModels(ids = null, { onLine } = {}) {
     this.stage() // the current models.json, not the copy from the last deploy
-    this.onLog('Downloading the H3 models into your cloud storage (about 60 GB, once)…')
-    return this.modal(['run', 'modal_app.py::fetch_models'])
+    if (!ids) this.onLog('Downloading the H3 models into your cloud storage (about 60 GB, once)…')
+    return this.modal(['run', 'modal_app.py::fetch_models', ...(ids?.length ? ['--ids', ids.join(',')] : [])], { onLine })
+  }
+
+  // The voice engine's models (VoxCPM2, Whisper, about 6.6 GB) into the volume, on a CPU function, once. Its Python
+  // environment is part of the image.
+  fetchVoice() {
+    this.stage()
+    this.onLog('Downloading the voice models into your cloud storage (about 6.6 GB, once)…')
+    return this.modal(['run', 'modal_app.py::fetch_voice'])
+  }
+
+  // The model files in the volume ({path: bytes}), read by a CPU function (no GPU).
+  async listFiles() {
+    this.stage()
+    const out = await this.modal(['run', 'modal_app.py::list_models'], { quiet: true })
+    const line = out.split(/\r?\n/).find((l) => l.startsWith('IV_FILES '))
+    if (!line) throw new Error('Modal did not list the cloud storage.')
+    return JSON.parse(line.slice(9))
   }
 
   // A local file (a character LoRA or RefMod) into the models volume, at the same relative path.
@@ -226,18 +254,19 @@ export class Cloud {
     const running = await this.containers()
     for (const c of running) {
       this.onLog(`Shutting down cloud GPU ${c.id}…`)
-      await this.modal(['container', 'stop', c.id], { quiet: true, quick: true })
+      // --yes: modal 1.6 asks "Are you sure?" and aborts with no terminal to answer (a Mac user hit it)
+      await this.modal(['container', 'stop', c.id, '--yes'], { quiet: true, quick: true })
     }
     return { stopped: running.length }
   }
 
-  async modal(args, { env = {}, quiet = false, secret = false, onSpawn, onText, quick = false } = {}) {
+  async modal(args, { env = {}, quiet = false, secret = false, onSpawn, onText, onLine, quick = false } = {}) {
     if (!quick) await this.ensureCurrent()
-    return this.exec(this.modalExe, args, { cwd: this.deployDir, env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', ...env }, quiet, secret, onSpawn, onText })
+    return this.exec(this.modalExe, args, { cwd: this.deployDir, env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', ...env }, quiet, secret, onSpawn, onText, onLine })
   }
 
   // Runs a program, streams each output line to onLog (unless quiet), resolves with all output.
-  exec(cmd, args, { cwd, env = {}, quiet = false, secret = false, onSpawn, onText } = {}) {
+  exec(cmd, args, { cwd, env = {}, quiet = false, secret = false, onSpawn, onText, onLine } = {}) {
     return new Promise((resolve, reject) => {
       if (cwd) fs.mkdirSync(cwd, { recursive: true })
       const builder = cmd === this.modalExe ? { MODAL_IMAGE_BUILDER_VERSION: IMAGE_BUILDER } : {}
@@ -248,7 +277,11 @@ export class Cloud {
         const text = buf.toString()
         out += text
         onText?.(out)
-        if (!quiet) for (const line of text.split(/\r?\n/)) if (line.trim()) this.onLog(line.trim())
+        for (const line of text.split(/\r?\n/)) {
+          if (!line.trim()) continue
+          if (!quiet) this.onLog(line.trim())
+          onLine?.(line.trim())
+        }
       }
       p.stdout.on('data', take)
       p.stderr.on('data', take)

@@ -43,12 +43,13 @@ export default function TourHost() {
 
   useEffect(() => {
     const start = (e) => {
-      const t = TOURS[e.detail]
+      // a tour by its id, or a one-step tour made on the spot (tours.js spotTour: the chat's "show me where")
+      const t = typeof e.detail === 'object' && e.detail?.steps ? e.detail : TOURS[e.detail]
       if (!t) return
       // steps on another page (go) are kept: their part only shows once the app has gone there
       const steps = t.steps.filter((s) => s.go || usable(s))
       if (!steps.length) return
-      setTour({ id: e.detail, title: t.title, steps })
+      setTour({ id: t.id || e.detail, title: t.title, steps })
       setI(0)
     }
     window.addEventListener('iv:tour', start)

@@ -4,7 +4,10 @@ IV Latent Cache - keeps a latent on disk, keyed by a fingerprint of everything u
                   prompt, so a Seed Hunter preview survives ComfyUI's RAM-pressure cache and restarts.
                   Its input is lazy: on a hit the upstream sampler is never run.
 IV Shot List    - picks one shot from a script whose shots are separated by lines of "---".
+IV Free Memory  - unloads every model from the GPU, then passes its input on. IV Studio puts it just before a
+                  workflow's sampler, so a big text encoder is gone before the video model loads.
 """
+import gc
 import hashlib
 import json
 import os
@@ -150,5 +153,38 @@ class IVShotList:
         return (shots[n - 1], n, len(shots), f"shot{n:02d}")
 
 
-NODE_CLASS_MAPPINGS = {"IVLatentCache": IVLatentCache, "IVShotList": IVShotList}
-NODE_DISPLAY_NAME_MAPPINGS = {"IVLatentCache": "IV Latent Cache", "IVShotList": "IV Shot List"}
+class _Any(str):
+    """A type that matches any other, so IV Free Memory can sit on any link."""
+
+    def __ne__(self, other):
+        return False
+
+
+ANY = _Any("*")
+
+
+class IVFreeMemory:
+    """Unloads every model from the GPU once its inputs are ready, then passes value on unchanged.
+
+    after_1 and after_2 make it wait for other branches too (a negative prompt, say), so everything that
+    still needs the text encoder has run before it goes.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"value": (ANY,)}, "optional": {"after_1": (ANY,), "after_2": (ANY,)}}
+
+    RETURN_TYPES = (ANY,)
+    RETURN_NAMES = ("value",)
+    FUNCTION = "free"
+    CATEGORY = "IV Studio"
+
+    def free(self, value, after_1=None, after_2=None):
+        comfy.model_management.unload_all_models()
+        gc.collect()
+        comfy.model_management.soft_empty_cache()
+        return (value,)
+
+
+NODE_CLASS_MAPPINGS = {"IVLatentCache": IVLatentCache, "IVShotList": IVShotList, "IVFreeMemory": IVFreeMemory}
+NODE_DISPLAY_NAME_MAPPINGS = {"IVLatentCache": "IV Latent Cache", "IVShotList": "IV Shot List", "IVFreeMemory": "IV Free Memory"}

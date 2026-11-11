@@ -18,16 +18,17 @@ import time
 
 import modal
 
-FIZGIG_COMMIT = "4b3f07f"  # the commit IV Studio's train.sh flags were checked against
+FIZGIG_COMMIT = "8630fca0c5d7932d73fe7387fd7c8a4dc99d9467"  # v9.3.2, the commit IV Studio's train.sh flags were checked against (FIZGIG in training.js)
 GPU = os.environ.get("IV_TRAIN_GPU", "B200")
 VOL = "/vol"
 
 volume = modal.Volume.from_name("iv-studio-train", create_if_missing=True)
 
-# Fizgig's own published image (Ubuntu 22.04, CUDA 12.8 PyTorch in /opt/venv), with Fizgig baked in at a
-# pinned commit and the entrypoint cleared so Modal can start its own process.
+# Fizgig's own published image (Ubuntu 24.04, CUDA 13.4 PyTorch in /opt/venv) at the release of that commit, pinned
+# by digest, with Fizgig baked in at the commit and the entrypoint cleared so Modal can start its own process. Keep in
+# step with FIZGIG in src/service/training.js.
 image = (
-    modal.Image.from_registry("ghcr.io/shootthesound/fizgig:latest")
+    modal.Image.from_registry("ghcr.io/shootthesound/fizgig:9.3.2@sha256:aa84fc35f72ae0e5cdee10a018415d23c0bd4c0a4c55c234187a256ec167719a")
     .entrypoint([])
     .run_commands(
         "git clone https://github.com/shootthesound/Fizgig /opt/Fizgig",

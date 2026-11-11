@@ -16,13 +16,24 @@ const on = (channel) => (cb) => {
 
 contextBridge.exposeInMainWorld('ivstudio', {
   app: { info: call('app:info') },
+  // opt-in usage counting and the cloud beta signup (src/service/usage.js); time estimates (src/service/timing.js)
+  usage: { status: call('usage:status'), set: call('usage:set'), preview: call('usage:preview'), joinBeta: call('usage:joinBeta') },
+  timing: { estimate: call('timing:estimate') },
   data: { info: call('data:info'), size: call('data:size'), choose: call('data:choose'), move: call('data:move'), restart: call('data:restart'), removeOld: call('data:removeOld'), open: call('data:open'), onProgress: on('data:progress') },
   learn: { openGuide: call('learn:openGuide') },
   update: { state: call('update:state'), check: call('update:check'), install: call('update:install'), onChange: on('update:changed') },
   incognito: { set: call('incognito:set') },
   queue: { list: call('queue:list'), cancel: call('queue:cancel') },
   // Projects: a short film from script to rough cut (src/service/productions.js)
+  craft: { slate: call('craft:slate'), rewrite: call('craft:rewrite'), variants: call('craft:variants'), lookbook: call('craft:lookbook') },
   productions: {
+    coverage: call('productions:coverage'),
+    rework: call('productions:rework'),
+    variants: call('productions:variants'),
+    setPrompt: call('productions:setPrompt'),
+    restorePrompt: call('productions:restorePrompt'),
+    continuity: call('productions:continuity'),
+    shotList: call('productions:shotList'),
     list: call('productions:list'),
     get: call('productions:get'),
     create: call('productions:create'),
@@ -46,9 +57,11 @@ contextBridge.exposeInMainWorld('ivstudio', {
     drawAngles: call('productions:drawAngles'),
     onChanged: on('productions:changed')
   },
-  settings: { get: call('settings:get'), set: call('settings:set'), setComfyKey: call('settings:setComfyKey'), setCivitaiKey: call('settings:setCivitaiKey') },
+  settings: { get: call('settings:get'), set: call('settings:set'), setComfyKey: call('settings:setComfyKey'), setCivitaiKey: call('settings:setCivitaiKey'), setOpenaiSecrets: call('settings:setOpenaiSecrets') },
   // where finished videos go: { path, custom, incognito, free }
   folders: { videos: call('folders:videos'), chooseVideos: call('folders:chooseVideos'), resetVideos: call('folders:resetVideos') },
+  // The Comfy.org account: credits for paid partner nodes, the key, and what a graph would cost.
+  account: { state: call('account:state'), refresh: call('account:refresh'), setKey: call('account:setKey'), clearKey: call('account:clearKey'), price: call('account:price'), onState: on('account:state') },
   // pathFor: the path of a file dropped on the window.
   replace: {
     meta: call('replace:meta'),
@@ -154,11 +167,24 @@ contextBridge.exposeInMainWorld('ivstudio', {
     onLog: on('training:log'),
     onChanged: on('training:changed')
   },
-  media: { probe: call('media:probe'), prepare: call('media:prepare'), pathFor: (file) => webUtils.getPathForFile(file) },
+  media: { probe: call('media:probe'), prepare: call('media:prepare'), localCopy: call('media:localCopy'), pathFor: (file) => webUtils.getPathForFile(file) },
   agents: {
     info: call('agents:info'),
-    installSkill: call('agents:installSkill')
+    installSkill: call('agents:installSkill'),
+    // installing Claude Code or Codex and signing in (src/service/agentinstall.js)
+    setup: call('agents:setup'),
+    install: call('agents:install'),
+    stopInstall: call('agents:stopInstall'),
+    signIn: call('agents:signIn'),
+    onSetup: on('agents:setupChanged')
   },
+  // the Dashboard's "Let Claude Code make it" (src/service/agentrun.js)
+  agentRun: { status: call('agentRun:status'), start: call('agentRun:start'), stop: call('agentRun:stop'), dismiss: call('agentRun:dismiss'), onChange: on('agentRun:changed') },
+  // the chat panel with the person's own agent (src/service/agentchat.js)
+  chat: { status: call('chat:status'), new: call('chat:new'), open: call('chat:open'), send: call('chat:send'), answer: call('chat:answer'), stop: call('chat:stop'), spending: call('chat:spending'), undo: call('chat:undo'), onChange: on('chat:changed'), onShow: on('chat:show'), hear: call('chat:hear'), say: call('chat:say'), popout: call('chat:popout'), dock: call('chat:dock'), popped: call('chat:popped'), pin: call('chat:pin'), setContext: call('chat:setContext'), openInApp: call('chat:openInApp'), onPopped: on('chat:popped'), onDocked: on('chat:docked'), onOpenInApp: on('app:open'), forwardAsk: call('chat:forwardAsk'), onAsk: on('chat:ask') },
+  activity: { list: call('activity:list'), undo: call('activity:undo'), onChange: on('activity:changed') },
+  // recipes: the chat's saved requests, as Dashboard buttons (src/service/recipes.js)
+  recipes: { list: call('recipes:list'), remove: call('recipes:remove'), onChange: on('recipes:changed') },
   reels: {
     make: call('reels:make')
   },
@@ -180,6 +206,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     addOutput: call('edits:addOutput'),
     export: call('edits:export'),
     cancelExport: call('edits:cancelExport'),
+    interchange: call('edits:interchange'),
     filmstrip: call('edits:filmstrip'),
     peaks: call('edits:peaks'),
     fullScreen: call('window:fullScreen'),
@@ -217,20 +244,25 @@ contextBridge.exposeInMainWorld('ivstudio', {
     wake: call('cloud:wake'),
     stop: call('cloud:stop'),
     usage: call('cloud:usage'),
-    onLog: on('cloud:log')
+    onLog: on('cloud:log'),
+    // models a cloud render needs: the question (onAsk, then answer) and how the download goes (onPrep)
+    onAsk: on('cloud:ask'),
+    answer: call('cloud:answer'),
+    onPrep: on('cloud:prep'),
+    hfToken: call('cloud:hfToken')
   },
-  prompts: { status: call('prompts:status'), write: call('prompts:write'), story: call('prompts:story'), pull: call('prompts:pull'), onPull: on('prompts:pull') },
+  prompts: { status: call('prompts:status'), write: call('prompts:write'), story: call('prompts:story'), pull: call('prompts:pull'), openai: call('prompts:openai'), onPull: on('prompts:pull') },
   setup: {
     check: call('setup:check'),
     installNodes: call('setup:installNodes'),
     onNodes: on('setup:nodes'),
     updates: { check: call('setup:updates:check'), run: call('setup:updates:run'), undo: call('setup:updates:undo'), installManager: call('setup:updates:installManager'), onProgress: on('setup:updates') }
   },
-  comfy: { launcher: call('comfy:launcher'), chooseLauncher: call('comfy:chooseLauncher'), chooseFolder: call('comfy:chooseFolder'), start: call('comfy:start'), onState: on('comfy:state') },
+  comfy: { launcher: call('comfy:launcher'), chooseLauncher: call('comfy:chooseLauncher'), chooseFolder: call('comfy:chooseFolder'), start: call('comfy:start'), restart: call('comfy:restart'), onState: on('comfy:state'), installPlan: call('comfy:installPlan'), chooseInstallFolder: call('comfy:chooseInstallFolder'), installCheck: call('comfy:installCheck'), install: call('comfy:install'), installCancel: call('comfy:installCancel'), onInstall: on('comfy:install') },
   hardware: { scan: call('hardware:scan'), apply: call('hardware:apply') },
   samplers: call('h3:samplers'),
   h3Models: call('models:h3'),
-  models: { status: call('models:status'), download: call('models:download'), cancel: call('models:cancel'), onUpdate: on('models:update') },
+  models: { status: call('models:status'), download: call('models:download'), cancel: call('models:cancel'), onUpdate: on('models:update'), hfLogin: call('models:hfLogin') },
   voices: {
     status: call('voices:status'),
     setup: call('voices:setup'),
@@ -259,6 +291,17 @@ contextBridge.exposeInMainWorld('ivstudio', {
     delete: call('music:delete'),
     toEdit: call('music:toEdit')
   },
+  sounds: {
+    meta: call('sounds:meta'),
+    status: call('sounds:status'),
+    write: call('sounds:write'),
+    create: call('sounds:create'),
+    list: call('sounds:list'),
+    rename: call('sounds:rename'),
+    cancel: call('sounds:cancel'),
+    delete: call('sounds:delete'),
+    toEdit: call('sounds:toEdit')
+  },
   images: {
     status: call('images:status'),
     create: call('images:create'),
@@ -266,9 +309,15 @@ contextBridge.exposeInMainWorld('ivstudio', {
     get: call('images:get'),
     cancel: call('images:cancel'),
     delete: call('images:delete'),
-    toEdit: call('images:toEdit')
+    toEdit: call('images:toEdit'),
+    toolsStatus: call('images:toolsStatus'),
+    tool: call('images:tool'),
+    saveMask: call('images:saveMask'),
+    lastFrame: call('images:lastFrame')
   },
-  library: { all: call('library:all'), toEdit: call('library:toEdit') },
+  clipfx: { meta: call('clipfx:meta'), status: call('clipfx:status'), run: call('clipfx:run'),
+    preview: call('clipfx:preview'), live: call('clipfx:live'), runs: call('clipfx:runs'), deleteRun: call('clipfx:deleteRun'), onProgress: on('clipfx:progress') },
+  library: { all: call('library:all'), toEdit: call('library:toEdit'), describeStatus: call('library:describeStatus'), onDescribe: on('library:describe') },
   loras: {
     meta: call('loras:meta'),
     search: call('loras:search'),
@@ -278,8 +327,15 @@ contextBridge.exposeInMainWorld('ivstudio', {
     yours: call('loras:yours'),
     identify: call('loras:identify'),
     prefs: call('loras:prefs'),
-    onProgress: on('loras:progress')
+    onProgress: on('loras:progress'),
+    recommended: call('loras:recommended'),
+    recommendedDownload: call('loras:recommendedDownload'),
+    recommendedCancel: call('loras:recommendedCancel'),
+    onRecommended: on('recommended:update')
   },
+  softMouth: { ready: call('softmouth:ready'), make: call('softmouth:make') },
+  batches: { list: call('batches:list'), dailies: call('batches:dailies') },
+  turnaround: { status: call('turnaround:status'), list: call('turnaround:list'), make: call('turnaround:make'), delete: call('turnaround:delete') },
   refmods: { list: call('refmods:list'), ready: call('refmods:ready'), make: call('refmods:make'), onStatus: on('refmods:status') },
   characters: { list: call('characters:list'), save: call('characters:save'), catalog: call('characters:catalog'), install: call('characters:install'), loras: call('characters:loras'), onProgress: on('characters:progress') },
   projects: { list: call('projects:list'), get: call('projects:get'), rename: call('projects:rename'), delete: call('projects:delete') },
@@ -298,12 +354,13 @@ contextBridge.exposeInMainWorld('ivstudio', {
     linkRun: call('sequences:linkRun')
   },
   system: { stats: call('system:stats'), free: call('system:free') },
-  rank: { job: call('rank:job'), learn: call('rank:learn') },
+  rank: { job: call('rank:job'), learn: call('rank:learn'), clean: call('rank:clean') },
   review: { take: call('review:take') },
   previs: { make: call('previs:make') },
   cast: { list: call('cast:list'), places: call('cast:places'), savePlace: call('cast:savePlace'), deletePlace: call('cast:deletePlace') },
-  render: { plan: call('render:plan'), planFinish: call('render:planFinish'), previews: call('render:previews'), finish: call('render:finish'), enhance: call('render:enhance') },
+  render: { plan: call('render:plan'), planFinish: call('render:planFinish'), price: call('render:price'), priceFinish: call('render:priceFinish'), previews: call('render:previews'), finish: call('render:finish'), enhance: call('render:enhance') },
   jobs: { watch: call('jobs:watch'), cancel: call('jobs:cancel'), onUpdate: on('jobs:update'), onLive: on('jobs:live') },
-  files: { pick: call('files:pick'), reveal: call('files:reveal') },
-  links: { open: call('links:open') }
+  files: { pick: call('files:pick'), reveal: call('files:reveal'), open: call('files:open') },
+  links: { open: call('links:open') },
+  terms: { state: call('terms:state'), accept: call('terms:accept'), answer: call('terms:answer'), report: call('terms:report'), openLicense: call('terms:openLicense'), onAsk: on('terms:ask'), onChanged: on('terms:changed') }
 })

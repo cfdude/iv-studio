@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import StartComfy from './StartComfy'
+import StartComfy, { RestartComfy } from './StartComfy'
 import { UpdateSettings } from './Update'
-import Hero, { ART } from './Hero'
+import { ART } from './Hero'
+import Stage from './Stage'
 import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
 import { SetCard, SetField, SetSwitch, Pill, SetPath, SetCode } from './SettingsKit'
@@ -9,6 +10,14 @@ import { startTour } from '../tours'
 import { comfyLauncherHelp, keychainRefusedText } from '../../../shared/platform'
 import { secretRemedy } from '../../../service/secrets'
 import { usePlatform } from '../platform'
+import { AccountCard } from './ComfyAccount'
+import Credits from './Credits'
+import { openH3Terms, reportMisuse, useH3Terms } from './H3Terms'
+import { SAFEGUARDS_URL } from '../../../service/terms'
+import { SpeedCards } from './Speed'
+import { savedSpeed } from '../../../service/speed'
+import { PrivacyCard } from './Privacy'
+import { AgentRows, useAgentSetup } from './AgentSetup'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
 const GB = (b) => `${(b / 1e9).toFixed(1)} GB`
@@ -17,14 +26,17 @@ const open = (url) => window.ivstudio.links.open(url)
 // The page's topics, in order: the index on the left and each card's number come from here.
 const SECTIONS = [
   ['pc', 'Your computer'],
+  ['words', 'Words'],
   ['access', 'Accessibility'],
   ['comfy', 'ComfyUI'],
   ['folders', 'Folders'],
   ['data', 'Data folder'],
   ['models', 'Models'],
   ['writer', 'Prompt writer'],
+  ['account', 'Comfy account'],
   ['civitai', 'Civitai'],
   ['agents', 'Agents'],
+  ['privacy', 'Privacy'],
   ['updates', 'Updates'],
   ['about', 'About']
 ]
@@ -41,8 +53,16 @@ const short = (n) => n.split(/[\\/]/).pop().replace(/\.safetensors$/, '')
 const kindOf = (n) => (/fl2va/i.test(n) ? 'fl2va' : /ref2va|omniref/i.test(n) ? 'ref2va' : null)
 
 // The welcome wizard's scan, and a way back into it.
-function PcCard({ n, settings }) {
+function PcCard({ n, settings, setSettings, notify }) {
   const hw = settings.hardware
+  const speed = savedSpeed(settings)
+  async function pickSpeed(id) {
+    try {
+      setSettings(await window.ivstudio.settings.set({ speed: id }))
+    } catch (err) {
+      notify(err.message)
+    }
+  }
   const check = () => window.dispatchEvent(new CustomEvent('iv:welcome'))
   return (
     <SetCard
@@ -74,6 +94,45 @@ function PcCard({ n, settings }) {
           </div>
         )}
       </div>
+      <SetField label="Speed" hint="How Create starts each shot: preview size, steps and takes, and the finish. Smaller cards need the quicker presets; any shot can still change it.">
+        <SpeedCards value={speed} onPick={pickSpeed} recommended={settings.shotPrefs?.speed} />
+      </SetField>
+    </SetCard>
+  )
+}
+
+// Simple words (words.js): plain words for people new to AI video and pictures; only the words change
+const WORD_SAMPLES = [
+  ['LoRA', 'trained look'],
+  ['RefMod', 'reference pack'],
+  ['seed', 'variation number'],
+  ['sampler', 'drawing method'],
+  ['DLSS 5', 'quick sharpen'],
+  ['SeedVR2', 'detail restore'],
+  ['upscale', 'enlarge'],
+  ['prompt', 'description']
+]
+function WordsCard({ n, settings, setSettings }) {
+  const set = async (patch) => {
+    setSettings(await window.ivstudio.settings.set(patch))
+    window.dispatchEvent(new CustomEvent('iv:settings'))
+  }
+  return (
+    <SetCard id="words" n={n} title="Words" sub="How IV Studio talks to you." aside={settings.plainWords ? <Pill tone="ok">Simple</Pill> : <Pill>Standard</Pill>}>
+      <SetField label="Simple words" hint="For people new to AI video and pictures: the app explains itself in everyday words. Only the words change; every page, control and setting stays the same.">
+        <SetSwitch checked={settings.plainWords} onChange={(on) => set({ plainWords: on })}>
+          {settings.plainWords ? 'On' : 'Off'}
+        </SetSwitch>
+      </SetField>
+      <SetField label="For example">
+        <div className="set-words words-exact">
+          {WORD_SAMPLES.map(([a, b]) => (
+            <span key={a} className="set-chip">
+              <span className="mono">{a}</span> → {b}
+            </span>
+          ))}
+        </div>
+      </SetField>
     </SetCard>
   )
 }
@@ -163,7 +222,7 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
       id="comfy"
       n={n}
       title="ComfyUI"
-      sub="IV Studio uses the ComfyUI you already have, on any drive; it never installs one of its own. H3 models, LoRAs from Civitai and your renders all go into that ComfyUI’s own folders."
+      sub="IV Studio uses the ComfyUI you already have, on any drive (or gets one for you: Setup → Get ComfyUI for me). H3 models, LoRAs from Civitai and your renders all go into that ComfyUI’s own folders."
       aside={comfyUp ? <Pill tone="ok">Ready</Pill> : comfyBusy ? <Pill tone="warn">Busy</Pill> : <Pill tone="warn">Not running</Pill>}
     >
       <SetField label="Address" hint="Where ComfyUI answers, such as localhost:8188 (portable) or localhost:8000 (the Desktop app). Typing http:// is optional.">
@@ -208,6 +267,7 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
                 Choose…
               </button>
               {!comfyUp && !comfyBusy && <StartComfy notify={notify} recheck={recheck} />}
+              {(comfyUp || comfyBusy) && <RestartComfy notify={notify} recheck={recheck} />}
             </div>
             {!l.chosen && !l.folder && l.found.length > 1 && (
               <div className="set-found">
@@ -373,6 +433,12 @@ function WriterCard({ n, settings, setSettings, notify }) {
     return window.ivstudio.prompts.onPull((ev) => setPull(ev))
   }, [])
   useEffect(() => setAddr(settings.ollamaUrl || ''), [settings.ollamaUrl])
+  // Claude Code or Codex installed from here: look again, so its models show
+  const agents = useAgentSetup()
+  const agentsFound = `${!!agents?.claude?.installed}${!!agents?.codex?.installed}`
+  useEffect(() => {
+    if (agents) refresh()
+  }, [agentsFound])
 
   const save = async (patch) => {
     try {
@@ -408,11 +474,12 @@ function WriterCard({ n, settings, setSettings, notify }) {
   const hasModel = models.some((m) => m.name === settings.ollamaModel)
   const pct = pull?.total ? Math.floor((pull.completed / pull.total) * 100) : null
   const addrChanged = addr.trim() !== (settings.ollamaUrl || '')
-  const missing = (id) => (id === 'local' ? status && !status.installed : id === 'contextir' ? !settings.hasComfyKey : status && !status.harnesses?.[id]?.installed)
+  const missing = (id) => (id === 'local' ? status && !status.installed : id === 'contextir' ? !settings.hasComfyKey : id === 'openai' ? !settings.openaiUrl || !settings.openaiModel : status && !status.harnesses?.[id]?.installed)
   const ENGINES = [
     ['local', 'Local', 'Free · your own Ollama', 'Not installed'],
     ['claude', 'Claude Code', 'Your Claude plan', 'Not installed'],
     ['codex', 'Codex', 'Your ChatGPT plan', 'Not installed'],
+    ['openai', 'OpenAI-compatible', 'Your own server or API', 'Needs setting up'],
     ['contextir', 'Context IR', 'MiniMax · paid per prompt', 'Needs a key']
   ]
   const h = HARNESS[engine]
@@ -446,14 +513,9 @@ function WriterCard({ n, settings, setSettings, notify }) {
         ))}
       </div>
 
-      {h && harness && !harness.installed && (
+      {h && harness && (!harness.installed || (agents?.[engine] && agents[engine].signedIn !== true)) && (
         <SetField label={h.name}>
-          <p className="small pink set-plain">
-            {h.name} isn't installed on this computer.{' '}
-            <button className="link-btn" onClick={() => open(h.get)}>
-              Get {h.name}
-            </button>
-          </p>
+          <AgentRows setup={agents} notify={notify} only={engine} />
         </SetField>
       )}
       {h && harness?.installed && (
@@ -525,6 +587,8 @@ function WriterCard({ n, settings, setSettings, notify }) {
         </>
       )}
 
+      {engine === 'openai' && <OpenAiWriter settings={settings} setSettings={setSettings} save={save} notify={notify} />}
+
       {engine === 'contextir' && (
         <SetField
           label="Comfy.org key"
@@ -562,6 +626,11 @@ function WriterCard({ n, settings, setSettings, notify }) {
           )}
         </SetField>
       )}
+      <SetField label="Search by what’s in a file" hint="While nothing renders, the local writer (Ollama, or your OpenAI-compatible server when it sees pictures) looks at each new video and picture in the Library and writes a sentence and a few tags, so search finds “red car” or “beach at night”. It stops when a render starts.">
+        <SetSwitch checked={settings.describeLibrary !== false} onChange={async (on) => setSettings(await window.ivstudio.settings.set({ describeLibrary: on }))}>
+          {settings.describeLibrary !== false ? 'On' : 'Off'}
+        </SetSwitch>
+      </SetField>
     </SetCard>
   )
 }
@@ -592,6 +661,129 @@ function SecretNotice({ settings }) {
           {secretRemedy(name).text}
         </p>
       ))}
+    </>
+  )
+}
+
+// Prompt writer → OpenAI-compatible (GitHub #15): any server that speaks the OpenAI API (llama.cpp, llama-swap,
+// vLLM, LM Studio, LiteLLM, LocalAI, OpenAI). It writes exactly as the local writer does; the address, model and
+// "sees pictures" are plain settings, the key and extra headers are stored encrypted (settings:setOpenaiSecrets).
+function OpenAiWriter({ settings, setSettings, save, notify }) {
+  const [addr, setAddr] = useState(settings.openaiUrl || '')
+  const [model, setModel] = useState(settings.openaiModel || '')
+  const [key, setKey] = useState('')
+  const [headers, setHeaders] = useState('')
+  const [check, setCheck] = useState(null) // { ok, url, models, error } | 'checking'
+  useEffect(() => setAddr(settings.openaiUrl || ''), [settings.openaiUrl])
+  useEffect(() => setModel(settings.openaiModel || ''), [settings.openaiModel])
+  const look = () => {
+    if (!settings.openaiUrl) return setCheck(null)
+    setCheck('checking')
+    window.ivstudio.prompts.openai().then(setCheck).catch((err) => setCheck({ ok: false, models: [], error: err.message }))
+  }
+  // look again whenever the address or the key changes
+  useEffect(look, [settings.openaiUrl, settings.hasOpenaiKey, settings.hasOpenaiHeaders])
+  const secrets = async (patch, done) => {
+    try {
+      setSettings(await window.ivstudio.settings.setOpenaiSecrets(patch))
+      done?.()
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+  const addrChanged = addr.trim() !== (settings.openaiUrl || '')
+  const modelChanged = model.trim() !== (settings.openaiModel || '')
+  const models = check && check !== 'checking' ? check.models || [] : []
+  const listed = !models.length || models.includes(settings.openaiModel)
+  const state =
+    check === 'checking' ? (
+      <Pill>Checking…</Pill>
+    ) : check?.ok ? (
+      <Pill tone="ok">{models.length ? `Connected · ${models.length} model${models.length === 1 ? '' : 's'}` : 'Connected'}</Pill>
+    ) : check ? (
+      <Pill tone="warn">Not answering</Pill>
+    ) : null
+  return (
+    <>
+      <SetField
+        label="Address"
+        hint={check && check !== 'checking' && !check.ok ? check.error : 'The server’s OpenAI API address: llama.cpp and llama-swap localhost:8080, LM Studio localhost:1234, vLLM localhost:8000, LiteLLM localhost:4000, or https://api.openai.com/v1. IV Studio adds /v1 when there’s no path.'}
+      >
+        <div className="set-inline grow">
+          <input value={addr} placeholder="http://localhost:8080/v1" onChange={(e) => setAddr(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addrChanged && save({ openaiUrl: addr })} aria-label="OpenAI-compatible server address" />
+          <button className="btn btn-small" disabled={!addrChanged} onClick={() => save({ openaiUrl: addr })}>
+            Save
+          </button>
+          {settings.openaiUrl && !addrChanged && (
+            <button className="btn btn-small" disabled={check === 'checking'} onClick={look}>
+              Check
+            </button>
+          )}
+          {state}
+        </div>
+      </SetField>
+      <SetField
+        label="Model"
+        warn={!listed ? `The server doesn’t list ${settings.openaiModel}.` : null}
+        hint="The model name the server expects. With llama-swap, the name picks the model it loads. Your idea and pictures go to this server; nothing is unloaded by IV Studio."
+      >
+        <div className="set-inline grow">
+          <input value={model} list="iv-openai-models" placeholder={models[0] || 'qwen3-vl-8b'} onChange={(e) => setModel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && modelChanged && save({ openaiModel: model })} aria-label="Model name" />
+          <datalist id="iv-openai-models">
+            {models.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+          <button className="btn btn-small" disabled={!modelChanged} onClick={() => save({ openaiModel: model })}>
+            Save
+          </button>
+        </div>
+      </SetField>
+      <SetField label="Pictures" hint="Turn on for a vision model (Qwen-VL, Gemma 3, GPT-4o…). It then looks at your reference pictures, and can review takes and read shots for Rebuild and Remake.">
+        <SetSwitch checked={settings.openaiVision} onChange={(on) => save({ openaiVision: on })}>
+          It can see pictures
+        </SetSwitch>
+      </SetField>
+      <SetField label="API key" tag="optional" hint="Only if the server asks for one (OpenAI, a hosted provider, a LiteLLM with keys). Sent as Authorization: Bearer. Stored encrypted on this computer. Agents using IV Studio's MCP server read it from IV_STUDIO_LLM_KEY or OPENAI_API_KEY instead.">
+        {settings.hasOpenaiKey ? (
+          <div className="set-inline">
+            <Pill tone="ok">Saved · encrypted on this computer</Pill>
+            <button className="link-btn" onClick={() => secrets({ key: '' })}>
+              Remove
+            </button>
+          </div>
+        ) : (
+          <>
+            <RemoveSaved name="openaiKey" settings={settings} onRemove={() => secrets({ key: '' })} />
+            <div className="set-inline grow">
+              <input type="password" value={key} placeholder="sk-…" onChange={(e) => setKey(e.target.value)} autoComplete="off" aria-label="API key" />
+              <button className="btn btn-small" disabled={!key.trim()} onClick={() => secrets({ key }, () => setKey(''))}>
+                Save
+              </button>
+            </div>
+          </>
+        )}
+      </SetField>
+      <SetField label="Extra headers" tag="optional" hint="One per line, like X-Api-Version: 2. For providers that want more than a key. Stored encrypted; agents read them from IV_STUDIO_LLM_HEADERS.">
+        {settings.hasOpenaiHeaders ? (
+          <div className="set-inline">
+            <Pill tone="ok">Saved · encrypted on this computer</Pill>
+            <button className="link-btn" onClick={() => secrets({ headers: '' })}>
+              Remove
+            </button>
+          </div>
+        ) : (
+          <>
+            <RemoveSaved name="openaiHeaders" settings={settings} onRemove={() => secrets({ headers: '' })} />
+            <div className="set-inline grow">
+              <textarea rows={2} value={headers} placeholder="X-Header-Name: value" onChange={(e) => setHeaders(e.target.value)} aria-label="Extra headers" />
+              <button className="btn btn-small" disabled={!headers.trim()} onClick={() => secrets({ headers }, () => setHeaders(''))}>
+                Save
+              </button>
+            </div>
+          </>
+        )}
+      </SetField>
     </>
   )
 }
@@ -667,10 +859,77 @@ function CivitaiCard({ n, settings, setSettings, notify }) {
   )
 }
 
+// The chat's spending limit (spending.js): off by default; when on, Seedance steps priced under both amounts, and
+// covered by the Comfy.org balance, go ahead without an Allow card. 211 Comfy credits = $1.
+const BUDGET = { on: false, daily: 1000, perStep: 250 }
+const asUsd = (credits) => `$${(credits / 211).toFixed(2)}`
+function SpendingField({ settings, setSettings, notify }) {
+  const b = { ...BUDGET, ...(settings.chatBudget || {}) }
+  const [daily, setDaily] = useState(String(b.daily))
+  const [perStep, setPerStep] = useState(String(b.perStep))
+  const [today, setToday] = useState(null)
+  useEffect(() => {
+    setDaily(String(b.daily))
+    setPerStep(String(b.perStep))
+    window.ivstudio.chat.spending?.().then(setToday).catch(() => {})
+  }, [b.on, b.daily, b.perStep])
+  // the chat spending something changes today's figure
+  useEffect(() => {
+    return window.ivstudio.chat.onChange(() => {
+      window.ivstudio.chat.spending?.().then(setToday).catch(() => {})
+    })
+  }, [])
+  const whole = (v, fallback) => {
+    const x = Math.round(Number(v))
+    return v !== '' && Number.isFinite(x) && x >= 0 ? x : fallback
+  }
+  async function save(patch) {
+    try {
+      setSettings(await window.ivstudio.settings.set({ chatBudget: { on: b.on, daily: b.daily, perStep: b.perStep, ...patch } }))
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+  const amount = (label, value, setValue, key) => (
+    <label className="set-budget-row">
+      <span className="set-budget-label small">{label}</span>
+      <input
+        type="number"
+        min="0"
+        step="50"
+        value={value}
+        aria-label={label}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => save({ [key]: whole(value, b[key]) })}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      />
+      <span className="small dim">credits · about {asUsd(whole(value, b[key]))}</span>
+    </label>
+  )
+  return (
+    <SetField
+      label="Spending limit"
+      hint="For IV Studio’s chat. Off: every step that spends Comfy.org credits asks first. On: a Seedance step goes ahead without asking when its price (IV Studio’s own, the top of any range) fits both amounts and your balance covers it. Cloud-GPU renders, character training and anything without a known price always ask. Every paid step counts when it starts, even if the render later fails; the day starts at midnight."
+    >
+      <SetSwitch checked={b.on} onChange={(on) => save({ on })}>
+        Let the chat spend credits without asking, up to a limit
+      </SetSwitch>
+      {b.on && (
+        <div className="set-budget">
+          {amount('A day', daily, setDaily, 'daily')}
+          {amount('One step', perStep, setPerStep, 'perStep')}
+        </div>
+      )}
+      {today?.on && <p className="set-hint mono small">{today.label}</p>}
+    </SetField>
+  )
+}
+
 // Agents (MCP): a message to paste into any agent, the manual commands, and the Claude Code skill.
-function AgentCard({ n, mcp, notify }) {
+function AgentCard({ n, mcp, settings, setSettings, notify }) {
   const [agents, setAgents] = useState(null)
   const [client, setClient] = useState('claude')
+  const setup = useAgentSetup()
   const refresh = () => window.ivstudio.agents.info().then(setAgents)
   useEffect(() => {
     refresh()
@@ -693,6 +952,10 @@ function AgentCard({ n, mcp, notify }) {
   const skill = !agents.skillInstalled ? null : agents.skillCurrent ? 'ok' : 'warn'
   return (
     <SetCard id="agents" n={n} title="Agents" sub="Claude Code, Codex and other agents can render, sequence and edit in IV Studio, with the same projects and results you see here." aside={<Pill>MCP</Pill>}>
+      <SetField label="On this computer" hint="Your own Claude Code or Codex, on your own plan. Install puts it in with the maker's own installer; Sign in opens its browser login.">
+        <AgentRows setup={setup} notify={notify} />
+      </SetField>
+      <SpendingField settings={settings} setSettings={setSettings} notify={notify} />
       <SetField label="Easiest" hint="One message: your agent adds IV Studio, reads its guide and checks your setup.">
         <SetCode text={agents.paste} label="Copy message" tall />
       </SetField>
@@ -729,8 +992,11 @@ function AgentCard({ n, mcp, notify }) {
 }
 
 function AboutCard({ n, info }) {
+  const [credits, setCredits] = useState(false)
+  const terms = useH3Terms()
+  const agreed = terms?.at ? new Date(terms.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : null
   return (
-    <SetCard id="about" n={n} title="About">
+    <SetCard id="about" n={n} title="About" aside={terms && (terms.accepted ? <Pill tone="ok">Terms agreed</Pill> : <Pill tone="warn">Terms to agree</Pill>)}>
       <SetField label="IV Studio">
         <div className="set-inline">
           <span className="set-big mono">v{info?.version}</span>
@@ -745,6 +1011,31 @@ function AboutCard({ n, info }) {
           </button>
         </div>
       </SetField>
+      <SetField
+        label="Terms of use"
+        hint="IV Studio is Powered by MiniMax H3. Using H3 means agreeing to IV Studio’s terms, which carry MiniMax’s use restrictions: real people only with consent, nothing involving minors, say it’s AI when you post it, and more. You’re asked once, before your first H3 render."
+      >
+        <div className="set-inline about-terms">
+          {terms?.accepted ? <span className="small">Agreed on {agreed}</span> : <span className="small pink">Not agreed yet</span>}
+          <button className={`btn btn-small ${terms && !terms.accepted ? 'btn-primary' : ''}`} onClick={() => openH3Terms({ accepted: !!terms?.accepted })}>
+            {terms && !terms.accepted ? 'Read and agree' : 'Read the terms'}
+          </button>
+          <button className="link-btn mono small" onClick={() => window.ivstudio.terms.openLicense().catch(() => {})}>
+            MiniMax’s licence ↗
+          </button>
+        </div>
+      </SetField>
+      <SetField label="Report misuse" hint="Seen something made with IV Studio that breaks the terms, or that uses you or someone else without consent? Email us. Every report is read and acted on.">
+        <div className="set-inline about-report">
+          <button className="btn btn-small" onClick={reportMisuse}>
+            Report misuse
+          </button>
+          <span className="mono small">{terms?.abuseEmail || 'abuse@infinitevariance.ai'}</span>
+          <button className="link-btn mono small" onClick={() => open(SAFEGUARDS_URL)}>
+            How we keep it safe ↗
+          </button>
+        </div>
+      </SetField>
       <SetField label="Tour" hint="A two-minute walk round IV Studio, page by page. Each page also has its own How it works button.">
         <div className="set-inline">
           <button className="btn btn-small" onClick={() => startTour('full')}>
@@ -752,6 +1043,14 @@ function AboutCard({ n, info }) {
           </button>
         </div>
       </SetField>
+      <SetField label="Credits" hint="Every model, tool, node pack and library IV Studio is built on: who made it, what it does here and its licence.">
+        <div className="set-inline">
+          <button className="btn btn-small about-credits" onClick={() => setCredits(true)}>
+            Credits
+          </button>
+        </div>
+      </SetField>
+      {credits && <Credits onClose={() => setCredits(false)} />}
     </SetCard>
   )
 }
@@ -963,7 +1262,7 @@ export default function Settings({ info, recheck, notify, go, setup }) {
 
   return (
     <div className="settings settings-v2">
-      <Hero art="settings" title="Settings" kicker="Infinite Variance" />
+      <Stage effect="dial" art="settings" title="Settings" kicker="Infinite Variance" />
       <SettingsTabs tab="settings" go={go} setup={setup} />
 
       <SecretNotice settings={settings} />
@@ -979,15 +1278,18 @@ export default function Settings({ info, recheck, notify, go, setup }) {
         </nav>
 
         <div className="set-cards">
-          <PcCard n={n('pc')} settings={settings} />
+          <PcCard n={n('pc')} {...common} />
+          <WordsCard n={n('words')} {...common} />
           <AccessCard n={n('access')} {...common} />
           <ComfyCard n={n('comfy')} {...common} recheck={recheck} comfyUp={comfyUp} comfyBusy={comfyBusy} />
           <FolderCard n={n('folders')} {...common} incognito={!!info?.incognito} />
           <DataCard n={n('data')} notify={notify} />
           <ModelCard n={n('models')} {...common} />
           <WriterCard n={n('writer')} {...common} />
+          <AccountCard n={n('account')} notify={notify} />
           <CivitaiCard n={n('civitai')} {...common} />
-          <AgentCard n={n('agents')} mcp={info?.mcp} notify={notify} />
+          <AgentCard n={n('agents')} mcp={info?.mcp} {...common} />
+          <PrivacyCard n={n('privacy')} notify={notify} />
           <UpdateSettings n={n('updates')} notify={notify} />
           <AboutCard n={n('about')} info={info} />
         </div>

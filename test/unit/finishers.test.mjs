@@ -28,7 +28,8 @@ describe('the manifest lists the finishers', () => {
     const p = manifest.node_packs.find((x) => x.classes.includes('RIFE VFI'))
     assert.ok(p, 'a pack provides RIFE VFI')
     assert.equal(p.dir, 'comfyui-frame-interpolation')
-    assert.ok(cloud.packs.some((x) => x.dir === p.dir), 'the cloud installs the same pack')
+    // the cloud image installs models.json's node packs, leaving out the Windows-only ones and those marked cloud: false
+    assert.ok(!p.windowsOnly && p.cloud !== false && !('packs' in cloud), 'the cloud installs the same pack')
     assert.match(p.for, /Mac/)
     assert.ok(!p.windowsOnly, 'shown on a Mac: only a Windows ComfyUI is spared it, because DLSS 5 does its frame rate')
   })

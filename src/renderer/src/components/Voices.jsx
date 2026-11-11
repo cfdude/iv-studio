@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import Hero from './Hero'
+import Stage from './Stage'
+import QuickBar, { showBelow } from './AudioQuick'
 import { ask } from './Confirm'
 import { MediaEditor, MediaTile } from './MediaEditor'
 import { ListSearch, MoreMenu, Player, Track, VoiceAvatar } from './AudioKit'
@@ -56,11 +57,11 @@ export function EngineStatus({ status, check, notify }) {
     return (
       <div className="engine-strip ready mono">
         <span className="engine-dot" />
-        Voice engine ready
+        {status.cloud ? `Voice engine ready in your ${status.cloud === 'runpod' ? 'RunPod' : 'Modal'} cloud` : 'Voice engine ready'}
         <span className="dim">{status.setup?.models.map((m) => m.name).join(' · ')}</span>
       </div>
     )
-  if (status.unavailable)
+  if (status.unavailable && !status.cloud)
     return (
       <div className="voice-engine off">
         <p className="mono pink">● Voices aren't available yet</p>
@@ -73,12 +74,14 @@ export function EngineStatus({ status, check, notify }) {
       <div>
         <p className="mono pink">Voices need a one-time setup</p>
         <p className="small dim">
-          IV Studio speaks with {status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on this computer. Setup downloads about {GB(status.setup?.size || 0)} into IV Studio's folder, once.
+          {status.cloud
+            ? `IV Studio speaks with ${status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on your ${status.cloud === 'runpod' ? 'RunPod' : 'Modal'} cloud GPU beside ComfyUI. Setup puts about ${GB(status.setup?.size || 0)} in your cloud storage, once (${status.cloud === 'runpod' ? 'on a cloud GPU, 10–20 minutes, about $0.30' : 'on a CPU, a few cents'}). Each line then runs on the cloud GPU, billed by the second.`
+            : `IV Studio speaks with ${status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on this computer. Setup downloads about ${GB(status.setup?.size || 0)} into IV Studio's folder, once.`}
         </p>
         {working && <p className="mono small dim voice-log">{log}</p>}
       </div>
       <button className="btn btn-primary" disabled={working} onClick={setup}>
-        {working ? 'Setting up…' : `Set up voices · ${GB(status.setup?.size || 0)}`}
+        {working ? 'Setting up…' : `Set up voices${status.cloud ? ' in the cloud' : ''} · ${GB(status.setup?.size || 0)}`}
       </button>
     </div>
   )
@@ -98,10 +101,12 @@ function SeedField({ value, onChange, placeholder = 'Random' }) {
 }
 
 // Audio > Voices: every voice IV Studio can speak in, which character has it, and two ways to make one.
-export function VoicesPage({ notify, characters, setCharacters }) {
+export function VoicesPage({ notify, characters, setCharacters, go }) {
   const [status, check] = useVoiceEngine()
   const [voices, setVoices] = useState(null)
   const [tab, setTab] = useState('design')
+  // the design form's words and takes live here, so the banner's quick bar and the form below share them
+  const d = useDesignVoice(notify)
   const load = () => V().list().then(setVoices, (err) => notify(err.message))
   useEffect(() => {
     load()
@@ -130,7 +135,20 @@ export function VoicesPage({ notify, characters, setCharacters }) {
 
   return (
     <div className="voices audio-page">
-      <Hero art="voices" title="Voices" kicker="Audio" />
+      <Stage effect="speech" art="voices" title="Voices" kicker="Audio" help="voices" back={{ label: 'Audio', onClick: () => go('audio') }}>
+        <QuickBar
+          label="Describe a voice"
+          placeholder="Describe a voice: age, accent, pace, mood…"
+          value={d.description}
+          onChange={d.setDescription}
+          goLabel="Make three takes"
+          busyLabel="Designing…"
+          busy={d.busy}
+          disabled={!status?.ready || d.busy || !d.description.trim()}
+          onGo={() => (setTab('design'), d.design(), showBelow('.audio-card'))}
+          note={status && !status.ready ? { text: 'Voices need a one-time setup first.', action: { label: 'Set it up', onClick: () => showBelow('.engine-strip') } } : null}
+        />
+      </Stage>
       <p className="lede">
         A voice for every character.
         <span className="lede-small dim">Give a character a voice and Create can speak a line in it for H3 to lip-sync. Only invented voices, your own, or someone who agreed to it.</span>
@@ -192,19 +210,19 @@ export function VoicesPage({ notify, characters, setCharacters }) {
             </button>
           </div>
         </div>
-        {tab === 'design' ? <DesignVoice notify={notify} ready={status?.ready} onSaved={load} /> : <CloneVoice notify={notify} ready={status?.ready} onSaved={load} />}
+        {tab === 'design' ? <DesignVoice notify={notify} ready={status?.ready} onSaved={load} d={d} /> : <CloneVoice notify={notify} ready={status?.ready} onSaved={load} />}
       </section>
     </div>
   )
 }
 
-function DesignVoice({ notify, ready, onSaved }) {
+// A voice designed from words: the description, the optional words it says, the seed, and the three takes made.
+function useDesignVoice(notify) {
   const [description, setDescription] = useState('')
   const [text, setText] = useState('')
   const [seed, setSeed] = useState('1')
   const [busy, setBusy] = useState(false)
   const [takes, setTakes] = useState([])
-  const [name, setName] = useState('')
   async function design() {
     setBusy(true)
     setTakes([])
@@ -216,6 +234,12 @@ function DesignVoice({ notify, ready, onSaved }) {
       setBusy(false)
     }
   }
+  return { description, setDescription, text, setText, seed, setSeed, busy, takes, setTakes, design }
+}
+
+function DesignVoice({ notify, ready, onSaved, d }) {
+  const { description, setDescription, text, setText, seed, setSeed, busy, takes, setTakes, design } = d
+  const [name, setName] = useState('')
   async function keep(t) {
     try {
       await V().create({ name: name || 'New voice', file: t.file, text: t.text, description: t.description, seed: t.seed, kind: 'designed' })
@@ -358,7 +382,7 @@ function CloneVoice({ notify, ready, onSaved }) {
 }
 
 // Audio > Lines: say anything in any voice; every line is kept, ready to use in a shot or an edit.
-export function LinesPage({ notify, characters, sendToCreate }) {
+export function LinesPage({ notify, characters, sendToCreate, go }) {
   const platform = usePlatform()
   const [status, check] = useVoiceEngine()
   const [voices, setVoices] = useState([])
@@ -404,7 +428,37 @@ export function LinesPage({ notify, characters, sendToCreate }) {
   }
   return (
     <div className="voices audio-page">
-      <Hero art="lines" title="Lines" kicker="Audio" />
+      <Stage effect="scope" art="lines" title="Lines" kicker="Audio" help="lines" back={{ label: 'Audio', onClick: () => go('audio') }}>
+        <QuickBar
+          label="The line"
+          placeholder={voices.length ? 'Type the line…' : 'Make a voice first'}
+          value={text}
+          onChange={setText}
+          goLabel="Speak"
+          busyLabel="Speaking…"
+          busy={busy}
+          disabled={!status?.ready || busy || !text.trim() || !voiceId}
+          onGo={speak}
+          before={
+            voices.length > 0 && (
+              <select className="stage-quick-pick" value={voiceId || ''} onChange={(e) => setVoiceId(e.target.value)} aria-label="Voice">
+                {voices.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+            )
+          }
+          note={
+            voices.length === 0
+              ? { text: 'Lines are spoken in a voice you have made.', action: { label: 'Make a voice', onClick: () => go('voices') } }
+              : status && !status.ready
+                ? { text: 'Voices need a one-time setup first.', action: { label: 'Set it up', onClick: () => showBelow('.engine-strip') } }
+                : null
+          }
+        />
+      </Stage>
       <p className="lede">
         Say it in their voice.
         <span className="lede-small dim">Type a line, pick a voice, and use it as a shot's voice line: H3 lip-syncs the character to it. Every line is kept here.</span>

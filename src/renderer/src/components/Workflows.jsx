@@ -1,4 +1,4 @@
-import Hero from './Hero'
+import Stage from './Stage'
 import { WORKFLOWS } from '../workflows'
 
 // Each tool card's own art (assets/workflows/<page>.webp), drawn in the page banners' style and faded behind the
@@ -13,7 +13,7 @@ const TOOLS = WORKFLOWS
 export default function Workflows({ go }) {
   return (
     <div className="workflows">
-      <Hero art="workflows" title="Workflows" kicker="Take a video further" />
+      <Stage effect="cogs" art="workflows" title="Workflows" kicker="Take a video further" />
       <p className="lede">
         Tools for what comes after a render.
         <span className="lede-small dim">Each one works with your IV Studio renders and characters, and agents can use them through IV Studio's MCP.</span>

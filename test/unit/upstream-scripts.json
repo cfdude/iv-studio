@@ -1,12 +1,52 @@
 {
+  "agent-chat.mjs": {
+    "class": "needs Windows",
+    "reason": "on a Mac the stand-in agent is fixtures/chat-stub.mjs, which has no shebang and no execute bit, so the turn never starts (fails unguarded too); the guard also refuses electron on out/main/mcp.js",
+    "failsOnMac": true
+  },
+  "agent-install.mjs": {
+    "class": "default-safe",
+    "reason": "installer and sign-in commands for each platform, a stand-in installer on Windows only, and finding what the installers put in place; passed under the guard",
+    "failsOnMac": false
+  },
+  "agent-run.mjs": {
+    "class": "needs Windows",
+    "reason": "the stand-in agent is fixtures/agent-stub.cmd on every platform and the process-tree check runs powershell; neither runs on a Mac",
+    "failsOnMac": true
+  },
+  "batch3.mjs": {
+    "class": "needs fixtures",
+    "reason": "captions, recipes and batches pass, then it starts electron on the built out/main/mcp.js; the guard refuses the spawn; passes unguarded on a Mac",
+    "failsOnMac": false
+  },
   "cast.mjs": {
     "class": "default-safe",
     "reason": "pure @mention resolution on temp data; passed under the guard",
     "failsOnMac": false
   },
+  "chat-extras.mjs": {
+    "class": "default-safe",
+    "reason": "activity log, who took a step, the context meter and spoken text, no agent or window; passed under the guard",
+    "failsOnMac": false
+  },
+  "chat-text.mjs": {
+    "class": "default-safe",
+    "reason": "chat markdown formatting, pure; passed under the guard",
+    "failsOnMac": false
+  },
   "civitai-download.mjs": {
     "class": "needs fixtures",
     "reason": "Civitai downloads against its own loopback mock, whose port the guard refuses until a fake registers it; refused under the guard",
+    "failsOnMac": false
+  },
+  "cloudprep.mjs": {
+    "class": "needs fixtures",
+    "reason": "stand-in providers and ComfyUI on loopback ports the guard refuses, Python part skipped unless given; unguarded on a Mac 36 of 37 pass: fork regression, the added esrgan_x2 model breaks its catalog check (only setup models are required)",
+    "failsOnMac": true
+  },
+  "cloudvoice.mjs": {
+    "class": "needs fixtures",
+    "reason": "the gate needs a Python with aiohttp (skipped unless given) and unpacks with tar, which the guard refuses; passes unguarded on a Mac",
     "failsOnMac": false
   },
   "comfy-address.mjs": {
@@ -17,6 +57,21 @@
   "comfy-busy.mjs": {
     "class": "needs fixtures",
     "reason": "starts three loopback servers of its own, which the guard refuses (unregistered ports); 5 of 6 checks fail under the guard",
+    "failsOnMac": false
+  },
+  "comfy-install.mjs": {
+    "class": "needs fixtures",
+    "reason": "the resumable download runs against its own loopback server, which the guard refuses (unregistered port); passes unguarded on a Mac",
+    "failsOnMac": false
+  },
+  "comfy-restart.mjs": {
+    "class": "default-safe",
+    "reason": "stopTarget, stopComfy with a stand-in for PowerShell and taskkill, and waitDown; passed under the guard",
+    "failsOnMac": false
+  },
+  "comfy-starting.mjs": {
+    "class": "default-safe",
+    "reason": "a ComfyUI already starting is not started twice, with process lists stood in; passed under the guard",
     "failsOnMac": false
   },
   "comfy-updates.mjs": {
@@ -34,19 +89,39 @@
     "reason": "launcher discovery on temp folders with platform passed in; passed under the guard",
     "failsOnMac": false
   },
+  "continue-full.mjs": {
+    "class": "default-safe",
+    "reason": "continueFull plans and the last-frame picture with the bundled ffmpeg; 6 of 7 pass under the guard: fork regression, it expects \"not on this PC\" and 2e7253f says \"not on this computer\"",
+    "failsOnMac": true
+  },
   "core-upscaler.mjs": {
     "class": "default-safe",
     "reason": "graph adaptation only, no ComfyUI; passed under the guard",
     "failsOnMac": false
+  },
+  "credits.mjs": {
+    "class": "default-safe",
+    "reason": "credits cover every model, family and node pack, pure: fork regression, the added esrgan_x2 model has no credits.js entry",
+    "failsOnMac": true
   },
   "cutout.mjs": {
     "class": "default-safe",
     "reason": "mask graph builders only; passed under the guard",
     "failsOnMac": false
   },
+  "dailies.mjs": {
+    "class": "default-safe",
+    "reason": "dailies plan, notes and reel with the bundled ffmpeg; passed under the guard",
+    "failsOnMac": false
+  },
   "data-folder.mjs": {
     "class": "default-safe",
     "reason": "data-folder resolution on temp folders, Windows paths given as strings; passed under the guard",
+    "failsOnMac": false
+  },
+  "describe.mjs": {
+    "class": "default-safe",
+    "reason": "library describer with the bundled ffmpeg and a stand-in writer; passed under the guard",
     "failsOnMac": false
   },
   "directing.mjs": {
@@ -74,10 +149,35 @@
     "reason": "static scan of renderer source for effects; passed under the guard",
     "failsOnMac": false
   },
+  "end-card.mjs": {
+    "class": "default-safe",
+    "reason": "end card on a two-second clip it makes with the bundled ffmpeg; passed under the guard",
+    "failsOnMac": false
+  },
+  "failures.mjs": {
+    "class": "default-safe",
+    "reason": "ComfyUI failure messages to plain words, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "filmcraft.mjs": {
+    "class": "needs fixtures",
+    "reason": "film craft passes until the stand-in OpenAI-compatible writer on its own loopback port, which the guard refuses; passes unguarded on a Mac",
+    "failsOnMac": false
+  },
+  "freefield.mjs": {
+    "class": "default-safe",
+    "reason": "vendored Freefield apps load and bind to real nodes, pure; passed under the guard",
+    "failsOnMac": false
+  },
   "graph-parity.mjs": {
     "class": "needs Windows",
     "reason": "reads D:/H3Characters/_workflows by default (IV_STUDIO_WORKFLOWS overrides); ENOENT on a Mac",
     "failsOnMac": true
+  },
+  "h3-image.mjs": {
+    "class": "default-safe",
+    "reason": "MiniMax H3 Image sizes and graphs against ComfyUI templates, pure; passed under the guard",
+    "failsOnMac": false
   },
   "hardware.mjs": {
     "class": "default-safe",
@@ -94,9 +194,29 @@
     "reason": "checks every picture family's graph against the live ComfyUI node list; the guard refuses 127.0.0.1:8188",
     "failsOnMac": false
   },
+  "interchange.mjs": {
+    "class": "default-safe",
+    "reason": "FCP 7 XML, FCPXML, EDL and the zip, read back, with the bundled ffmpeg; passed under the guard",
+    "failsOnMac": false
+  },
+  "library-facts.mjs": {
+    "class": "default-safe",
+    "reason": "renderFacts from job records, pure: fork regression, it expects \"Free, on this PC\" and 2e7253f says \"Free, on this computer\"",
+    "failsOnMac": true
+  },
   "lint.mjs": {
     "class": "default-safe",
     "reason": "prompt checker rules on strings; passed under the guard",
+    "failsOnMac": false
+  },
+  "lora-families.mjs": {
+    "class": "default-safe",
+    "reason": "LoRA families against Civitai base-model names and Create → Image, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "mac-update.mjs": {
+    "class": "needs fixtures",
+    "reason": "the Mac updater feed and download run against its own loopback server, which the guard refuses; the swap script runs with sh; passes unguarded on a Mac",
     "failsOnMac": false
   },
   "mcp-live.mjs": {
@@ -179,6 +299,26 @@
     "reason": "fake Ollama on this PC's LAN address (non-loopback on a Mac), which the guard refuses",
     "failsOnMac": false
   },
+  "openai-writer.mjs": {
+    "class": "needs fixtures",
+    "reason": "the OpenAI-compatible writer runs against a stand-in server on its own loopback port, which the guard refuses; passes unguarded on a Mac",
+    "failsOnMac": false
+  },
+  "picture-setup.mjs": {
+    "class": "default-safe",
+    "reason": "every picture family can be set up from models.json, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "portable-update.mjs": {
+    "class": "default-safe",
+    "reason": "portable updater feed, checks and swap script with a stand-in for tar; passed under the guard",
+    "failsOnMac": false
+  },
+  "pricing.mjs": {
+    "class": "needs fixtures",
+    "reason": "partner-node pricing passes, then the Comfy.org balance call goes to a loopback stand-in for api.comfy.org, which the guard refuses; passes unguarded on a Mac",
+    "failsOnMac": false
+  },
   "private-outputs.mjs": {
     "class": "default-safe",
     "reason": "graph output folders, pure; passed under the guard",
@@ -212,6 +352,11 @@
   "rebuild.mjs": {
     "class": "default-safe",
     "reason": "rebuild planning and service on fakes, generated clips (ffmpeg allowed); passed under the guard",
+    "failsOnMac": false
+  },
+  "recommended.mjs": {
+    "class": "needs fixtures",
+    "reason": "pinned LoRA downloads come from a stand-in host on its own loopback port, which the guard refuses; passes unguarded on a Mac",
     "failsOnMac": false
   },
   "reel.mjs": {
@@ -254,6 +399,11 @@
     "reason": "screenplay parser, pure; passed under the guard",
     "failsOnMac": false
   },
+  "seedance.mjs": {
+    "class": "default-safe",
+    "reason": "Seedance plans, graphs, prices and the checker against bundled node definitions, pure; passed under the guard",
+    "failsOnMac": false
+  },
   "sequence-graphs.mjs": {
     "class": "real",
     "reason": "renders sequence graphs on a live ComfyUI (not run; GPU time)",
@@ -289,15 +439,45 @@
     "reason": "sizzle first cut pieces without Shinobi; passed under the guard",
     "failsOnMac": false
   },
+  "softmouth.mjs": {
+    "class": "default-safe",
+    "reason": "soft mouth blur with the bundled ffmpeg; the face tracker part runs only when a Python and models are passed; passed under the guard",
+    "failsOnMac": false
+  },
+  "speed.mjs": {
+    "class": "default-safe",
+    "reason": "speed presets and how a request is filled from one, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "spending.mjs": {
+    "class": "needs fixtures",
+    "reason": "a stand-in ComfyUI on its own loopback port (refused by the guard), then electron on the built out/main/mcp.js; passes unguarded on a Mac",
+    "failsOnMac": false
+  },
   "staging.mjs": {
     "class": "default-safe",
     "reason": "staging board words, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "starters.mjs": {
+    "class": "default-safe",
+    "reason": "every starter prompt passes the checker, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "terms.mjs": {
+    "class": "default-safe",
+    "reason": "MiniMax H3 terms, the gate in Comfy.submit and the documents, pure; passed under the guard",
     "failsOnMac": false
   },
   "timeline-tracks.mjs": {
     "class": "default-safe",
     "reason": "timeline model, no app; passed under the guard",
     "failsOnMac": false
+  },
+  "timing.mjs": {
+    "class": "default-safe",
+    "reason": "time estimates from finished renders, pure; 19 of 20 pass under the guard: fork regression, one expects \"on this PC, free\" and 2e7253f says \"on this computer\"",
+    "failsOnMac": true
   },
   "tours.mjs": {
     "class": "default-safe",
@@ -317,6 +497,16 @@
   "training-runpod.mjs": {
     "class": "needs fixtures",
     "reason": "runs the real runpod_train.py under python3 with aiohttp against a loopback mock; the guard refuses python3",
+    "failsOnMac": false
+  },
+  "usage.mjs": {
+    "class": "default-safe",
+    "reason": "usage counting is opt-in and never sends without an address, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "words.mjs": {
+    "class": "default-safe",
+    "reason": "plain-words rewriting, pure; passed under the guard",
     "failsOnMac": false
   }
 }

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { describe, test } from 'node:test'
-import { projectSettings, secretStates } from '../../src/service/secrets.js'
+import { projectSettings, secretRemedy, secretStates } from '../../src/service/secrets.js'
 import { keychainRefusedText } from '../../src/shared/platform.js'
 
 const sealed = (value) => Buffer.from(`ok:${value}`).toString('base64')
@@ -78,7 +78,7 @@ describe('projectSettings', () => {
 describe('secretStates', () => {
   test('gives each secret one state the main process can gate on', () => {
     const s = secretStates({ ...base, comfyApiKey: sealed('a'), civitaiKey: junk }, makeStore(), 'darwin')
-    assert.deepEqual(s, { comfyApiKey: 'ok', civitaiKey: 'unreadable', comfyCloudKey: 'absent', runpodKey: 'absent', cloudToken: 'absent', runpodToken: 'absent' })
+    assert.deepEqual(s, { comfyApiKey: 'ok', civitaiKey: 'unreadable', comfyCloudKey: 'absent', runpodKey: 'absent', cloudToken: 'absent', runpodToken: 'absent', hfToken: 'absent', openaiKey: 'absent', openaiHeaders: 'absent' })
   })
   test('refused on darwin is not ok for anything saved', () => {
     const s = secretStates({ ...base, comfyApiKey: sealed('a') }, makeStore(false), 'darwin')
@@ -106,6 +106,31 @@ describe('comfyCloudKey', () => {
   })
 })
 
+describe('hfToken, openaiKey and openaiHeaders', () => {
+  test('are stripped from what the window gets, with has-flags only when they open', () => {
+    const p = projectSettings({ ...base, hfToken: sealed('hf_x'), openaiKey: sealed('sk-x'), openaiHeaders: sealed('X-A: 1') }, makeStore(), 'linux')
+    for (const k of ['hfToken', 'openaiKey', 'openaiHeaders']) assert.equal(k in p, false)
+    assert.equal(p.hasHfToken, true)
+    assert.equal(p.hasOpenaiKey, true)
+    assert.equal(p.hasOpenaiHeaders, true)
+  })
+  test('an unreadable one counts as not saved, is listed with its remedy, and can be removed', () => {
+    const p = projectSettings({ ...base, hfToken: junk, openaiKey: junk, openaiHeaders: junk }, makeStore(), 'linux')
+    assert.equal(p.hasHfToken, false)
+    assert.equal(p.hasOpenaiKey, false)
+    assert.equal(p.hasOpenaiHeaders, false)
+    assert.deepEqual(p.unreadable, ['hfToken', 'openaiKey', 'openaiHeaders'])
+    assert.deepEqual(p.removable, ['hfToken', 'openaiKey', 'openaiHeaders'])
+    for (const k of p.unreadable) assert.equal(secretRemedy(k).action, 'reenter')
+  })
+  test('a refused Mac Keychain shows them as not saved and removable', () => {
+    const p = projectSettings({ ...base, openaiKey: sealed('sk-x') }, makeStore(false), 'darwin')
+    assert.equal(p.hasOpenaiKey, false)
+    assert.equal(p.secretStoreRefused, true)
+    assert.deepEqual(p.removable, ['openaiKey'])
+  })
+})
+
 describe('index.js wiring', () => {
   const src = fs.readFileSync('src/main/index.js', 'utf8')
   test('prompts:status derives hasComfyKey through the projection, not the raw setting', () => {
@@ -113,6 +138,18 @@ describe('index.js wiring', () => {
     assert.ok(line)
     assert.match(line, /hasComfyKey: publicSettings\(/)
     assert.doesNotMatch(line, /!!readSettings\(BASE\)\.comfyApiKey/)
+  })
+  test('a Hugging Face token that cannot be opened is not pushed to Modal as none', () => {
+    const at = src.indexOf('await cloud.saveHfToken(hfToken())')
+    assert.ok(at > 0)
+    const guard = src.slice(Math.max(0, at - 600), at)
+    assert.match(guard, /const hfState = secretNow\(\)\.hfToken/)
+    assert.match(guard, /hfState === 'ok' \|\| hfState === 'absent'/)
+  })
+  test('cloud:status says when a Mac Keychain refused, and the Cloud page shows how to allow it', () => {
+    assert.match(src, /secretStoreRefused: Object\.values\(have\)\.includes\('refused'\)/)
+    const page = fs.readFileSync('src/renderer/src/components/Cloud.jsx', 'utf8')
+    assert.equal(page.match(/st\.secretStoreRefused && <p className="small(?: dim)?">\{keychainRefusedText\('darwin'\)\}<\/p>/g)?.length, 2)
   })
   test('publicSettings is the projection', () => {
     assert.match(src, /const publicSettings = \(s\) => projectSettings\(s, safeStorage, process\.platform\)/)

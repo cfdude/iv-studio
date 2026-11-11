@@ -1,0 +1,6 @@
+MiniMax H3 is licensed under the MiniMax H3 Community License Agreement, Copyright © 2026 MiniMax. All Rights Reserved.
+
+IV Studio is Powered by MiniMax H3. IV Studio does not include MiniMax H3's weights; they download from their own pages under that
+licence. A copy of the licence is in MiniMax-H3-LICENSE.txt (from huggingface.co/MiniMaxAI/MiniMax-H3, revision
+42ed227ee7df40d41602854ae760620d6eb651fe). IV Studio's own terms of use, which carry the licence's use restrictions, are
+in TERMS.md: https://github.com/hollisorg/iv-studio/blob/main/TERMS.md

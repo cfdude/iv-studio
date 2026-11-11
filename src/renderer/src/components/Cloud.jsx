@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import SetupProgress, { useSetupProgress } from './SetupProgress'
 import ModalAccount from './ModalAccount'
-import Hero from './Hero'
+import Stage from './Stage'
 import { ask } from './Confirm'
-import { rendersFolderText } from '../../../shared/platform'
+import { keychainRefusedText, rendersFolderText } from '../../../shared/platform'
 import { secretRemedy } from '../../../service/secrets'
+import { BetaJoin, useUsage } from './Privacy'
 
 // The title-bar meter while rendering in the cloud: GPU time and its estimated cost since IV Studio opened,
 // ticking while a GPU is up. Modal is asked every 30 s which containers run; each one counts from its own
@@ -100,6 +101,60 @@ const IDLE = [
   [600, '10 min'],
   [1200, '20 min']
 ]
+
+// Models beyond H3 come into the person's cloud storage the first time a feature needs them (the app asks first).
+// Some are behind a licence on Hugging Face (Flux.2 Klein 9B, Flux 3 Klein, the LTX effects): those need the
+// person's own Hugging Face token, after they accept the licence there.
+function CloudModelsStep({ st, busy, run, notify, refresh }) {
+  const [token, setToken] = useState('')
+  async function save(k) {
+    await run(k ? 'Checking the token' : 'Removing the token', async () => {
+      const r = await window.ivstudio.cloud.hfToken(k)
+      setToken('')
+      if (k) notify(`Hugging Face token saved (encrypted on this computer)${r?.name ? ` for ${r.name}` : ''}.`)
+    })
+    refresh()
+  }
+  return (
+    <section className="group cloud-models">
+      <div className="group-head">
+        <h2>Models for everything else</h2>
+        <p className={`mono small ${st.hasHfToken ? 'cloud-ok' : 'dim'}`}>{st.hasHfToken ? '● Hugging Face token saved' : 'Optional'}</p>
+      </div>
+      <div className="group-body">
+        <p className="small dim">
+          Setup puts H3’s models in your cloud storage. Pictures, music, sounds, Replace, Effects and SeedVR2 bring their own models the first time you use them there: IV Studio says how big they are and asks before downloading. A few are behind a licence on Hugging Face (Flux.2 Klein 9B, Flux 3 Klein and the LTX effects). To use those in the cloud, accept each licence on its Hugging Face page, then add a Read token from huggingface.co → Settings → Access Tokens.
+        </p>
+        {st.hasHfToken ? (
+          <p className="small">
+            A Hugging Face token is saved (encrypted on this computer). It’s used only to download those files into your own cloud storage.{' '}
+            <button className="link-btn" disabled={!!busy} onClick={() => save('')}>
+              Remove it
+            </button>
+          </p>
+        ) : (
+          <>
+            {st.secretStoreRefused && <p className="small">{keychainRefusedText('darwin')}</p>}
+            {st.removable?.includes('hfToken') && (
+              <p className="small">
+                The saved Hugging Face token can’t be read.{' '}
+                <button className="link-btn" disabled={!!busy} onClick={() => save('')}>
+                  Remove it
+                </button>
+              </p>
+            )}
+            <div className="key-form">
+              <input type="password" placeholder="hf_…" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} aria-label="Hugging Face token" />
+              <button className="btn btn-small" disabled={!!busy || !token.trim()} onClick={() => save(token.trim())}>
+                Save token
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  )
+}
 
 function Step({ n, title, done, children }) {
   return (
@@ -254,6 +309,7 @@ function ComfyCloudSteps({ st, busy, run, notify, refresh }) {
         ) : null}
         {(!cc.hasKey || !cc.ownKey) && (
           <>
+            {st.secretStoreRefused && <p className="small dim">{keychainRefusedText('darwin')}</p>}
             {st.removable?.includes('comfyCloudKey') && (
               <p className="small dim">
                 The saved Comfy Cloud key can’t be used.{' '}
@@ -319,6 +375,7 @@ function ComfyCloudSteps({ st, busy, run, notify, refresh }) {
 
 // Cloud mode on the user's own Modal or RunPod account, or on Comfy Cloud: pick one, set it up, then switch.
 export default function Cloud({ notify, recheck, setup, info }) {
+  const [beta, setBeta] = useUsage()
   const [st, setSt] = useState(null)
   const [gpu, setGpu] = useState('L40S')
   const [idle, setIdle] = useState(300)
@@ -387,11 +444,34 @@ export default function Cloud({ notify, recheck, setup, info }) {
 
   return (
     <div className="cloud">
-      <Hero art="cloud" title="Cloud" kicker="Your own GPU · by the second" />
+      <Stage effect="dream" art="cloud" title="Cloud" kicker="Your own GPU · by the second">
+        {/* where renders go, switched here as in Render on below, and the guided setup */}
+        <div className="stage-panel stage-quick stage-cloud">
+          <div className="segmented" role="radiogroup" aria-label="Render on">
+            <button role="radio" aria-checked={!onCloud} className={!onCloud ? 'on' : ''} disabled={!!busy} onClick={() => !onCloud || use('local')}>
+              This computer
+            </button>
+            <button role="radio" aria-checked={onCloud} className={onCloud ? 'on' : ''} disabled={!!busy || !setUpDone} title={setUpDone ? '' : 'Set up a cloud first'} onClick={() => onCloud || use('cloud')}>
+              Cloud
+            </button>
+          </div>
+          <span className="stage-cloud-status mono small">{busy ? `${busy}…` : onCloud ? wake || `Rendering on ${PROVIDERS.find((p) => p.id === st.provider)?.label}` : 'Rendering on this computer'}</span>
+          <button className="btn btn-primary" onClick={() => window.dispatchEvent(new CustomEvent('iv:cloud-wizard'))}>
+            Guided setup
+          </button>
+        </div>
+      </Stage>
       <p className="lede">
         No strong graphics card? Render on a cloud GPU instead.
         <span className="lede-small dim">Pick a cloud service below and set it up once; then switch between this computer and the cloud whenever you like.</span>
       </p>
+      {/* the hosted cloud beta's waitlist (Privacy.jsx); only there while a signup address exists */}
+      {beta?.betaOpen && (
+        <section className="block cloud-beta">
+          <strong className="cloud-beta-title">Rather not set anything up?</strong>
+          <BetaJoin status={beta} setStatus={setBeta} notify={notify} />
+        </section>
+      )}
       {['cloudToken', 'runpodToken'].filter((n) => st.removable?.includes(n)).map((n) => (
         <p key={n} className="notice">
           {secretRemedy(n).text} ({n === 'cloudToken' ? 'Modal' : 'RunPod'}) You can also remove the saved sign-in; your account, storage and any running GPU stay as they are.{' '}
@@ -524,13 +604,15 @@ export default function Cloud({ notify, recheck, setup, info }) {
         )
       )}
 
-      <section className="group">
+      {!comfyCloud && <CloudModelsStep st={st} busy={busy} run={run} notify={notify} refresh={refresh} />}
+
+      <section className="group cloud-different">
         <div className="group-head">
           <h2>What's different in the cloud</h2>
         </div>
         <div className="group-body">
           <p className="small dim">
-            On Comfy Cloud, what works depends on the nodes and models Comfy offers there (the check above lists it); pictures and music use ComfyUI’s own nodes. Everything in Create, Sequences and the prompt writer works the same on Modal and RunPod. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps) instead. Finished videos download to {rendersFolderText(info?.platform)} when you open them.
+            On Comfy Cloud, what works depends on the nodes and models Comfy offers there (the check above lists it); pictures and music use ComfyUI’s own nodes. On Modal and RunPod, nearly everything works as on this computer: shots, sequences, pictures and picture tools, Projects sketches, character design, music, sounds, Cut out, Reframe, Replace, Effects, SeedVR2 and voices (set them up once on the Voices page). Each feature’s models are downloaded into your cloud storage the first time you use it, after IV Studio asks. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps), or SeedVR2. Live step pictures, Replace’s old engine and New angle stay on computers. Finished videos download to {rendersFolderText(info?.platform)} when you open them.
           </p>
         </div>
       </section>

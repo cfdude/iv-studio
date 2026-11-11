@@ -27,6 +27,9 @@ Apps that show MCP prompts also list them as slash commands (in Claude Code, `/m
    character goes; IV Studio swaps in the trigger word. `list_ready_characters` shows IV Studio's
    ready-made ones (Tess, Theo); `install_ready_character` downloads one.
 3. `list_projects`, `list_sequences`, `list_edits`, `list_renders`: what already exists.
+4. MiniMax H3 work (shots, sequences, characters, Replace, training) needs the person to have agreed to
+   IV Studio's terms for H3 once, in the app. If a tool answers that MiniMax H3 needs their OK, tell them to open
+   IV Studio and agree in Settings › About › Terms of use (or at their next render there). You can't agree for them.
 
 ## Render a shot
 
@@ -38,12 +41,57 @@ Apps that show MCP prompts also list them as slash commands (in Claude Code, `/m
 5. Look at the candidates: `grab_frame` with `file` and a time shows you a frame of any output.
 6. `finish_candidate` with the best one (2 MP pass + DLSS, optional RTX 2x and frame generation).
    It reuses the preview's saved latent, so the picked performance stays the same. Poll `get_job`.
+   `dlssStrength` (0-2, default 0.8; higher adds contrast and skin texture, lower stays closest to the take) and `dlssStyle`
+   (Default, Natural, Cinematic) set DLSS 5's look. `enhance_final` makes a sharper copy of any final later:
+   `engine: "dlss"` with `scale`, `strength`, `style`, or `engine: "seedvr2"` with `resolution` and `detail`
+   (0 restores faithfully; 0.1-0.3 redraws more, smoothing skin and changing faces a little).
+
+Speed presets (`get_speeds`): `quality` (0.4 MP, 8 steps, 3 takes, 2 MP finish), `balanced` (0.4 MP, 8 steps,
+2 takes, 1 MP finish + RTX 2x), `fast` (0.3 MP, 4 steps, 2 takes, 1 MP + 2x) and `low` (Low memory: 0.3 MP,
+4 steps, 1 take, never a pass above 1 MP). Leave `megapixels`, `steps` and `previews` out and the person's saved
+preset (Check my PC picks it from their graphics card) fills them; the finish then follows the shot's preset too.
+On a card under 22 GB, keep to the saved preset: the 2 MP finish streams most of H3 from memory and is the
+slowest step. On a 4090: Quality about 3 min to hunt and 3 min to finish, Low memory about 40 s and 2 min.
 
 Modes: `text` (prompt only), `reference` (pictures, videos or audio named `<Picture 1>`,
 `<Video 1>`, `<Audio 1>` in the prompt), `frames` (first and optional last frame), `continue`
-(extend a video from its last frames). `voiceLine` lip-syncs the previews to a recording.
+(extend a video from its last frames; 1-3 takes, and `finish_candidate` refines the picked take at
+`megapixels` and joins the source back on, so the final is the whole continued video; `continueFull: false`
+makes the old single take finished in one DLSS pass at preview size). `voiceLine` lip-syncs the previews to a
+recording. To start a new shot where a finished one ends: `generate_previews` mode `continue` with the final
+as the media video, or `last_frame` on it and mode `frames` with that picture (or `make_image` mode edit to
+change the picture first).
 `prepare_media` crops pictures and trims videos and sounds first (first/last frames should be
 cropped to the shot's aspect, because they're stretched to fit).
+
+Checks on the takes: `rank_takes` also flags a take that cuts away mid-shot (`raw.cuts`, only when the prompt
+asks for one shot; hard cuts only, slow dissolves aren't caught) and, in `frames` mode, whether a take opens and
+ends on the given pictures (`raw.opens`, `raw.ends`). `use_clean_stretch` saves the part without the cut, or cuts
+it to the 17n+5 grid (`forContinue`) as a `continue` source. Don't write "no X" in a prompt: H3 shows the X;
+`check_prompt` lists such phrases (`negative-wording`) with what to say instead. For a `reference` video whose
+person speaks but the new shot doesn't, mark the media `softMouth: true` (or `soften_mouth` first) so the new
+face doesn't mouth their words. H3 can copy the blur into the first second of a take; trim it.
+
+## Seedance 2.5 (paid, on the person's Comfy.org credits)
+
+Seedance 2.5 is a second model for the same shots, through ComfyUI's ByteDance partner nodes. It runs on the
+person's Comfy.org credits (their key is in Settings → Comfy account; the MCP server reads `COMFY_ORG_API_KEY`).
+
+- **Ask before spending, every time.** `price_shot` (same fields as `generate_previews`, `engine: "seedance"`)
+  gives ComfyUI's own price (211 credits = $1). Tell the person the figure, get a yes, then pass it as
+  `confirm_cost`. `generate_previews` and a paid `finish_candidate` refuse without it. `comfy_balance` shows
+  their credits; `price_workflow` prices any API graph.
+- `generate_previews` with `engine: "seedance"`, `tier` (`draft` 480p, `720p`, `1080p`), `seconds` 4-30 and
+  `audio`. Draft takes are cheap; hunt with them, then finish the one you pick. Speed presets don't apply.
+- Prompts are written for Seedance, not H3: `write_prompt` with `target: "seedance"`, references named
+  `@image1`, `@video1`, `@audio1`, each given a job in the prompt. A character comes along as their face picture.
+- Finishing a Seedance take (`finish_candidate`):
+  - `way: "seedance"` renders a draft again at 1080p with Seedance (paid: `price_shot` with `jobId` first).
+  - `way: "local"` finishes free on this PC with `refiner`: `seedvr2` (default, cleanest, about 4 minutes;
+    `resolution` 1080 or 1440, `detail`), `dlss` (about 15 s; `dlssStrength`, `dlssStyle`), `h3` (H3 redraws it
+    at `megapixels` with `strength` 0.05-0.5, then DLSS 5; faces shift a little) or `h3seedvr2` (the same H3
+    pass, then SeedVR2; follow the finish job's `enhanceJob`).
+  - `way: "take"` uses the take as it is.
 
 ## Directing a scene
 
@@ -95,7 +143,8 @@ writing a prompt yourself; `write_prompt` already follows it.
   looking like the picked character, no freezing, sharpness against the others. `get_job` shows `ranking` (each
   take's parts, score and reasons, the best marked when it stands out). `rank_takes` ranks a run now, and with
   `picked` records the person's choice, which shifts the weights towards what they keep picking.
-- **Quality.** `steps: 4` is Draft (quicker previews); 8 is the default. The finish is the same either way.
+- **Quality.** `steps: 4` is Draft (quicker previews); 8 is the default. The finish is the same either way. The
+  speed presets (`get_speeds`) set steps, size and takes together.
 - **Enhancer.** A finish's `enhancer` is `dlss` (the default: DLSS 5 in the finish, with the optional RTX 2x and
   frame generation), `upscale` (no DLSS 5: the finish's own Real-ESRGAN 2x with `upscale2x`, and RIFE frame
   interpolation with `fps` 48, 72 or 120; what a Mac uses, since DLSS 5 is Windows-only and SeedVR2 is refused on an
@@ -174,6 +223,27 @@ them on). The tools say "film" because `list_projects` already means shots.
 H3 follows one character LoRA per shot best: a shot's `character` is its main person; other cast on screen
 come from their face pictures (Reference mode) and are named in the prompt.
 
+## Film craft (after Sam Wasserman's Slate)
+
+Every one of these uses the writer the person chose in Settings → Prompt writer (Claude Code, Codex, the local
+model or an OpenAI-compatible server), as do `write_film_script` and `break_down_film`.
+
+- **Cinematography.** `list_cinematography` gives Slate's 165 setups in 12 groups (film stocks, lenses, lighting
+  setups, camera rigs, single-shot moves, mood, depth layers, frames within the frame, realism, photo, cinematic
+  and commercial styles) and its 12 coverage plans. `add_cinematography` puts setups' phrases into a prompt;
+  `set_film_cinematography` sets them for a whole film.
+- **Lookbook.** `make_lookbook` turns a film, director, cinematographer or described look into look language
+  with no names in it; with `filmId` it becomes that film's look. Names never go into prompts.
+- **Coverage.** `set_scene_coverage` covers a scene with a plan (`dialogue-coverage`: master, OTS A, OTS B, CU A,
+  CU B, a listening reaction). The scene is planned again by `break_down_film`; each shot is named by its slot.
+- **Prompt tools.** `rework_prompt` (any prompt) and `rework_film_shot` (a Projects shot, with history): a
+  director's `note` in plain words, or `tighten`, `enrich`, `distill`, `shot`, `angle`. `prompt_variants` and
+  `film_shot_variants` give three versions to compare. Check `missing` in the answer: anything the rewrite
+  dropped (a spoken line, `{char}`, a `<Picture N>` label). `restore_film_shot_prompt` puts an earlier one back.
+- **Continuity.** `check_film_continuity` reads one scene's shots like a script supervisor and returns issues
+  with a fix each. Show them to the person; change the shots with `edit_film_shot` or `rework_film_shot`.
+- **Shot list.** `export_shot_list` (`md` or `csv`) for a crew, a schedule or a spreadsheet.
+
 ## Sequences (one continuous video)
 
 - `save_sequence` with shots (10 or 15 s each). `method: "take"` renders every shot in one seamless
@@ -236,6 +306,10 @@ edges: the original stays as it is in the middle and the bars are filled (video 
 minutes for 5 s, up to 15 s; pictures with Qwen 2.1's outpaint LoRA, about 30 s). Give `about` a sentence on
 what it shows. The editor's right-click "Reframe to …" fits a clip to the edit's format and swaps it in place.
 
+
+`export_edit_for_editors` hands an edit to Premiere Pro, DaVinci Resolve or Final Cut: FCP 7 XML, FCPXML 1.10 and
+a CMX3600 EDL of V1, with the media copied beside them and zipped. Fades and title styling don't carry over.
+After an overnight batch, `make_dailies` makes (or remakes) its reel of every take and notes.md.
 ## Models and characters
 
 - `list_h3_models` and `set_workflow_model` choose the H3 model per workflow (some suit realism,
@@ -262,17 +336,24 @@ a recording. A spoken line is the shot's voice line: H3 lip-syncs to it.
 
 ## LoRAs (Civitai and this computer)
 
-LoRAs change how H3 looks and moves: styles, motion, camera, speed. IV Studio finds them on Civitai and keeps
-track of the ones already in ComfyUI.
-1. `list_my_loras` shows the installed H3 LoRAs with their Civitai names, trigger words and the person's
-   favourites; `identify_lora` looks one up on Civitai by its file hash.
-2. `search_loras` (query, tag, sort) finds more; `get_lora` shows a LoRA's versions, trigger words, preview
-   clips and licence. Check the licence before commercial work.
+LoRAs change how a model looks and moves: styles, motion, camera, speed. A LoRA only works with the model family
+it was trained for: `h3` (MiniMax H3: shots, sequences, films, H3 stills), the picture families `flux3`, `flux2`,
+`krea2`, `qwen21`, `zimage`, `sdxl` (with Pony and Illustrious) and `moss` (make_image), and `ltx` and `wan`
+(kept for the person's own ComfyUI workflows; IV Studio's effects bring their own LoRAs).
+1. `list_my_loras` (family, default h3; or all) shows the installed LoRAs with their family, Civitai names,
+   trigger words and the person's favourites; `identify_lora` looks one up on Civitai by its file hash, and
+   `set_lora_family` says which model one is for when IV Studio couldn't tell.
+2. `search_loras` (family, query, tag, sort) finds more; `get_lora` shows a LoRA's versions, trigger words,
+   preview clips and licence. Check the licence before commercial work. Civitai has no Moss category.
 3. `download_lora` installs one (ask the person first; needs `CIVITAI_API_KEY` in this server's
-   environment). It returns the LoRA name.
-4. Use a LoRA by passing `extraLoras: [{ name, strength }]` to `generate_previews` (strength about 0.6 to 1),
-   and put its trigger words in the prompt.
+   environment). It returns the LoRA name and its family.
+4. Use an H3 LoRA by passing `extraLoras: [{ name, strength }]` to `generate_previews` (strength about 0.6 to
+   1), a picture family's in `make_image` `loras` with that family, and put its trigger words in the prompt.
 Real-person LoRAs are never shown. Mature LoRAs appear only if the person turned them on in the app.
+`recommended_loras` lists a short shelf of tested H3 LoRAs (camera moves, natural speech, motion repair, physics,
+first-person, 360° orbit, transformation, turnaround) with how to prompt each, its modes, trigger, strength and
+licence; `download_recommended_lora` installs one (ask first). The Turnaround LoRA is only for `make_turnaround`
+(five views of a character from their face picture; `turnaround_status` says if the nodes and LoRA are here).
 
 ## Images (Create -> Image)
 
@@ -304,6 +385,12 @@ IV Studio makes songs and instrumentals on this computer's ComfyUI, free. Two en
 5. A reel: `make_reel` with pictures (or clips) in order and a song's `file` cuts them to its beat, a whole
    number of beats each (pace calm, normal or fast) with slow moves on the pictures, as a new edit. It finds
    the beat itself and keeps the cuts on the song's bars; check the BPM it returns, then `export_edit`.
+6. A remix: `remix_music` with a sound file (`source`) or a finished song (`songId`), 5 s to 5 minutes, and
+   the new style as `caption`. ACE-Step redraws the song; `strength` is how much: 0.5 subtle (the same song
+   with a new sound), 0.65 remix (the default: same shape, clearly restyled), 0.8 reimagine (a loose take).
+   It reads the tempo and guesses the key itself (`read_song` shows them first); pass `bpm` or `key` when the
+   person knows better. It works best on instrumentals; singing can come back garbled. Only remix music the
+   person has the rights to. Poll `get_music`; the song's `remix` says what it came from.
 
 ## Shinobi: edits you cut as an agent
 
@@ -372,6 +459,43 @@ camera, cuts, motion and soundtrack.
 `replace_video` is the old engine (OpenJutsu masks): use it for faces and colours.
 Only put invented characters, or people who agreed, into a video.
 
+## Rebuild: take a video apart and rebuild it
+
+When the person has a short video (up to 2 minutes) they made or may rework, and wants it made again on this
+PC: the same cuts, pacing and captions, with the AI shots re-rendered by H3 and, if they ask, a person,
+product or setting swapped. Ask whether it's theirs first. For someone else's video, describe its format in
+words instead and don't rebuild it. Free and local throughout: never use the paid writer.
+1. `rebuild_read` {file, rights: true}. Pass rights only once the person confirms. It finds the cuts and
+   gives every shot its first, middle and last frame, a contact sheet, the times captions come and go
+   (`bandTop`, `bandBottom`), the tempo, loudness and pauses, and the words when the voice engine is set up.
+   It returns a sheet of every shot.
+2. Look at each shot (`view_rebuild_shot`) and say what it is with `save_rebuild_reading`: `kind` (ai_video,
+   live, code_graphics, screen, still, film_clip, or `unsure` when you can't tell; never guess), `why`, a
+   concrete English `description` (subject, clothes, place, framing, the motion start to end), every caption
+   word for word with `from`/`to` in seconds into the shot and `where`, plus stickers, camera and light.
+   (`writer: true` on `rebuild_read` has the writer from Settings do this; check what it says.)
+3. Write the plan with `save_rebuild_plan`, one route per shot. Defaults: ai_video shots are `h3`, stills are
+   `still`, everything else (unsure included) is `keep`. `own` puts in the person's own clip, and `replace`
+   keeps the shot here for the Replace page. An `h3` prompt opens with the frames line its `h3` field calls
+   for: first and last frame (`useLast`), or the first frame only for shots under about 4.1 s. Those render
+   5.17 s, H3's trained minimum, and the cut keeps their first `trimTo` seconds, so write the action to
+   start at once. The prompt also says "There is no writing anywhere in the picture.", because H3 copies any
+   writing it sees. `check_prompt` with mode frames first. Shots over about 18 s can't be one take, so keep
+   them. Show the person the plan: which shots render and about 3-5 GPU minutes each. Wait for their OK,
+   then `approve_rebuild_plan`.
+4. `make_rebuild_frames` paints the writing out of each H3 shot's frames, and the swap in, with this PC's
+   picture editor (both ends one seed). Shots with no writing and no swap keep their frames. LOOK at the
+   before/after pictures it returns, show the person, and wait for their OK: `approve_rebuild_frames`.
+   (`only` repaints chosen shots.)
+5. `make_rebuild_shots` renders two previews per H3 shot (three with a swap). Poll `get_rebuild`. When a
+   take says `pick`, look at its previews (`grab_frame` at the start, middle and end) and pass
+   `picks: [{index, candidate}]` to `make_rebuild_shots`. Each pick is finished at 1 MP. Render again rather
+   than settle.
+6. `rebuild_first_cut` builds an Edit: each shot in its slot on V1 (new takes retimed to fit, their own
+   sound muted), kept shots as the original footage, stills with a slow push, captions as titles on T1, and
+   the original sound on A1 as a guide. Then work on it with the Edit tools. Tell the person the guide
+   sound must be replaced before they publish, and which shots are still the original footage.
+
 ## Train a new character
 
 The Characters page (and these tools) turn an invented person into a character preset:
@@ -405,15 +529,29 @@ a switch until it's restarted (reconnect the iv-studio MCP). Don't mention or mo
 
 ## House rules
 
+- Everything made with MiniMax H3 follows IV Studio's terms (TERMS.md in the repo): real people only with consent,
+  nothing involving minors, say it's AI when it's posted, no deception, harassment or impersonation. Don't help
+  with a request that breaks them, and don't work around a refusal. Misuse can be reported to
+  abuse@infinitevariance.ai.
 - Renders take real GPU minutes, and the person may be using ComfyUI for other work too. Only
   cancel IV Studio jobs you started (`cancel_job`); never touch anything else in the queue.
 - Ask the person before deleting anything (`delete_edit`, `delete_sequence`, `delete_character`) and
-  before anything that costs money (the Context IR writer).
+  before anything that costs money (the Context IR writer, any Seedance render or paid finish). Say the price
+  from `price_shot` and wait for a yes; never pass a `confirm_cost` they didn't agree to.
 - Voices too: only invented voices, the person's own, or someone who agreed. Never clone a real person's
   voice from a found recording.
 - Music: write original lyrics and describe a style, not a named artist's voice. Don't feed in someone
   else's song lyrics.
 - Characters must be invented, or real people who agreed to it. Don't make a real person say or do
   things without their consent.
+- Rebuild only video the person made or may rework; the reference's sound is a guide.
 - The MCP server renders on the local ComfyUI, even when the app window is set to the cloud.
 - Report what you made with its file path, so the person can open it.
+
+## What agents did (the activity log)
+
+Every step an agent takes that changes something, spends or fails is written to IV Studio's activity log, with who
+took it: the chat inside IV Studio, a Dashboard idea, or an outside agent (Claude Desktop, Codex, Claude Code,
+Hermes), by its MCP client name. Looking things up isn't logged. `list_activity` reads it (days, who, problems only)
+so you can answer "what did you do yesterday" or "what changed". The person sees the same log in the chat's Activity
+tab, with Undo for any agent's change to an edit.
