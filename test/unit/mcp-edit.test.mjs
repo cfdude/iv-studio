@@ -90,8 +90,8 @@ describe('MCP edit tools', () => {
   })
 
   test('[mcp:list_edits] lists each edit with its clip count, length and format, newest first', async () => {
-    const { id } = await withMedia('Listed')
-    await ok('edit_timeline', { editId: id, ops: [{ op: 'add_clip', media: (await ok('get_edit', { editId: id })).media[0].id }] })
+    const { id, video } = await withMedia('Listed')
+    await ok('edit_timeline', { editId: id, ops: [{ op: 'add_clip', media: video.id }] })
     const { items } = await ok('list_edits')
     assert.equal(items[0].id, id, 'the edit changed last comes first')
     assert.deepEqual({ name: items[0].name, clips: items[0].clips, seconds: items[0].seconds, format: items[0].format, exports: items[0].exports }, { name: 'Listed', clips: 1, seconds: 2, format: '1080p', exports: 0 })
