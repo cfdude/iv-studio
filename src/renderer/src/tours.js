@@ -1,3 +1,5 @@
+import { modChord } from '../../shared/platform.js'
+
 // "How it works": a short guided tour of each page. Each step lights up a real part of the page (at: a CSS
 // selector, or a list of them, the first one on screen wins) with a title and a line or two. A step whose part
 // isn't on screen right now is skipped, so a tour fits whatever state the page is in. A step with no at shows
@@ -5,6 +7,10 @@
 //
 // When a page changes, update its tour here in the same change (and FULL_TOUR if it visits that page), then run
 // test/tours.mjs, which fails when a step points at a class or a step heading the code no longer has.
+
+// A step's words with each {mod+Key} written as the platform's own shortcut: ⌘Enter on a Mac, Ctrl+Enter elsewhere.
+// An unknown platform (null) reads as "not a Mac", like the other wording helpers.
+export const tourText = (text, platform) => text.replace(/\{mod\+([^}]+)\}/g, (_, key) => modChord(platform, key))
 
 export const TOURS = {
   // The full tour: offered at the end of the welcome wizard (and on Settings → About). It walks from page to page
@@ -287,7 +293,7 @@ export const TOURS = {
   lines: {
     title: 'Lines',
     steps: [
-      { at: '.composer', title: 'Say a line', text: 'Pick a voice, type the words and press Speak (or Ctrl+Enter).' },
+      { at: '.composer', title: 'Say a line', text: 'Pick a voice, type the words and press Speak (or {mod+Enter}).' },
       { at: '.track-list', title: 'Spoken lines', text: 'Play them back. Use in a shot sends a line to Create, where the character lip-syncs it.' }
     ]
   },

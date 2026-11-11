@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { TOURS, markTourSeen } from '../tours'
+import { usePlatform } from '../platform'
+import { TOURS, markTourSeen, tourText } from '../tours'
 
 const PAD = 8 // room round the lit part
 const GAP = 14 // between the lit part and the card
@@ -30,6 +31,7 @@ const usable = (step) => !step.at || !!targetOf(step)
 // The tour player: one per window. "?" buttons start a page's tour (tours.js startTour); it lights up each part
 // in turn and puts a card beside it. Esc closes, the arrow keys step.
 export default function TourHost() {
+  const platform = usePlatform()
   const [tour, setTour] = useState(null) // { id, steps }
   const [i, setI] = useState(0)
   const [rect, setRect] = useState(null)
@@ -180,7 +182,7 @@ export default function TourHost() {
           </button>
         </div>
         <h3>{step.title}</h3>
-        <p>{step.text}</p>
+        <p>{tourText(step.text, platform)}</p>
         <div className="tour-dots" aria-hidden="true">
           {tour.steps.map((_, n) => (
             <button key={n} tabIndex={-1} className={n === i ? 'on' : n < i ? 'done' : ''} onClick={() => setI(n)} />
