@@ -25,7 +25,7 @@ export function parsePreload(text) {
   const stack = []
   const out = []
   let depth = 0
-  const token = /(\w+)\s*:\s*\{|\{|\}|(\w+)\s*:\s*(call|on)\(\s*(['"`])([^'"`]*)\4\s*\)/g
+  const token = /(\w+)\s*:\s*\{|\{|\}|(\w+)\s*:\s*(call|on)\(\s*(['"`])([^'"`]*)\4\s*\)|(\w+)\s*:\s*\([^)]*\)\s*=>/g
   for (const m of body.matchAll(token)) {
     if (m[0] === '}') {
       depth--
@@ -35,6 +35,9 @@ export function parsePreload(text) {
     } else if (m[1] !== undefined) {
       depth++
       stack[depth - 2] = m[1]
+    } else if (m[6] !== undefined) {
+      // a member that is plain window code, not a channel (media.pathFor)
+      out.push({ path: [...stack.slice(0, depth - 1), m[6]].join('.'), kind: 'local', channel: null, line: lineOf(text, (start < 0 ? 0 : start) + m.index) })
     } else {
       out.push({ path: [...stack.slice(0, depth - 1), m[2]].join('.'), kind: m[3], channel: m[5], line: lineOf(text, (start < 0 ? 0 : start) + m.index) })
     }
