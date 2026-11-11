@@ -13,6 +13,15 @@ export const CLOUD_UPSCALER = 'RealESRGAN_x2plus.pth'
 export const NO_UPSCALER = 'This ComfyUI has no 2x upscaler. Download Real-ESRGAN x2 from Setup.'
 export const NO_RIFE = 'This ComfyUI has no frame interpolation (RIFE), so it can\'t make a frame rate above 24. Install the Frame Interpolation (RIFE) pack from Setup.'
 
+// What a finish can use, by its enhancer. 'upscale' is the finish's own Real-ESRGAN 2× and RIFE: never DLSS 5, even
+// where it is installed, so its 2× needs Real-ESRGAN x2 itself and its frame rates are RIFE's. 'seedvr2' skips the
+// DLSS side altogether (SeedVR2 follows the finish). Anything else (dlss) is the ComfyUI's own capabilities.
+export function finishCaps(caps, enhancer) {
+  if (enhancer === 'upscale') return { ...caps, dlss: false, upscale2x: caps.esrgan, fps: caps.rife ? CLOUD_FPS : [0] }
+  if (enhancer === 'seedvr2') return { ...caps, dlss: false, upscale2x: false, rife: false }
+  return caps
+}
+
 const isLink = (v) => Array.isArray(v) && v.length === 2 && typeof v[0] === 'string'
 const MODEL_FILE = /\.(safetensors|gguf|sft|pth|pt|ckpt|bin)$/i
 

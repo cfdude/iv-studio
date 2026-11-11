@@ -97,7 +97,10 @@ writing a prompt yourself; `write_prompt` already follows it.
   `picked` records the person's choice, which shifts the weights towards what they keep picking.
 - **Quality.** `steps: 4` is Draft (quicker previews); 8 is the default. The finish is the same either way.
 - **Enhancer.** A finish's `enhancer` is `dlss` (the default: DLSS 5 in the finish, with the optional RTX 2x and
-  frame generation) or `seedvr2` (the finish skips DLSS, then SeedVR2 restores detail to a short side of
+  frame generation), `upscale` (no DLSS 5: the finish's own Real-ESRGAN 2x with `upscale2x`, and RIFE frame
+  interpolation with `fps` 48, 72 or 120; what a Mac uses, since DLSS 5 is Windows-only and SeedVR2 is refused on an
+  Apple GPU; Real-ESRGAN x2 and the RIFE pack are optional installs in Setup, and a finish that needs one it lacks
+  says so) or `seedvr2` (the finish skips DLSS, then SeedVR2 restores detail to a short side of
   `enhanceResolution`, 1080, 1440 or 2160, at 24 fps; slower). The SeedVR2 step is its own job, started by itself
   when the finish is done; `get_job` on the finish shows its id as `enhanceJob`. Ask the person which they want
   when it matters: DLSS 5 is quick, SeedVR2 adds more real detail to faces and textures.
