@@ -1356,7 +1356,7 @@ app.whenReady().then(() => {
       process.platform === 'win32'
         ? [{ name: 'Shortcut, .bat or ComfyUI.exe', extensions: ['lnk', 'bat', 'cmd', 'exe'] }]
         : process.platform === 'darwin'
-          ? [{ name: 'ComfyUI.app, a shell script or main.py', extensions: ['app', 'sh', 'py'] }]
+          ? [{ name: 'Comfy Desktop.app, a shell script or main.py', extensions: ['app', 'sh', 'py'] }]
           : [{ name: 'Shell script or main.py', extensions: ['sh', 'py', 'AppImage'] }]
     const r = await dialog.showOpenDialog(win, { title: 'Start ComfyUI with', properties: ['openFile'], filters })
     if (r.canceled || !r.filePaths[0]) return null

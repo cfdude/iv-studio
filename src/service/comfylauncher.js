@@ -117,6 +117,12 @@ export function launcherFor(s = {}) {
 // main.py is in its ComfyUI folder), the older ComfyUI.app in config.json (basePath). Read from disk, never assumed.
 function macDesktopHome(home) {
   const lib = path.join(home, 'Library', 'Application Support')
+  // the drive that matters is the one the models are on: Comfy Desktop's own models folder, when it has one
+  try {
+    const dirs = JSON.parse(fs.readFileSync(path.join(lib, 'Comfy Desktop', 'settings.json'), 'utf8')).modelsDirs
+    const models = Array.isArray(dirs) ? dirs.find((d) => typeof d === 'string' && fs.existsSync(d)) : null
+    if (models) return models
+  } catch {}
   try {
     const installs = JSON.parse(fs.readFileSync(path.join(lib, 'Comfy Desktop', 'installations.json'), 'utf8'))
     for (const i of Array.isArray(installs) ? installs : []) {
@@ -175,7 +181,7 @@ export function launch(file, { platform = process.platform, logFile = path.join(
     return { command: 'open', args: ['-a', file] }
   }
   if (platform !== 'win32') {
-    if (!launchable(platform).test(file)) throw new Error(platform === 'darwin' ? 'Pick ComfyUI.app, a .sh script or ComfyUI’s main.py to start ComfyUI with.' : 'Pick a .sh script or ComfyUI’s main.py to start ComfyUI with.')
+    if (!launchable(platform).test(file)) throw new Error(platform === 'darwin' ? 'Pick Comfy Desktop.app, a .sh script or ComfyUI’s main.py to start ComfyUI with.' : 'Pick a .sh script or ComfyUI’s main.py to start ComfyUI with.')
     const [cmd, args] = linuxCommand(file)
     const log = fs.openSync(logFile, 'a')
     spawn(cmd, args, { cwd: path.dirname(file), detached: true, stdio: ['ignore', log, log] }).unref()

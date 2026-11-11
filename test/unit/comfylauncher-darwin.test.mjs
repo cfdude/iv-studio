@@ -92,6 +92,15 @@ describe('Comfy Desktop on a Mac: recognising the app and finding its install', 
     desktopData(h, [{ installPath: path.join(h, 'gone') }, { installPath: install }])
     assert.equal(comfyHome('/Applications/Comfy Desktop.app', { platform: 'darwin', home: h }), path.join(install, 'ComfyUI'))
   })
+  test('Comfy Desktop’s models folder wins when it has one, and a null installPath is skipped', () => {
+    const h = home()
+    const models = path.join(h, 'Shared', 'models')
+    fs.mkdirSync(models, { recursive: true })
+    const dir = path.join(h, 'Library', 'Application Support', 'Comfy Desktop')
+    desktopData(h, [{ installPath: null }, { installPath: path.join(h, 'MyComfy') }])
+    fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ modelsDirs: [path.join(h, 'gone'), models] }))
+    assert.equal(comfyHome('/Applications/Comfy Desktop.app', { platform: 'darwin', home: h }), models)
+  })
   test('an install with no inner ComfyUI folder is returned as it is', () => {
     const h = home()
     const install = path.join(h, 'MyComfy')
