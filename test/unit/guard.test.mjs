@@ -203,6 +203,15 @@ describe('guard: child processes', () => {
     assert.match(e.message, new RegExp(name))
   }
 
+  const ffRun = (program, args) =>
+    new Promise((resolve) => {
+      const c = spawn(program, args)
+      let err = ''
+      c.stderr?.on('data', (d) => (err += d))
+      c.on('error', (e) => resolve({ code: -1, err: String(e.message) }))
+      c.on('close', (code) => resolve({ code, err }))
+    })
+
   test('spawn("claude"), imported by name, is refused: error event on the next tick, no spawn event', async () => {
     const child = spawn('claude', ['-p'])
     let spawned = false
@@ -288,6 +297,86 @@ describe('guard: child processes', () => {
   test('ffmpeg with a network output is refused', async () => {
     const [e] = await once(spawn(ffmpegStatic.ffmpegPath, ['-i', 'a.mp4', 'rtmp://example.com/live']), 'error')
     assert.equal(e.code, 'ENOENT')
+  })
+  test('ffmpeg with any other network scheme, wrapper or bare protocol name in an argument is refused', async (t) => {
+    const bad = ['rtsp://example.com/s', 'ftp://example.com/x.mp4', 'srt://example.com:9000', 'tls://example.com:443', 'rtp://example.com:5004', 'sftp://example.com/x', 'mmsh://example.com/x', 'icecast://example.com/x', 'gopher://example.com', 'async:http://example.com/x', 'cache:http://example.com/x', 'crypto+http://example.com/x', 'concat:a.mp4|http://example.com/b.mp4', 'tcp:example.com:80', 'subfile,,start,0,end,0,,:rtsp://example.com/x', 'a.mp4?u=ftp://example.com/x', 'movie=filename=rtsp://example.com/x']
+    for (const a of bad) {
+      await t.test(a, async () => {
+        const [e] = await once(spawn(ffmpegStatic.ffmpegPath, ['-i', a, '-f', 'null', '-']), 'error')
+        enoent(e, 'ffmpeg|network')
+        const [e2] = await once(spawn(ffmpegStatic.ffprobePath, [a]), 'error')
+        assert.equal(e2.code, 'ENOENT')
+      })
+    }
+  })
+  test('ffmpeg with file:, pipe:, a lavfi source or a filter holding colons still runs', async (t) => {
+    for (const args of [['-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-t', '0.05', '-f', 'null', '-'], ['-f', 'lavfi', '-i', 'color=c=0x15171c:s=16x16:r=5', '-frames:v', '1', '-f', 'null', 'pipe:1'], ['-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-t', '0.05', '-af', 'ebur128=metadata=1', '-f', 'null', '-']]) {
+      await t.test(args.join(' '), async () => {
+        const r = await ffRun(ffmpegStatic.ffmpegPath, args)
+        assert.equal(r.code, 0, r.err)
+      })
+    }
+  })
+  test('ffmpeg is started with a local-only protocol whitelist before each input, so a concat file naming a network address is refused by ffmpeg', async () => {
+    const server = net.createServer((c) => (seen.push(c.remoteAddress), c.destroy()))
+    const seen = []
+    await new Promise((r) => server.listen(0, '127.0.0.1', r))
+    const dir = fs.mkdtempSync(path.join(tmpReal, 'iv-ff-'))
+    try {
+      const url = `http://127.0.0.1:${server.address().port}/x.ts`
+      const list = path.join(dir, 'list.ffconcat')
+      fs.writeFileSync(list, `ffconcat version 1.0\nfile '${url}'\n`)
+      const playlist = path.join(dir, 'p.m3u8')
+      fs.writeFileSync(playlist, `#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\n${url}\n#EXT-X-ENDLIST\n`)
+      for (const [name, args] of [['ffconcat', ['-f', 'concat', '-safe', '0', '-i', list, '-f', 'null', '-']], ['m3u8', ['-i', playlist, '-f', 'null', '-']], ['two inputs', ['-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-f', 'concat', '-safe', '0', '-i', list, '-f', 'null', '-']]]) {
+        const r = await ffRun(ffmpegStatic.ffmpegPath, args)
+        assert.notEqual(r.code, 0, `${name}: ffmpeg should fail`)
+        assert.match(r.err, /not on whitelist 'file,pipe,fd'/, name)
+      }
+      assert.deepEqual(seen, [], 'ffmpeg connected to the address in the playlist')
+    } finally {
+      server.close()
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+  test('ffprobe gets the whitelist too, and still reads a local file', async () => {
+    const dir = fs.mkdtempSync(path.join(tmpReal, 'iv-ff-'))
+    try {
+      const wav = path.join(dir, 'a.wav')
+      assert.equal((await ffRun(ffmpegStatic.ffmpegPath, ['-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-t', '0.1', wav])).code, 0)
+      const ok = await ffRun(ffmpegStatic.ffprobePath, ['-v', 'error', '-show_entries', 'format=duration', wav])
+      assert.equal(ok.code, 0, ok.err)
+      const list = path.join(dir, 'l.ffconcat')
+      fs.writeFileSync(list, "ffconcat version 1.0\nfile 'http://127.0.0.1:9/x.ts'\n")
+      const bad = await ffRun(ffmpegStatic.ffprobePath, ['-v', 'error', '-f', 'concat', '-safe', '0', list])
+      assert.match(bad.err, /not on whitelist/)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+  test('ffmpeg given its own -protocol_whitelist is refused (a wider list would reopen the route)', async () => {
+    const [e] = await once(spawn(ffmpegStatic.ffmpegPath, ['-protocol_whitelist', 'file,http,tcp', '-i', 'a.mp4', '-f', 'null', '-']), 'error')
+    enoent(e, 'ffmpeg|whitelist')
+  })
+  test('a shell command that chains, pipes, substitutes or redirects is refused even when its first word is node', async (t) => {
+    const marker = path.join(tmpReal, `iv-chain-${process.pid}`)
+    const bad = [`node -e 0; touch ${marker}`, `node -e 0 && touch ${marker}`, `node -e 0 || touch ${marker}`, `node -e 0 | cat`, 'node -e 0 `touch x`', 'node -e $(echo 0)', `node -e 0 > ${marker}`, `node -e 0 & touch ${marker}`, `node -e 0\ntouch ${marker}`]
+    for (const c of bad) {
+      await t.test(c.replace('\n', '\\n'), async () => {
+        const err = await new Promise((resolve) => exec(c, (e) => resolve(e)))
+        enoent(err, 'node|chains')
+        assert.throws(() => execSync(c), (e) => (enoent(e, 'node|chains'), true))
+        const [e2] = await once(spawn('node', ['-e', '0; touch ' + marker], { shell: true }), 'error')
+        assert.equal(e2.code, 'ENOENT')
+      })
+    }
+    assert.equal(fs.existsSync(marker), false, 'a chained command ran')
+  })
+  test('a plain shell command naming only node still runs, and ffmpeg through a shell is refused', async () => {
+    const out = await new Promise((resolve, reject) => exec('node -e "process.stdout.write(\'ok\')"', (e, so) => (e ? reject(e) : resolve(so))))
+    assert.equal(out, 'ok')
+    const err = await new Promise((resolve) => exec(`"${ffmpegStatic.ffmpegPath}" -version`, (e) => resolve(e)))
+    enoent(err, 'ffmpeg|shell')
   })
   test('ffmpeg -version, with no network argument, runs', async () => {
     const child = spawn(ffmpegStatic.ffmpegPath, ['-version'])

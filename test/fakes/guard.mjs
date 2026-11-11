@@ -202,7 +202,20 @@ function install() {
   allowed.add(realpath(process.execPath))
   for (const m of media) allowed.add(m)
 
-  const NETWORK_ARG = /(?:^|[=,\s])(?:https?|rtmps?|tcp|udp):\/\//i
+  // Any `scheme://` other than file: (rtsp, ftp, srt, tls, http, a wrapper such as crypto+http or async:http ...), and the
+  // protocol names that ffmpeg also takes with no slashes (tcp:host:80, async:, cache:, concat:a|b ...). `file:`, `pipe:`,
+  // `fd:` and a Windows drive (C:\) are fine. Filter text such as anullsrc=r=48000:cl=stereo or print:file=- does not match.
+  const BARE_PROTOCOL = new RegExp(
+    '(?:^|[=,\\s|:+\'"(])(?:async|cache|concat|concatf|crypto|ffrtmphttp|ftp|gopher|gophers|hls|http|httpproxy|https|icecast|ipfs|ipns|mmsh|mmst|prompeg|rist|rtmp|rtmpe|rtmps|rtmpt|rtmpte|rtmpts|rtp|rtsp|rtsps|sctp|sftp|smb|srt|srtp|subfile|tcp|tls|udp|udplite|unix|zmq):',
+    'i'
+  )
+  const networkArg = (a) => {
+    for (const m of String(a).matchAll(/([a-z][a-z0-9+.-]+):\/\//gi)) if (m[1].toLowerCase() !== 'file') return true
+    return BARE_PROTOCOL.test(a)
+  }
+  // What may leave a shell string unexamined: nothing that chains, pipes, substitutes or redirects into another command.
+  const SHELL_CHAIN = /[;&|`\n\r<>]|\$\(/
+  const LOCAL_ONLY = ['-protocol_whitelist', 'file,pipe,fd']
   const isNode = (abs) => realpath(abs) === realpath(process.execPath)
   const onPath = (name, envPath) => {
     for (const d of String(envPath ?? process.env.PATH ?? '').split(path.delimiter).filter(Boolean)) {
@@ -220,14 +233,30 @@ function install() {
   // -> { ok, command (to run), why }
   function judge(command, args, options, { shell } = {}) {
     let name = String(command)
-    if (shell) name = name.trim().split(/\s+/)[0].replace(/^["']|["']$/g, '')
+    const argv = Array.isArray(args) ? args.map(String) : []
+    if (shell) {
+      // a shell reads command and arguments as one string: the first word is not the whole story
+      const whole = [name, ...argv].join(' ')
+      if (SHELL_CHAIN.test(whole)) return { ok: false, name: name.trim().split(/\s+/)[0], why: 'a shell command that chains, pipes, substitutes or redirects is refused' }
+      name = name.trim().split(/\s+/)[0].replace(/^["']|["']$/g, '')
+    }
     const base = path.basename(name)
     if (/^node(\.exe)?$/i.test(base)) return { ok: true, command: shell ? command : process.execPath, node: true, name }
     const abs = name.includes('/') || name.includes('\\') ? path.resolve(options?.cwd || process.cwd(), name) : onPath(name, options?.env?.PATH)
     if (!abs) return { ok: false, name, why: 'not found on PATH' }
     const real = realpath(abs)
     if (allowed.has(real)) {
-      if (media.includes(real) && (Array.isArray(args) ? args : [String(command)]).some((a) => NETWORK_ARG.test(String(a)))) return { ok: false, name: path.basename(name), why: 'a network input or output is refused' }
+      if (media.includes(real)) {
+        if ([shell ? String(command) : '', ...argv].some(networkArg)) return { ok: false, name: path.basename(name), why: 'a network input or output is refused' }
+        if (argv.includes('-protocol_whitelist')) return { ok: false, name: path.basename(name), why: 'the test sets the protocol whitelist itself' }
+        if (shell) return { ok: false, name: path.basename(name), why: 'ffmpeg through a shell cannot be limited to local files' }
+        // before each input (and at the front for ffprobe, whose input is positional), so a playlist or concat file
+        // that names a network address is refused by ffmpeg itself
+        const probe = /ffprobe/i.test(path.basename(real))
+        const out = []
+        for (const a of argv) a === '-i' ? out.push(...LOCAL_ONLY, a) : out.push(a)
+        return { ok: true, command, args: probe && !argv.includes('-i') ? [...LOCAL_ONLY, ...argv] : out, node: false, name }
+      }
       return { ok: true, command, node: real === realpath(process.execPath), name }
     }
     if (state.programs.has(real)) return { ok: true, command, node: false, name }
@@ -287,7 +316,7 @@ function install() {
       recordRefusal('spawn', j.name, j.why)
       return refuseChild(realSpawn(nowhere, [], { stdio: options.stdio, detached: options.detached }), j.name, j.why)
     }
-    return realSpawn(j.node && !options.shell ? process.execPath : command, args, { ...options, env: childEnv(options, j.node) })
+    return realSpawn(j.node && !options.shell ? process.execPath : command, j.args ?? args, { ...options, env: childEnv(options, j.node) })
   }
   cp.spawnSync = function guardedSpawnSync(...argv) {
     const { command, args, options } = norm(argv)
@@ -298,7 +327,7 @@ function install() {
       mark(r.error, j.name, j.why)
       return r
     }
-    return realSpawnSync(j.node && !options.shell ? process.execPath : command, args, { ...options, env: childEnv(options, j.node) })
+    return realSpawnSync(j.node && !options.shell ? process.execPath : command, j.args ?? args, { ...options, env: childEnv(options, j.node) })
   }
   cp.execFile = function guardedExecFile(file, ...rest) {
     const args = Array.isArray(rest[0]) ? rest.shift() : []
@@ -310,7 +339,7 @@ function install() {
       const child = realExecFile(nowhere, [], {}, cb && ((e, so, se) => cb(e && mark(e, j.name, j.why), so, se)))
       return refuseChild(child, j.name, j.why)
     }
-    return realExecFile(j.node && !options.shell ? process.execPath : file, args, { ...options, env: childEnv(options, j.node) }, cb)
+    return realExecFile(j.node && !options.shell ? process.execPath : file, j.args ?? args, { ...options, env: childEnv(options, j.node) }, cb)
   }
   cp.execFileSync = function guardedExecFileSync(file, ...rest) {
     const args = Array.isArray(rest[0]) ? rest.shift() : []
@@ -324,12 +353,12 @@ function install() {
         throw mark(e, j.name, j.why)
       }
     }
-    return realExecFileSync(j.node && !options.shell ? process.execPath : file, args, { ...options, env: childEnv(options, j.node) })
+    return realExecFileSync(j.node && !options.shell ? process.execPath : file, j.args ?? args, { ...options, env: childEnv(options, j.node) })
   }
   cp.exec = function guardedExec(command, ...rest) {
     const cb = typeof rest.at(-1) === 'function' ? rest.pop() : undefined
     const options = rest[0] && typeof rest[0] === 'object' ? rest[0] : {}
-    const j = judge(command, [command], options, { shell: true })
+    const j = judge(command, [], options, { shell: true })
     if (!j.ok) {
       recordRefusal('exec', j.name, j.why)
       const child = realExecFile(nowhere, [], {}, cb && ((e, so, se) => cb(e && mark(e, j.name, j.why), so, se)))
@@ -338,7 +367,7 @@ function install() {
     return realExec(command, { ...options, env: childEnv(options, j.node) }, cb)
   }
   cp.execSync = function guardedExecSync(command, options = {}) {
-    const j = judge(command, [command], options, { shell: true })
+    const j = judge(command, [], options, { shell: true })
     if (!j.ok) {
       recordRefusal('execSync', j.name, j.why)
       try {
