@@ -79,7 +79,7 @@ describe('MCP sequence tools', () => {
     assert.deepEqual((await ok('list_sequences')).items, [])
   })
 
-  test('[mcp:save_sequence] creates a sequence with the tested defaults and one empty shot when given nothing', async () => {
+  test('[mcp:save_sequence][ipc:sequences:create] creates a sequence with the tested defaults and one empty shot when given nothing', async () => {
     const s = await ok('save_sequence')
     assert.match(s.id, /^[0-9a-f]{8}$/)
     assert.deepEqual({ name: s.name, method: s.method, character: s.character, aspect: s.aspect, megapixels: s.megapixels, shotSeconds: s.shotSeconds, steps: s.steps, seed: s.seed, voiceRef: s.voiceRef, loras: s.loras }, { name: 'Untitled sequence', method: 'take', character: 'tess', aspect: '16:9', megapixels: 0.9, shotSeconds: 10, steps: 8, seed: 4242, voiceRef: null, loras: [] })
@@ -96,7 +96,7 @@ describe('MCP sequence tools', () => {
     assert.equal(readData('sequences', `${s.id}.json`).shots.length, 2)
   })
 
-  test('[mcp:save_sequence] updates only what it is given, keeps shot ids the caller passes back, and keeps versions', async () => {
+  test('[mcp:save_sequence][ipc:sequences:save] updates only what it is given, keeps shot ids the caller passes back, and keeps versions', async () => {
     const { id, view } = await finishedTake()
     const before = view.sequence.shots
     const s = await ok('save_sequence', { sequenceId: id, name: 'Renamed', shots: [{ id: before[0].id, prompt: 'Changed.' }, { prompt: SHOT_B, mode: 'text' }] })
@@ -117,7 +117,7 @@ describe('MCP sequence tools', () => {
     await fails('save_sequence', { shots: [{ prompt: 'x', mode: 'sideways' }] }, /mode/i)
   })
 
-  test('[mcp:list_sequences] lists sequences newest first with their shot, version and render counts', async () => {
+  test('[mcp:list_sequences][ipc:sequences:list] lists sequences newest first with their shot, version and render counts', async () => {
     const { id } = await finishedTake({ name: 'Newest' })
     const { items } = await ok('list_sequences')
     assert.equal(items[0].id, id)
@@ -126,7 +126,7 @@ describe('MCP sequence tools', () => {
     assert.deepEqual(times, [...times].sort().reverse())
   })
 
-  test('[mcp:get_sequence] shows the sequence, its shots, versions and render-outs, and names one that is not there', async () => {
+  test('[mcp:get_sequence][ipc:sequences:get] shows the sequence, its shots, versions and render-outs, and names one that is not there', async () => {
     const s = await sequence()
     const view = await ok('get_sequence', { sequenceId: s.id })
     assert.deepEqual(Object.keys(view).sort(), ['renders', 'sequence', 'shots', 'versions'])
@@ -137,7 +137,7 @@ describe('MCP sequence tools', () => {
   })
 
   // ---------- render_take ----------
-  test('[mcp:render_take] queues one Multishot render of every shot, with the size, frames and seed, and records version 1', async () => {
+  test('[mcp:render_take][ipc:sequences:take] queues one Multishot render of every shot, with the size, frames and seed, and records version 1', async () => {
     const s = await sequence({ seed: 77, steps: 6, shotSeconds: 15 })
     const queued = fake.prompts.length
     const job = await ok('render_take', { sequenceId: s.id })
@@ -201,7 +201,7 @@ describe('MCP sequence tools', () => {
   })
 
   // ---------- retake ----------
-  test('[mcp:retake] redoes a stretch of a finished version and adds a version that records what was asked', async () => {
+  test('[mcp:retake][ipc:sequences:retake] redoes a stretch of a finished version and adds a version that records what was asked', async () => {
     const { id } = await finishedTake()
     const queued = fake.prompts.length
     const job = await ok('retake', { sequenceId: id, versionId: 'v1', prompt: 'She laughs.', start: 0.5, end: 1.5, mode: 'video', seed: 5 })
@@ -233,7 +233,7 @@ describe('MCP sequence tools', () => {
   })
 
   // ---------- render_out ----------
-  test('[mcp:render_out] finishes a version with DLSS at the scale and frame rate asked and records the render-out', async () => {
+  test('[mcp:render_out][ipc:sequences:renderOut] finishes a version with DLSS at the scale and frame rate asked and records the render-out', async () => {
     const { id } = await finishedTake()
     const job = await ok('render_out', { sequenceId: id, versionId: 'v1', scale: 2, fps: 48 })
     assert.equal(job.kind, 'renderout')
@@ -270,7 +270,7 @@ describe('MCP sequence tools', () => {
   })
 
   // ---------- hunt_shot, finish_shot ----------
-  test('[mcp:hunt_shot] starts three previews for shot 1 in a project of its own and links the run to the shot', async () => {
+  test('[mcp:hunt_shot][ipc:sequences:huntShot] starts three previews for shot 1 in a project of its own and links the run to the shot', async () => {
     const s = await sequence({ method: 'shots', seed: 100 })
     const job = await ok('hunt_shot', { sequenceId: s.id, index: 0 })
     assert.equal(job.kind, 'previews')
@@ -297,7 +297,7 @@ describe('MCP sequence tools', () => {
     assert.equal(fake.prompts.length, queued)
   })
 
-  test('[mcp:finish_shot] finishes the picked candidate at the sequence size, then the next shot continues from that video', async () => {
+  test('[mcp:finish_shot][ipc:sequences:finishShot] finishes the picked candidate at the sequence size, then the next shot continues from that video', async () => {
     const s = await sequence({ method: 'shots', megapixels: 0.9 })
     await fails('finish_shot', { sequenceId: s.id, index: 0 }, /Hunt shot 1 first\./)
     await huntedShot(s.id, 0)
@@ -333,7 +333,7 @@ describe('MCP sequence tools', () => {
   })
 
   // ---------- delete_sequence (last) ----------
-  test('[mcp:delete_sequence] removes the sequence and its record and leaves the rendered videos on disk', async () => {
+  test('[mcp:delete_sequence][ipc:sequences:delete] removes the sequence and its record and leaves the rendered videos on disk', async () => {
     const { id } = await finishedTake({ name: 'Doomed' })
     const r = await ok('delete_sequence', { sequenceId: id })
     assert.equal(r.items, true)

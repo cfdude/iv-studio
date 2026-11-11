@@ -68,7 +68,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
     assert.equal(items[0].trigger, 't3ss4')
   })
 
-  test('[mcp:save_character] adds a LoRA character the ComfyUI can load, with the default strength', async () => {
+  test('[mcp:save_character][ipc:characters:save] adds a LoRA character the ComfyUI can load, with the default strength', async () => {
     fake.setObjectInfo({ LoraLoaderModelOnly: combo('lora_name', [TESS_LORA, 'MiniMax H3\\ana\\ana.safetensors']) })
     try {
       const saved = await ok('save_character', { id: 'ana', name: 'Ana Ruiz', lora: 'MiniMax H3\\ana\\ana.safetensors', trigger: 'an4' })
@@ -123,7 +123,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
   })
 
   // ---------- list_ready_characters, install_ready_character ----------
-  test('[mcp:list_ready_characters] lists the ready-made characters with their picture and whether the LoRA is on this PC', async () => {
+  test('[mcp:list_ready_characters][ipc:characters:catalog] lists the ready-made characters with their picture and whether the LoRA is on this PC', async () => {
     const { items } = await ok('list_ready_characters')
     assert.deepEqual(items.map((c) => c.id), ['tess', 'theo'])
     for (const c of items) {
@@ -176,7 +176,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
     VAELoader: combo('vae_name', ['minimax_h3_video_vae_fp16.safetensors', ...extra])
   })
 
-  test('[mcp:make_refmod_character] queues the RefMod Master graph with the pictures uploaded and saves the character', async () => {
+  test('[mcp:make_refmod_character][ipc:refmods:list][ipc:refmods:ready] queues the RefMod Master graph with the pictures uploaded and saves the character', async () => {
     fake.setObjectInfo(refmodInfo())
     const uploads = fake.uploads.length
     try {
@@ -274,7 +274,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
     assert.deepEqual(items.find((p) => p.id === 'new00001'), { id: 'new00001', name: 'New shot', createdAt: '2026-11-09T00:00:00.000Z', updatedAt: '2026-11-09T00:00:00.000Z', jobs: [], sequenceId: null })
   })
 
-  test('[mcp:rename_project] renames the project on disk and refuses an empty name or an unknown project', async () => {
+  test('[mcp:rename_project][ipc:projects:rename] renames the project on disk and refuses an empty name or an unknown project', async () => {
     const p = await ok('rename_project', { projectId: 'old00001', name: 'Bus stop, take two' })
     assert.equal(p.name, 'Bus stop, take two')
     assert.equal(readData('projects/old00001.json').name, 'Bus stop, take two')
@@ -284,7 +284,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
     assert.equal(readData('projects/old00001.json').name, 'Bus stop, take two')
   })
 
-  test('[mcp:delete_project] deletes the project and its job records and leaves the videos', async () => {
+  test('[mcp:delete_project][ipc:projects:delete] deletes the project and its job records and leaves the videos', async () => {
     const video = path.join(path.dirname(files.png), 'kept.mp4')
     fs.copyFileSync(files.mp4, video)
     writeData('jobs/job000000001.json', { id: 'job000000001', kind: 'previews', projectId: 'gone0001', status: 'success', createdAt: NOW, outputs: [{ kind: 'preview', candidate: 1, path: video }] })
@@ -320,7 +320,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
   })
 
   // ---------- list_cast, save_place ----------
-  test('[mcp:list_cast] lists the characters with a picture flag and the handle a prompt mentions them by', async () => {
+  test('[mcp:list_cast][ipc:cast:list] lists the characters with a picture flag and the handle a prompt mentions them by', async () => {
     const { items } = await ok('list_cast')
     const tess = items.find((m) => m.mention === '@Tess')
     assert.deepEqual(tess, { mention: '@Tess', kind: 'character', name: 'Tess Marlow', hasPicture: true })
@@ -331,7 +331,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
     assert.equal(items.find((m) => m.mention === '@Ana').hasPicture, false)
   })
 
-  test('[mcp:save_place] saves a place with a copy of its picture, so it can be mentioned as @Name', async () => {
+  test('[mcp:save_place][ipc:cast:savePlace] saves a place with a copy of its picture, so it can be mentioned as @Name', async () => {
     const place = await ok('save_place', { name: 'Bus Stop', picture: files.room, description: 'A rainy bus stop at night.' })
     assert.equal(place.name, 'Bus Stop')
     assert.equal(place.description, 'A rainy bus stop at night.')

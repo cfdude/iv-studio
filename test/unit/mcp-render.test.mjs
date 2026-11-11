@@ -65,7 +65,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   })
 
   // ---------- plan_render ----------
-  test('[mcp:plan_render] resolves size, frames, seeds and the finished size and queues nothing', async () => {
+  test('[mcp:plan_render][ipc:render:plan] resolves size, frames, seeds and the finished size and queues nothing', async () => {
     const queued = fake.prompts.length
     const plan = await ok('plan_render', { prompt: PROMPT, character: 'none' })
     assert.deepEqual(plan.resolved, { width: 864, height: 480, frames: 124, seconds: 5.167, fps: 24, previews: 3, model: 'fl2va', seeds: [4242, 5242, 6242] })
@@ -228,7 +228,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   })
 
   // ---------- cancel_job ----------
-  test('[mcp:cancel_job] takes a waiting job out of ComfyUI\'s queue and marks it cancelled', async () => {
+  test('[mcp:cancel_job][ipc:jobs:cancel] takes a waiting job out of ComfyUI\'s queue and marks it cancelled', async () => {
     fake.holdNextPrompt(1)
     const job = await ok('generate_previews', { prompt: PROMPT, character: 'none' })
     assert.deepEqual(fake.state.pending.map((p) => p[1]), [job.promptId])
@@ -319,7 +319,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   })
 
   // ---------- rank_takes ----------
-  test('[mcp:rank_takes] scores each take on motion and sharpness, marks the best with its reasons and saves it on the job', async () => {
+  test('[mcp:rank_takes][ipc:rank:learn] scores each take on motion and sharpness, marks the best with its reasons and saves it on the job', async () => {
     const job = await finished({ projectName: 'Ranked shot' })
     const { ranking } = await ok('rank_takes', { jobId: job.id })
     assert.deepEqual(ranking.measured, ['motion', 'sharpness'])

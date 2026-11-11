@@ -48,7 +48,7 @@ describe('MCP setup, update, model and hardware tools', () => {
     assert.equal(byId['pack:VideoHelperSuite'].dir, 'ComfyUI-VideoHelperSuite')
   })
 
-  test('[mcp:check_setup] counts a node pack as installed once ComfyUI lists its nodes', async () => {
+  test('[mcp:check_setup][ipc:setup:check] counts a node pack as installed once ComfyUI lists its nodes', async () => {
     fake.setObjectInfo({ VHS_VideoCombine: { input: { required: {} } }, VHS_SelectFilename: { input: { required: {} } } })
     try {
       const r = await ok('check_setup')
@@ -100,7 +100,7 @@ describe('MCP setup, update, model and hardware tools', () => {
   })
 
   // ---------- check_comfy_updates (ComfyUI-Manager) ----------
-  test('[mcp:check_comfy_updates] compares ComfyUI with its newest stable release and lists packs with updates', async () => {
+  test('[mcp:check_comfy_updates][ipc:setup:updates:check] compares ComfyUI with its newest stable release and lists packs with updates', async () => {
     const r = await ok('check_comfy_updates')
     assert.deepEqual(r.manager, { present: true, version: 'V3.37', policy: 'stable' })
     assert.deepEqual(r.comfyui, { current: 'v0.3.99', latest: 'v0.4.2', behind: true })
@@ -185,7 +185,7 @@ describe('MCP setup, update, model and hardware tools', () => {
     assert.equal((await ok('check_comfy_updates')).last.snapshot, 'snapshot-1')
   })
 
-  test('[mcp:undo_comfy_update] restores the snapshot, restarts, and switches back on a pack the restore turned off', async () => {
+  test('[mcp:undo_comfy_update][ipc:setup:updates:undo] restores the snapshot, restarts, and switches back on a pack the restore turned off', async () => {
     const nodes = path.join(fake.dataDir, 'custom_nodes')
     // what Manager's restore does to a folder its snapshot does not track
     fs.mkdirSync(path.join(nodes, '.disabled'), { recursive: true })
@@ -262,7 +262,7 @@ describe('MCP setup, update, model and hardware tools', () => {
     assert.equal(r.defaults.sampler, 'er_sde')
   })
 
-  test('[mcp:list_h3_models] lists the H3 files ComfyUI has, each workflow default, and the pick from settings', async () => {
+  test('[mcp:list_h3_models][ipc:models:h3] lists the H3 files ComfyUI has, each workflow default, and the pick from settings', async () => {
     fake.setObjectInfo({ UNETLoader: combo('unet_name', [H3_MODEL, 'flux1-dev.safetensors']) })
     try {
       const r = await ok('list_h3_models')
