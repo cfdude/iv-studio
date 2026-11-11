@@ -20,7 +20,7 @@ const RECENT = 8
 
 export default function Dashboard(ctx) {
   const { characters, start, startShotWith, go, notify, info, setup } = ctx
-  // a Mac has no NVIDIA GPU for H3: until the cloud is on, say where shots render
+  // a Mac renders H3 on its own Apple GPU (ComfyUI 0.44+) or in the cloud: until one is set up, say so
   const macLocal = info?.platform === 'darwin' && setup && !setup.remote
   const [items, setItems] = useState(null)
   const [edits, setEdits] = useState([])
@@ -60,7 +60,7 @@ export default function Dashboard(ctx) {
       )}
       {macLocal && (
         <p className="notice">
-          On a Mac, shots render in the cloud: MiniMax H3 needs an NVIDIA graphics card. Set up your own RunPod or Modal account, or Comfy Cloud, and IV Studio sends the work there.{' '}
+          On a Mac, shots render on your Apple GPU through ComfyUI 0.44 or newer, or in the cloud. For the cloud, set up your own RunPod or Modal account, or Comfy Cloud, and IV Studio sends the work there.{' '}
           <button className="link-btn" onClick={() => go('cloud')}>
             Set up the cloud →
           </button>

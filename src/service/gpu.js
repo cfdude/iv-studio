@@ -62,14 +62,23 @@ export function seedvr2Refusal(kind) {
   return kind === 'mps' ? SEEDVR2_MPS_MESSAGE : null
 }
 
-export const APPLE_GPU_FIX = 'MiniMax H3 video needs an NVIDIA card: render shots in the cloud (Cloud page).'
+export const APPLE_UPSCALER_FIX = "Update ComfyUI to 0.44 or newer. Older versions can't upscale H3 video on an Apple GPU."
 
 // The setup check's GPU item for a local ComfyUI: { status, detail, fix }.
-// An Apple GPU is found and named, but H3 itself needs NVIDIA, so it is a warning (it points at the cloud), not a block.
+// cuda and mps are judged alike: ok at 15 GB or more, else a warning with the size advice. On an Apple GPU the
+// H3 upscaler also needs ComfyUI 0.44+ (see appleUpscalerCheck), which is a separate item.
 export function gpuCheck(devices) {
   const gpu = findGpu(devices)
   if (!gpu) return { status: 'missing', detail: nonGpuDetail(devices), fix: undefined }
-  if (gpu.type === 'mps') return { status: 'warn', detail: gpuDetail(gpu), fix: APPLE_GPU_FIX }
   const gb = gpuMemoryGb(gpu)
   return { status: gb < 15 ? 'warn' : 'ok', detail: gpuDetail(gpu), fix: lowMemoryAdvice(gpu) }
+}
+
+// On an Apple GPU, H3's latent upscaler node pack only takes cuda, rocm or cpu, so the app needs ComfyUI's built-in
+// one (0.44+). Returns a blocking item when it is missing, else null (also null for any other GPU).
+// `objectInfo` is ComfyUI's /object_info.
+export function appleUpscalerCheck(devices, objectInfo) {
+  if (findGpu(devices)?.type !== 'mps') return null
+  if (objectInfo?.MiniMaxH3LatentUpscaleWithModel && objectInfo?.LatentUpscaleModelLoader) return null
+  return { status: 'missing', detail: "This ComfyUI doesn't have H3's built-in upscaler", fix: APPLE_UPSCALER_FIX }
 }

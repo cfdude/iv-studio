@@ -1,5 +1,5 @@
 // Characterization: what src/service/setup.js says about the GPU today, against the fake ComfyUI.
-// Cuda behaviour is pinned as it was; an Apple GPU (mps) is found and named, but only warns: H3 needs NVIDIA.
+// Cuda behaviour is pinned as it was; an Apple GPU (mps) with 15 GB or more is ready; it needs ComfyUI 0.44+ for H3's upscaler.
 //   node --test test/unit/setup-gpu.test.mjs
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -40,12 +40,55 @@ describe('checkSetup GPU item', () => {
 
   const blocking = (r) => r.items.filter((i) => i.status === 'missing').map((i) => i.id)
 
-  test('Apple GPU (mps) is named, warns and does not block, and points at the cloud', async () => {
+  const CORE = { MiniMaxH3LatentUpscaleWithModel: {}, LatentUpscaleModelLoader: {} }
+  const UPSCALER_FIX = "Update ComfyUI to 0.44 or newer. Older versions can't upscale H3 video on an Apple GPU."
+  const upscalerItem = (r) => r.items.find((i) => i.id === 'gpu-upscaler')
+
+  test('Apple GPU (mps) with 64 GB is ok, named, and needs no fix', async () => {
+    fake.setObjectInfo(CORE)
     const r = await gpuItem('mps')
-    assert.equal(r.gpu.status, 'warn')
+    assert.equal(r.gpu.status, 'ok')
     assert.equal(r.gpu.detail, 'Apple GPU · 64 GB unified memory')
-    assert.match(r.gpu.fix, /NVIDIA.*cloud/)
+    assert.equal(r.gpu.fix, undefined)
+    assert.equal(upscalerItem(r), undefined)
     assert.ok(!blocking(r).includes('gpu'))
+  })
+
+  test('Apple GPU (mps) under 15 GB warns with the memory advice', async () => {
+    fake.setObjectInfo(CORE)
+    const { gpu } = await gpuItem([{ name: 'mps', type: 'mps', vram_total: 8 * 1024 ** 3 }])
+    assert.equal(gpu.status, 'warn')
+    assert.match(gpu.fix, /Under 16 GB of memory/)
+  })
+
+  test('Apple GPU without the built-in H3 upscaler blocks, asking for ComfyUI 0.44+', async () => {
+    fake.setObjectInfo({})
+    const r = await gpuItem('mps')
+    assert.equal(upscalerItem(r).status, 'missing')
+    assert.equal(upscalerItem(r).fix, UPSCALER_FIX)
+    assert.ok(blocking(r).includes('gpu-upscaler'))
+    assert.equal(r.gpu.status, 'ok')
+  })
+
+  test('Apple GPU with only half of the built-in upscaler still blocks', async () => {
+    fake.setObjectInfo({ LatentUpscaleModelLoader: {} })
+    assert.equal(upscalerItem(await gpuItem('mps')).status, 'missing')
+  })
+
+  test('cuda never gets the upscaler item, with or without the built-in nodes', async () => {
+    fake.setObjectInfo({})
+    assert.equal(upscalerItem(await gpuItem('cuda')), undefined)
+    fake.setObjectInfo(CORE)
+    assert.equal(upscalerItem(await gpuItem('cuda')), undefined)
+  })
+
+  test('Comfy Cloud never gets the upscaler item', async () => {
+    fake.setObjectInfo({})
+    fake.setDevices('mps')
+    const cloud = Object.create(comfy, { hosted: { value: true } })
+    const r = await checkSetup({ comfy: cloud, template, manifest, characters: [] })
+    assert.equal(upscalerItem(r), undefined)
+    assert.match(r.items.find((i) => i.id === 'gpu').detail, /Comfy Cloud/)
   })
 
   test('cuda reporting no memory at all is a warning, as it always was', async () => {
@@ -73,7 +116,7 @@ describe('checkSetup GPU item', () => {
 
   test('a cpu device first and an mps device second uses the mps one', async () => {
     const { gpu } = await gpuItem([{ name: 'cpu', type: 'cpu' }, { name: 'mps', type: 'mps', vram_total: 32 * 1024 ** 3 }])
-    assert.equal(gpu.status, 'warn')
+    assert.equal(gpu.status, 'ok')
     assert.equal(gpu.detail, 'Apple GPU · 32 GB unified memory')
   })
 
