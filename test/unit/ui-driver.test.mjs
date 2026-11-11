@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { describe, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { ACCEPTED_PREFS, appDataIn, checkBuild, electronEnv, prefsListing, proxyArgs, waitForMarker } from '../ui/driver.mjs'
@@ -116,5 +117,25 @@ describe('page-tier driver: the real Electron preferences check', () => {
   test('the accepted file is the Electron defaults file in the real home', () => {
     assert.equal(path.basename(ACCEPTED_PREFS), 'com.github.Electron.plist')
     assert.match(ACCEPTED_PREFS, /Library\/Preferences\//)
+  })
+})
+
+describe('page-tier driver: the evidence folder', () => {
+  const driverUrl = new URL('../ui/driver.mjs', import.meta.url).href
+  const evidenceFor = (env) =>
+    execFileSync(process.execPath, ['--input-type=module', '-e', `import('${driverUrl}').then((m) => process.stdout.write(m.evidenceDir))`], {
+      env: { ...process.env, IV_TEST_EVIDENCE_DIR: '', IV_TEST_RUN_ID: 'run-x', ...env },
+      encoding: 'utf8'
+    })
+
+  test('with IV_TEST_EVIDENCE_DIR unset it is a folder under the OS temp folder, not a path in a checkout', () => {
+    const dir = evidenceFor({})
+    assert.equal(dir, path.join(os.tmpdir(), 'iv-studio-evidence', 'run-x'))
+    assert.doesNotMatch(dir, /docs[\\/]backlog/)
+  })
+
+  test('IV_TEST_EVIDENCE_DIR picks the folder, with the run id inside it', () => {
+    const where = path.join(os.tmpdir(), 'somewhere-durable')
+    assert.equal(evidenceFor({ IV_TEST_EVIDENCE_DIR: where }), path.join(where, 'run-x'))
   })
 })

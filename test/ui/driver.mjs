@@ -163,7 +163,9 @@ export class Cdp {
 // ---------- evidence ----------
 
 export const runId = process.env.IV_TEST_RUN_ID || `ui-${new Date().toISOString().replace(/[:.]/g, '-')}`
-export const evidenceDir = path.join(process.env.IV_TEST_EVIDENCE_DIR || path.join(REAL_HOME, 'Documents/Repos/iv-studio-dev/docs/backlog/evidence'), runId)
+// Evidence goes to IV_TEST_EVIDENCE_DIR when set (whoever wants it kept sets it to a folder in the checkout), else to a
+// throwaway folder under the OS temp folder.
+export const evidenceDir = path.join(process.env.IV_TEST_EVIDENCE_DIR || path.join(os.tmpdir(), 'iv-studio-evidence'), runId)
 
 // ---------- launching the app ----------
 

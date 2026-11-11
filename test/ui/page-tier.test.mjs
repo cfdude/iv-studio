@@ -1,7 +1,7 @@
 // The page tier (opt-in; design D3, D8): the built app, under the test guard, on a fake ComfyUI. Free: no network, no
 // credits, no GPU work. Build first (`npm run build`), then `npm run test:ui`.
 // Evidence (screenshots, the guard's marker, refusals and trace, Electron's log) goes to
-// docs/backlog/evidence/<run-id>/ in the main checkout, never into this worktree.
+// <IV_TEST_EVIDENCE_DIR, else the OS temp folder's iv-studio-evidence>/<run-id>/, never into this worktree.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import http from 'node:http'
