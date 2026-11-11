@@ -1,0 +1,322 @@
+{
+  "cast.mjs": {
+    "class": "default-safe",
+    "reason": "pure @mention resolution on temp data; passed under the guard",
+    "failsOnMac": false
+  },
+  "civitai-download.mjs": {
+    "class": "needs fixtures",
+    "reason": "Civitai downloads against its own loopback mock, whose port the guard refuses until a fake registers it; refused under the guard",
+    "failsOnMac": false
+  },
+  "comfy-address.mjs": {
+    "class": "default-safe",
+    "reason": "ComfyUI address parsing with no sockets; passed under the guard",
+    "failsOnMac": false
+  },
+  "comfy-busy.mjs": {
+    "class": "needs fixtures",
+    "reason": "starts three loopback servers of its own, which the guard refuses (unregistered ports); 5 of 6 checks fail under the guard",
+    "failsOnMac": false
+  },
+  "comfy-updates.mjs": {
+    "class": "needs fixtures",
+    "reason": "ComfyUI update flow against its own loopback fake with git steps; refused under the guard",
+    "failsOnMac": false
+  },
+  "comfycloud.mjs": {
+    "class": "needs fixtures",
+    "reason": "Comfy Cloud client against its own loopback stand-in; refused under the guard",
+    "failsOnMac": false
+  },
+  "comfylauncher.mjs": {
+    "class": "default-safe",
+    "reason": "launcher discovery on temp folders with platform passed in; passed under the guard",
+    "failsOnMac": false
+  },
+  "core-upscaler.mjs": {
+    "class": "default-safe",
+    "reason": "graph adaptation only, no ComfyUI; passed under the guard",
+    "failsOnMac": false
+  },
+  "cutout.mjs": {
+    "class": "default-safe",
+    "reason": "mask graph builders only; passed under the guard",
+    "failsOnMac": false
+  },
+  "data-folder.mjs": {
+    "class": "default-safe",
+    "reason": "data-folder resolution on temp folders, Windows paths given as strings; passed under the guard",
+    "failsOnMac": false
+  },
+  "directing.mjs": {
+    "class": "default-safe",
+    "reason": "writer rules and JSON shape, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "edit-export.mjs": {
+    "class": "needs fixtures",
+    "reason": "needs two local video paths as arguments; throws \"File not found: undefined\" without them",
+    "failsOnMac": false
+  },
+  "edit-strips.mjs": {
+    "class": "needs fixtures",
+    "reason": "needs a video file as an argument; throws \"Give a video file.\"",
+    "failsOnMac": false
+  },
+  "editgen.mjs": {
+    "class": "default-safe",
+    "reason": "pure editor generation helpers; passed under the guard",
+    "failsOnMac": false
+  },
+  "effects.mjs": {
+    "class": "default-safe",
+    "reason": "static scan of renderer source for effects; passed under the guard",
+    "failsOnMac": false
+  },
+  "graph-parity.mjs": {
+    "class": "needs Windows",
+    "reason": "reads D:/H3Characters/_workflows by default (IV_STUDIO_WORKFLOWS overrides); ENOENT on a Mac",
+    "failsOnMac": true
+  },
+  "hardware.mjs": {
+    "class": "default-safe",
+    "reason": "recommend() on made-up machines; passed under the guard",
+    "failsOnMac": false
+  },
+  "image-families.mjs": {
+    "class": "default-safe",
+    "reason": "picture family file rules, no ComfyUI; passed under the guard",
+    "failsOnMac": false
+  },
+  "image-graphs.mjs": {
+    "class": "real",
+    "reason": "checks every picture family's graph against the live ComfyUI node list; the guard refuses 127.0.0.1:8188",
+    "failsOnMac": false
+  },
+  "lint.mjs": {
+    "class": "default-safe",
+    "reason": "prompt checker rules on strings; passed under the guard",
+    "failsOnMac": false
+  },
+  "mcp-live.mjs": {
+    "class": "real",
+    "reason": "drives an MCP server on electron.exe beside a running dev copy of the app on a debugging port; needs a person at the app (not run; Windows path too)",
+    "failsOnMac": true
+  },
+  "mcp-loras.mjs": {
+    "class": "real",
+    "reason": "searches live Civitai and the ComfyUI on this PC through electron.exe (not run; Windows path too)",
+    "failsOnMac": true
+  },
+  "mcp-music.mjs": {
+    "class": "real",
+    "reason": "makes a real ACE-Step song on the local GPU through electron.exe, optionally MiniMax Music 3 (not run; GPU time; Windows path too)",
+    "failsOnMac": true
+  },
+  "mcp-rebuild.mjs": {
+    "class": "needs Windows",
+    "reason": "starts node_modules/electron/dist/electron.exe on out/main/mcp.js; no such file on a Mac",
+    "failsOnMac": true
+  },
+  "mcp-shinobi.mjs": {
+    "class": "needs Windows",
+    "reason": "starts node_modules/electron/dist/electron.exe and needs a Shinobi data folder; no such file on a Mac",
+    "failsOnMac": true
+  },
+  "mcp-smoke.mjs": {
+    "class": "needs fixtures",
+    "reason": "starts the electron binary on the built out/main/mcp.js (npm run build first); the guard refuses the spawn",
+    "failsOnMac": false
+  },
+  "mcp-tools.mjs": {
+    "class": "needs Windows",
+    "reason": "starts electron.exe and probes with ffprobe.exe, with three media files as arguments; no such files on a Mac",
+    "failsOnMac": true
+  },
+  "mcp-voices.mjs": {
+    "class": "real",
+    "reason": "runs the 12 GB voice engine on the GPU through electron.exe (not run; GPU time; Windows path too)",
+    "failsOnMac": true
+  },
+  "media-prepare.mjs": {
+    "class": "needs Windows",
+    "reason": "calls ffmpeg.exe and ffprobe.exe in node_modules/ffmpeg-ffprobe-static and needs three media arguments; no such files on a Mac",
+    "failsOnMac": true
+  },
+  "modal-account.mjs": {
+    "class": "default-safe",
+    "reason": "Modal sign-in logic with a stubbed token check; passed under the guard",
+    "failsOnMac": false
+  },
+  "model-versions.mjs": {
+    "class": "default-safe",
+    "reason": "model file-name resolution on temp folders; passed under the guard",
+    "failsOnMac": false
+  },
+  "models-download.mjs": {
+    "class": "real",
+    "reason": "downloads a 4 MB Hugging Face file through a live ComfyUI and writes into its models folder (not run)",
+    "failsOnMac": false
+  },
+  "music-remix.mjs": {
+    "class": "default-safe",
+    "reason": "remix graph and key guess offline; passed under the guard",
+    "failsOnMac": false
+  },
+  "news.mjs": {
+    "class": "default-safe",
+    "reason": "news list rules; passed under the guard",
+    "failsOnMac": false
+  },
+  "nodepacks.mjs": {
+    "class": "default-safe",
+    "reason": "node pack choice on temp folders, no network; passed under the guard",
+    "failsOnMac": false
+  },
+  "ollama-address.mjs": {
+    "class": "needs fixtures",
+    "reason": "fake Ollama on this PC's LAN address (non-loopback on a Mac), which the guard refuses",
+    "failsOnMac": false
+  },
+  "private-outputs.mjs": {
+    "class": "default-safe",
+    "reason": "graph output folders, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "productions.mjs": {
+    "class": "default-safe",
+    "reason": "projects service on temp data; passed under the guard",
+    "failsOnMac": false
+  },
+  "prompt-guide.mjs": {
+    "class": "real",
+    "reason": "downloads the MiniMax H3 prompt guide from raw.githubusercontent.com; the guard refuses the fetch, so its downloaded check fails",
+    "failsOnMac": false
+  },
+  "prompt-writer.mjs": {
+    "class": "real",
+    "reason": "writes prompts through the real Ollama on this PC; the guard refuses starting ollama",
+    "failsOnMac": false
+  },
+  "ranking.mjs": {
+    "class": "default-safe",
+    "reason": "take ranking and preview wrap, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "reader.mjs": {
+    "class": "default-safe",
+    "reason": "parsers on recorded text and a generated clip (ffmpeg is allowed); passed under the guard",
+    "failsOnMac": false
+  },
+  "rebuild.mjs": {
+    "class": "default-safe",
+    "reason": "rebuild planning and service on fakes, generated clips (ffmpeg allowed); passed under the guard",
+    "failsOnMac": false
+  },
+  "reel.mjs": {
+    "class": "default-safe",
+    "reason": "beat finder on a made-up click track; passed under the guard",
+    "failsOnMac": false
+  },
+  "refmods.mjs": {
+    "class": "default-safe",
+    "reason": "RefMod graph builders, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "reframe.mjs": {
+    "class": "default-safe",
+    "reason": "reframe maths and graph, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "remake.mjs": {
+    "class": "default-safe",
+    "reason": "remake pure parts; passed under the guard",
+    "failsOnMac": false
+  },
+  "replace.mjs": {
+    "class": "real",
+    "reason": "Replace on a live ComfyUI, renders on the GPU for minutes, calls ffmpeg.exe (not run; GPU time; Windows path too)",
+    "failsOnMac": true
+  },
+  "runpod.mjs": {
+    "class": "needs Windows",
+    "reason": "runs the voice engine venv Scripts/python.exe under %APPDATA% unless a Python is passed as an argument; no such file on a Mac",
+    "failsOnMac": true
+  },
+  "sampler-choice.mjs": {
+    "class": "default-safe",
+    "reason": "sampler and scheduler choices, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "screenplay.mjs": {
+    "class": "default-safe",
+    "reason": "screenplay parser, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "sequence-graphs.mjs": {
+    "class": "real",
+    "reason": "renders sequence graphs on a live ComfyUI (not run; GPU time)",
+    "failsOnMac": false
+  },
+  "sequence-links.mjs": {
+    "class": "default-safe",
+    "reason": "sequence fixes checked offline; passed under the guard",
+    "failsOnMac": false
+  },
+  "service-e2e.mjs": {
+    "class": "real",
+    "reason": "end to end through the service against a live ComfyUI at 127.0.0.1:8188; the guard refuses it and setup is empty",
+    "failsOnMac": false
+  },
+  "setup-progress.mjs": {
+    "class": "default-safe",
+    "reason": "cloud setup progress lines, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "shinobi.mjs": {
+    "class": "real",
+    "reason": "installs the pinned Shinobi engine from the network and renders with a real browser (not run)",
+    "failsOnMac": false
+  },
+  "site-capture.mjs": {
+    "class": "real",
+    "reason": "captures a real website with the PC's Edge or Chrome (not run; network and a browser)",
+    "failsOnMac": false
+  },
+  "sizzle-cut.mjs": {
+    "class": "default-safe",
+    "reason": "sizzle first cut pieces without Shinobi; passed under the guard",
+    "failsOnMac": false
+  },
+  "staging.mjs": {
+    "class": "default-safe",
+    "reason": "staging board words, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "timeline-tracks.mjs": {
+    "class": "default-safe",
+    "reason": "timeline model, no app; passed under the guard",
+    "failsOnMac": false
+  },
+  "tours.mjs": {
+    "class": "default-safe",
+    "reason": "tour text against source, static; passed under the guard",
+    "failsOnMac": false
+  },
+  "training-local.mjs": {
+    "class": "real",
+    "reason": "renders a character dataset on a live local ComfyUI for about 4 minutes, calls ffmpeg.exe (not run; GPU time; Windows path too)",
+    "failsOnMac": true
+  },
+  "training-recipe.mjs": {
+    "class": "needs fixtures",
+    "reason": "runs /bin/bash on the train.sh it generates and checks it against Fizgig flags; the guard refuses bash",
+    "failsOnMac": false
+  },
+  "training-runpod.mjs": {
+    "class": "needs fixtures",
+    "reason": "runs the real runpod_train.py under python3 with aiohttp against a loopback mock; the guard refuses python3",
+    "failsOnMac": false
+  }
+}

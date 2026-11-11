@@ -7,8 +7,9 @@ import path from 'node:path'
 import { describe, test } from 'node:test'
 import { VoiceEngine } from '../../src/service/voiceengine.js'
 import { Voices } from '../../src/service/voices.js'
+import { tempDir } from '../fakes/tmp.mjs'
 
-const dir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'iv-voice-'))
+const dir = () => tempDir('iv-voice-')
 const touch = (file) => (fs.mkdirSync(path.dirname(file), { recursive: true }), fs.writeFileSync(file, '', { mode: 0o755 }), file)
 
 const make = (platform) => {
@@ -27,16 +28,18 @@ describe('voice setup', () => {
     assert.equal(calls(), 0)
     assert.equal(e.installing, null)
   })
-  for (const p of ['linux', 'win32']) {
-    test(`${p}: setup runs as before`, async () => {
-      const { e, calls } = make(p)
-      assert.equal(e.status().unavailable, undefined)
-      touch(path.join(e.venv, 'bin', 'python'))
-      touch(path.join(e.venv, 'Scripts', 'python.exe'))
-      await e.install()
-      assert.equal(calls(), 3)
-    })
-  }
+  test('on linux and win32 setup runs as before', async (t) => {
+    for (const p of ['linux', 'win32']) {
+      await t.test(`${p}: setup runs as before`, async () => {
+        const { e, calls } = make(p)
+        assert.equal(e.status().unavailable, undefined)
+        touch(path.join(e.venv, 'bin', 'python'))
+        touch(path.join(e.venv, 'Scripts', 'python.exe'))
+        await e.install()
+        assert.equal(calls(), 3)
+      })
+    }
+  })
   test('the window sees the reason through the voices status', () => {
     assert.match(Voices.prototype.status.call({ engine: make('darwin').e }).unavailable, /later release/)
   })

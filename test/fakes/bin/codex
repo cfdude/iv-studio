@@ -1,0 +1,10 @@
+#!/bin/sh
+# A stand-in for the Codex CLI: writes one canned answer to the file given with -o. No network, no login.
+cat > /dev/null
+out=""
+while [ $# -gt 0 ]; do
+  if [ "$1" = "-o" ]; then out="$2"; fi
+  shift
+done
+if [ -n "$out" ]; then printf '%s\n' '{"canned":true,"engine":"codex"}' > "$out"; fi
+printf '%s\n' 'canned codex answer'

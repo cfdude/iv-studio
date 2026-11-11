@@ -3,25 +3,31 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import path from 'node:path'
 import { describe, test } from 'node:test'
+import { registerProgram } from '../fakes/ports.mjs'
 import { RunPod } from '../../src/service/runpod.js'
 
 const volume = { id: 'vol1', dataCenter: 'US-NC-1' }
 const make = () => {
   const calls = []
   const fetchImpl = async (url) => (calls.push(url), { ok: true, status: 200, json: async () => ({}), text: async () => '{}' })
-  return { calls, rp: new RunPod({ resourcesDir: 'resources', key: () => 'k', fetchImpl }) }
+  const rp = new RunPod({ resourcesDir: 'resources', key: () => 'k', fetchImpl })
+  rp.bundle = () => 'stub-bundle' // the real one runs `tar`, which the test guard refuses
+  return { calls, rp }
 }
 
 describe('RunPod token', () => {
-  for (const token of [null, undefined, '', 42]) {
-    test(`podBody and createPod refuse ${JSON.stringify(token)} with no network call`, async () => {
-      const { rp, calls } = make()
-      assert.throws(() => rp.podBody({ gpu: 'NVIDIA L40S', volume, token, idleSeconds: 300 }), /access token/)
-      await assert.rejects(rp.createPod({ gpu: 'NVIDIA L40S', volume, token, idleSeconds: 300 }), /access token/)
-      assert.equal(calls.length, 0)
-    })
-  }
+  test('podBody and createPod refuse a missing, empty or non-string token with no network call', async (t) => {
+    for (const token of [null, undefined, '', 42]) {
+      await t.test(`podBody and createPod refuse ${JSON.stringify(token)} with no network call`, async () => {
+        const { rp, calls } = make()
+        assert.throws(() => rp.podBody({ gpu: 'NVIDIA L40S', volume, token, idleSeconds: 300 }), /access token/)
+        await assert.rejects(rp.createPod({ gpu: 'NVIDIA L40S', volume, token, idleSeconds: 300 }), /access token/)
+        assert.equal(calls.length, 0)
+      })
+    }
+  })
   test('a real token still builds the pod body', () => {
     const { rp } = make()
     assert.equal(rp.podBody({ gpu: 'NVIDIA L40S', volume, token: 'tok', idleSeconds: 300 }).env.IV_TOKEN, 'tok')
@@ -36,10 +42,13 @@ describe('RunPod token', () => {
 })
 
 // Runs the real gate.py with aiohttp stubbed (this machine and CI have no aiohttp); only its token logic is exercised.
-const py = spawnSync('python3', ['--version'])
+// The test guard refuses python3 for everything else. This file alone registers the resolved python3 for `-I`
+// (isolated mode) as the first argument: a deliberate, narrow widening of the allowlist for one harmless local script.
+const onPath = (process.env.PATH || '').split(path.delimiter).map((d) => path.join(d, process.platform === 'win32' ? 'python.exe' : 'python3')).find((f) => fs.existsSync(f))
+if (onPath) registerProgram(onPath, { firstArg: '-I' })
 const runGate = (env, code) =>
   spawnSync(
-    'python3',
+    onPath,
     [
       '-I',
       '-c',
@@ -51,8 +60,9 @@ ${code}`
     ],
     { env: { PATH: process.env.PATH, ...env }, encoding: 'utf8' }
   )
+const gateSkip = onPath ? false : 'python3 not available'
 
-describe('gate.py token', { skip: py.status !== 0 && 'python3 not available' }, () => {
+describe('gate.py token', { skip: gateSkip }, () => {
   test('refuses to start with an empty or missing IV_TOKEN', () => {
     for (const env of [{ IV_TOKEN: '' }, {}]) {
       const r = runGate(env, 'spec.loader.exec_module(g)')

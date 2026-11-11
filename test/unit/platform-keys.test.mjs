@@ -38,22 +38,24 @@ describe('editorKeyAction', () => {
     assert.equal(shared.editorKeyAction(key('z', { ctrlKey: true }), 'darwin'), 'none')
     assert.equal(shared.editorKeyAction(key('k', { ctrlKey: true }), 'darwin'), 'none')
   })
-  for (const p of ['win32', 'linux']) {
-    test(`${p}: Ctrl+A keeps today's behaviour`, () => {
-      assert.equal(shared.editorKeyAction(key('a', { ctrlKey: true }), p), 'none')
-    })
-    test(`${p}: Ctrl maps to the editor actions`, () => {
-      assert.equal(shared.editorKeyAction(key('z', { ctrlKey: true }), p), 'undo')
-      assert.equal(shared.editorKeyAction(key('Z', { ctrlKey: true, shiftKey: true }), p), 'redo')
-      assert.equal(shared.editorKeyAction(key('y', { ctrlKey: true }), p), 'redo')
-      assert.equal(shared.editorKeyAction(key('k', { ctrlKey: true }), p), 'splitAll')
-      assert.equal(shared.editorKeyAction(key('m', { ctrlKey: true, shiftKey: true }), p), 'prevMarker')
-    })
-    test(`${p}: other modified keys run nothing, Meta included`, () => {
-      assert.equal(shared.editorKeyAction(key('c', { ctrlKey: true }), p), 'none')
-      assert.equal(shared.editorKeyAction(key('z', { metaKey: true }), p), 'none')
-    })
-  }
+  test('win32 and linux: Ctrl shortcuts', async (t) => {
+    for (const p of ['win32', 'linux']) {
+      await t.test(`${p}: Ctrl+A keeps today's behaviour`, () => {
+        assert.equal(shared.editorKeyAction(key('a', { ctrlKey: true }), p), 'none')
+      })
+      await t.test(`${p}: Ctrl maps to the editor actions`, () => {
+        assert.equal(shared.editorKeyAction(key('z', { ctrlKey: true }), p), 'undo')
+        assert.equal(shared.editorKeyAction(key('Z', { ctrlKey: true, shiftKey: true }), p), 'redo')
+        assert.equal(shared.editorKeyAction(key('y', { ctrlKey: true }), p), 'redo')
+        assert.equal(shared.editorKeyAction(key('k', { ctrlKey: true }), p), 'splitAll')
+        assert.equal(shared.editorKeyAction(key('m', { ctrlKey: true, shiftKey: true }), p), 'prevMarker')
+      })
+      await t.test(`${p}: other modified keys run nothing, Meta included`, () => {
+        assert.equal(shared.editorKeyAction(key('c', { ctrlKey: true }), p), 'none')
+        assert.equal(shared.editorKeyAction(key('z', { metaKey: true }), p), 'none')
+      })
+    }
+  })
   test('the line-284 guard: Alt alone runs nothing; Alt never blocked a mapped key', () => {
     for (const p of ['darwin', 'win32', 'linux']) {
       assert.equal(shared.editorKeyAction(key('s', { altKey: true }), p), 'none')
@@ -118,13 +120,15 @@ describe('modKey and modLabel', () => {
     assert.equal(shared.modKey({ metaKey: false, ctrlKey: true }, 'darwin'), false)
     assert.equal(shared.modLabel('darwin'), '⌘')
   })
-  for (const p of ['win32', 'linux']) {
-    test(`${p} uses Ctrl`, () => {
-      assert.equal(shared.modKey({ metaKey: false, ctrlKey: true }, p), true)
-      assert.equal(shared.modKey({ metaKey: true, ctrlKey: false }, p), false)
-      assert.equal(shared.modLabel(p), 'Ctrl')
-    })
-  }
+  test('win32 and linux use Ctrl', async (t) => {
+    for (const p of ['win32', 'linux']) {
+      await t.test(`${p} uses Ctrl`, () => {
+        assert.equal(shared.modKey({ metaKey: false, ctrlKey: true }, p), true)
+        assert.equal(shared.modKey({ metaKey: true, ctrlKey: false }, p), false)
+        assert.equal(shared.modLabel(p), 'Ctrl')
+      })
+    }
+  })
 })
 
 describe('shared/platform.js is renderer-safe', () => {

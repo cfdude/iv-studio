@@ -44,13 +44,15 @@ describe('words on a refused Keychain', () => {
 
 describe('wiring (source checks)', () => {
   const main = fs.readFileSync('src/main/index.js', 'utf8')
-  for (const channel of ['cloud:deploy', 'cloud:setUp', 'cloud:runpodSetUp']) {
-    test(`${channel} refuses before any remote work`, () => {
-      const start = main.indexOf(`handle('${channel}'`)
-      const body = main.slice(start, main.indexOf('cloudTask(', start))
-      assert.ok(body.includes('requireSealable()'), 'guard comes before cloudTask')
-    })
-  }
+  test('each cloud task refuses before any remote work', async (t) => {
+    for (const channel of ['cloud:deploy', 'cloud:setUp', 'cloud:runpodSetUp']) {
+      await t.test(`${channel} refuses before any remote work`, () => {
+        const start = main.indexOf(`handle('${channel}'`)
+        const body = main.slice(start, main.indexOf('cloudTask(', start))
+        assert.ok(body.includes('requireSealable()'), 'guard comes before cloudTask')
+      })
+    }
+  })
   test('cloud:clearToken only writes what tokenClearPatch allows', () => {
     const start = main.indexOf("handle('cloud:clearToken'")
     assert.ok(main.slice(start, main.indexOf('\n', start + 40)).includes('tokenClearPatch(name, secretNow())'))

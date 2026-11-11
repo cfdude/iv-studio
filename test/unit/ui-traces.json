@@ -1,0 +1,871 @@
+{
+  "journey:edit_video": [
+    {
+      "channel": "library:all",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:create",
+      "args": "[string]"
+    },
+    {
+      "channel": "edits:addOutput",
+      "args": "[{file:{path:string},label:string}]"
+    },
+    {
+      "channel": "edits:save",
+      "args": "[string,{clips:[{fadeIn:number,fadeOut:number,id:string,in:number,media:string,muted:boolean,out:number,start:number,track:string,volume:number}],media:{<id>:{duration:number,fps:number,hasAudio:boolean,height:number,id:string,kind:string,name:string,path:string,source:{label:string,type:string},width:number}}}]"
+    },
+    {
+      "channel": "edits:get",
+      "args": "[string]"
+    }
+  ],
+  "journey:make_a_film": [
+    {
+      "channel": "productions:list",
+      "args": "[]"
+    },
+    {
+      "channel": "productions:create",
+      "args": "[{logline:string,name:string}]"
+    },
+    {
+      "channel": "productions:setScript",
+      "args": "[string,string]"
+    },
+    {
+      "channel": "productions:get",
+      "args": "[string]"
+    }
+  ],
+  "journey:make_a_picture": [
+    {
+      "channel": "images:status",
+      "args": "[]"
+    }
+  ],
+  "journey:make_a_sequence": [
+    {
+      "channel": "sequences:list",
+      "args": "[]"
+    },
+    {
+      "channel": "sequences:create",
+      "args": "[{name:string}]"
+    },
+    {
+      "channel": "sequences:save",
+      "args": "[string,{method:string,shots:[{prompt:string}]}]"
+    },
+    {
+      "channel": "sequences:get",
+      "args": "[string]"
+    }
+  ],
+  "journey:make_a_shot": [
+    {
+      "channel": "prompts:status",
+      "args": "[]"
+    },
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "cast:list",
+      "args": "[]"
+    },
+    {
+      "channel": "render:plan",
+      "args": "[{aspect:string,character:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,steps:number,voiceLine:null},{megapixels:number}]"
+    },
+    {
+      "channel": "loras:yours",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:list",
+      "args": "[]"
+    },
+    {
+      "channel": "render:plan",
+      "args": "[{character:string,mode:string,prompt:string}]"
+    },
+    {
+      "channel": "setup:check",
+      "args": "[]"
+    }
+  ],
+  "journey:make_music": [
+    {
+      "channel": "music:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "music:status",
+      "args": "[]"
+    },
+    {
+      "channel": "music:list",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "models:status",
+      "args": "[]"
+    }
+  ],
+  "journey:new_character": [
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "training:list",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:loras",
+      "args": "[]"
+    },
+    {
+      "channel": "refmods:list",
+      "args": "[]"
+    },
+    {
+      "channel": "training:create",
+      "args": "[{name:string,who:string}]"
+    },
+    {
+      "channel": "training:estimate",
+      "args": "[string]"
+    },
+    {
+      "channel": "training:get",
+      "args": "[string]"
+    }
+  ],
+  "journey:replace_someone": [
+    {
+      "channel": "replace:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "replace:characterFaces",
+      "args": "[]"
+    },
+    {
+      "channel": "replace:history",
+      "args": "[]"
+    },
+    {
+      "channel": "remake:faces",
+      "args": "[]"
+    },
+    {
+      "channel": "remake:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "remake:check",
+      "args": "[string]"
+    },
+    {
+      "channel": "replace:check",
+      "args": "[string]"
+    },
+    {
+      "channel": "replace:meta",
+      "args": "[]"
+    }
+  ],
+  "journey:show_me_around": [
+    {
+      "channel": "library:all",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "setup:check",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:list",
+      "args": "[]"
+    },
+    {
+      "channel": "library:all",
+      "args": "[]"
+    }
+  ],
+  "journey:voice_line": [
+    {
+      "channel": "voices:status",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:lines",
+      "args": "[]"
+    }
+  ],
+  "journey:website_sizzle": [
+    {
+      "channel": "sizzle:list",
+      "args": "[]"
+    },
+    {
+      "channel": "sizzle:savePlan",
+      "args": "[string,{music:{caption:string,engine:string,seconds:number},scenes:[{capture:string,kind:string,seconds:number}],seconds:number}]"
+    },
+    {
+      "channel": "sizzle:approve",
+      "args": "[string]"
+    }
+  ],
+  "page:character": [
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "training:list",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:loras",
+      "args": "[]"
+    },
+    {
+      "channel": "refmods:list",
+      "args": "[]"
+    },
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "training:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "training:get",
+      "args": "[string]"
+    }
+  ],
+  "page:characters": [
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "training:list",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:loras",
+      "args": "[]"
+    },
+    {
+      "channel": "refmods:list",
+      "args": "[]"
+    },
+    {
+      "channel": "training:chooseFizgig",
+      "args": "[]"
+    }
+  ],
+  "page:cloud": [
+    {
+      "channel": "cloud:status",
+      "args": "[]"
+    },
+    {
+      "channel": "cloud:provider",
+      "args": "[string]"
+    },
+    {
+      "channel": "cloud:clearToken",
+      "args": "[string]"
+    }
+  ],
+  "page:create": [
+    {
+      "channel": "prompts:status",
+      "args": "[]"
+    },
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "cast:list",
+      "args": "[]"
+    },
+    {
+      "channel": "render:plan",
+      "args": "[{aspect:string,character:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,steps:number,voiceLine:null},{megapixels:number}]"
+    },
+    {
+      "channel": "loras:yours",
+      "args": "[]"
+    },
+    {
+      "channel": "images:toEdit",
+      "args": "[string,string]"
+    },
+    {
+      "channel": "files:pick",
+      "args": "[string]"
+    }
+  ],
+  "page:edits": [
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    }
+  ],
+  "page:home": [
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "app:info",
+      "args": "[]"
+    },
+    {
+      "channel": "cloud:status",
+      "args": "[]"
+    },
+    {
+      "channel": "update:state",
+      "args": "[]"
+    },
+    {
+      "channel": "library:all",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:catalog",
+      "args": "[]"
+    },
+    {
+      "channel": "setup:check",
+      "args": "[]"
+    },
+    {
+      "channel": "characters:list",
+      "args": "[]"
+    },
+    {
+      "channel": "app:info",
+      "args": "[]"
+    },
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    }
+  ],
+  "page:library": [
+    {
+      "channel": "projects:list",
+      "args": "[]"
+    }
+  ],
+  "page:lines": [
+    {
+      "channel": "voices:status",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:lines",
+      "args": "[]"
+    }
+  ],
+  "page:loras": [
+    {
+      "channel": "loras:yours",
+      "args": "[]"
+    },
+    {
+      "channel": "loras:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "loras:search",
+      "args": "[{cursor:null,limit:number,query:string,sort:string,tag:string}]"
+    }
+  ],
+  "page:media": [
+    {
+      "channel": "library:all",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "library:all",
+      "args": "[]"
+    },
+    {
+      "channel": "library:toEdit",
+      "args": "[{at:string,detail:string,duration:number,file:{path:string},group:string,key:string,label:string,rank:number,set:string,setName:string,type:string,variant:string}]"
+    }
+  ],
+  "page:music": [
+    {
+      "channel": "music:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "music:status",
+      "args": "[]"
+    },
+    {
+      "channel": "music:list",
+      "args": "[]"
+    },
+    {
+      "channel": "edits:list",
+      "args": "[]"
+    },
+    {
+      "channel": "models:status",
+      "args": "[]"
+    },
+    {
+      "channel": "music:pickSong",
+      "args": "[]"
+    },
+    {
+      "channel": "music:create",
+      "args": "[{caption:string,engine:string,name:string,seconds:number}]"
+    },
+    {
+      "channel": "music:get",
+      "args": "[string]"
+    },
+    {
+      "channel": "music:toEdit",
+      "args": "[string]"
+    }
+  ],
+  "page:project": [
+    {
+      "channel": "productions:list",
+      "args": "[]"
+    },
+    {
+      "channel": "productions:get",
+      "args": "[string]"
+    }
+  ],
+  "page:projects": [
+    {
+      "channel": "productions:list",
+      "args": "[]"
+    }
+  ],
+  "page:rebuild": [
+    {
+      "channel": "rebuild:list",
+      "args": "[]"
+    },
+    {
+      "channel": "rebuild:pickVideo",
+      "args": "[]"
+    }
+  ],
+  "page:rebuild-project": [
+    {
+      "channel": "rebuild:list",
+      "args": "[]"
+    },
+    {
+      "channel": "rebuild:get",
+      "args": "[string]"
+    }
+  ],
+  "page:reel": [
+    {
+      "channel": "music:list",
+      "args": "[]"
+    }
+  ],
+  "page:replace": [
+    {
+      "channel": "replace:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "replace:characterFaces",
+      "args": "[]"
+    },
+    {
+      "channel": "replace:history",
+      "args": "[]"
+    },
+    {
+      "channel": "remake:faces",
+      "args": "[]"
+    },
+    {
+      "channel": "remake:meta",
+      "args": "[]"
+    },
+    {
+      "channel": "remake:check",
+      "args": "[string]"
+    },
+    {
+      "channel": "replace:toEdit",
+      "args": "[string,string]"
+    }
+  ],
+  "page:sequence": [
+    {
+      "channel": "sequences:list",
+      "args": "[]"
+    },
+    {
+      "channel": "loras:yours",
+      "args": "[]"
+    },
+    {
+      "channel": "sequences:get",
+      "args": "[string]"
+    }
+  ],
+  "page:sequences": [
+    {
+      "channel": "sequences:list",
+      "args": "[]"
+    }
+  ],
+  "page:settings": [
+    {
+      "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "comfy:launcher",
+      "args": "[]"
+    },
+    {
+      "channel": "folders:videos",
+      "args": "[]"
+    },
+    {
+      "channel": "data:info",
+      "args": "[]"
+    },
+    {
+      "channel": "data:size",
+      "args": "[]"
+    },
+    {
+      "channel": "models:h3",
+      "args": "[]"
+    },
+    {
+      "channel": "prompts:status",
+      "args": "[]"
+    },
+    {
+      "channel": "agents:info",
+      "args": "[]"
+    },
+    {
+      "channel": "update:state",
+      "args": "[]"
+    },
+    {
+      "channel": "app:info",
+      "args": "[]"
+    },
+    {
+      "channel": "settings:set",
+      "args": "[{comfyApiKey:string,ollamaUrl:string,textSize:string}]"
+    },
+    {
+      "channel": "settings:set",
+      "args": "[{ollamaUrl:string}]"
+    },
+    {
+      "channel": "hardware:apply",
+      "args": "[{hardware:{gpu:string},highContrast:boolean,promptEngine:string}]"
+    },
+    {
+      "channel": "hardware:apply",
+      "args": "[{promptEngine:string}]"
+    },
+    {
+      "channel": "settings:setComfyKey",
+      "args": "[string]"
+    },
+    {
+      "channel": "settings:setCivitaiKey",
+      "args": "[string]"
+    },
+    {
+      "channel": "comfy:launcher",
+      "args": "[]"
+    },
+    {
+      "channel": "comfy:chooseLauncher",
+      "args": "[]"
+    },
+    {
+      "channel": "comfy:launcher",
+      "args": "[]"
+    },
+    {
+      "channel": "comfy:chooseFolder",
+      "args": "[]"
+    },
+    {
+      "channel": "comfy:launcher",
+      "args": "[]"
+    },
+    {
+      "channel": "folders:videos",
+      "args": "[]"
+    },
+    {
+      "channel": "folders:chooseVideos",
+      "args": "[]"
+    },
+    {
+      "channel": "folders:resetVideos",
+      "args": "[]"
+    },
+    {
+      "channel": "data:choose",
+      "args": "[]"
+    },
+    {
+      "channel": "data:open",
+      "args": "[]"
+    },
+    {
+      "channel": "data:restart",
+      "args": "[]"
+    },
+    {
+      "channel": "agents:info",
+      "args": "[]"
+    },
+    {
+      "channel": "agents:installSkill",
+      "args": "[]"
+    },
+    {
+      "channel": "agents:info",
+      "args": "[]"
+    },
+    {
+      "channel": "learn:openGuide",
+      "args": "[]"
+    },
+    {
+      "channel": "links:open",
+      "args": "[string]"
+    },
+    {
+      "channel": "files:reveal",
+      "args": "[string]"
+    },
+    {
+      "channel": "update:state",
+      "args": "[]"
+    },
+    {
+      "channel": "update:check",
+      "args": "[]"
+    },
+    {
+      "channel": "update:install",
+      "args": "[]"
+    },
+    {
+      "channel": "incognito:set",
+      "args": "[boolean]"
+    },
+    {
+      "channel": "settings:set",
+      "args": "[{incognito:boolean}]"
+    }
+  ],
+  "page:setup": [
+    {
+      "channel": "models:status",
+      "args": "[]"
+    }
+  ],
+  "page:shinobi": [
+    {
+      "channel": "shinobi:status",
+      "args": "[]"
+    },
+    {
+      "channel": "shinobi:projects",
+      "args": "[]"
+    }
+  ],
+  "page:shinobi-film": [
+    {
+      "channel": "shinobi:status",
+      "args": "[]"
+    },
+    {
+      "channel": "shinobi:projects",
+      "args": "[]"
+    },
+    {
+      "channel": "shinobi:project",
+      "args": "[string]"
+    },
+    {
+      "channel": "shinobi:presets",
+      "args": "[]"
+    },
+    {
+      "channel": "shinobi:saveBrief",
+      "args": "[string,string]"
+    },
+    {
+      "channel": "shinobi:project",
+      "args": "[string]"
+    },
+    {
+      "channel": "shinobi:addToEdit",
+      "args": "[string,string]"
+    },
+    {
+      "channel": "shinobi:addToEdit",
+      "args": "[string]"
+    }
+  ],
+  "page:shot": [
+    {
+      "channel": "projects:list",
+      "args": "[]"
+    },
+    {
+      "channel": "projects:get",
+      "args": "[string]"
+    },
+    {
+      "channel": "jobs:watch",
+      "args": "[[string]]"
+    },
+    {
+      "channel": "jobs:watch",
+      "args": "[[]]"
+    }
+  ],
+  "page:sizzle": [
+    {
+      "channel": "sizzle:list",
+      "args": "[]"
+    }
+  ],
+  "page:sizzle-project": [
+    {
+      "channel": "sizzle:list",
+      "args": "[]"
+    },
+    {
+      "channel": "sizzle:get",
+      "args": "[string]"
+    }
+  ],
+  "page:voices": [
+    {
+      "channel": "voices:status",
+      "args": "[]"
+    },
+    {
+      "channel": "voices:list",
+      "args": "[]"
+    }
+  ],
+  "page:workflows": []
+}
