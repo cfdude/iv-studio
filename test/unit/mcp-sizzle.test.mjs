@@ -157,7 +157,7 @@ describe('MCP website sizzle tools', () => {
   })
 
   // ---------- list_sizzles ----------
-  test('[mcp:list_sizzles] lists the saved sizzles newest first with their site, status, scene count and cover', async () => {
+  test('[mcp:list_sizzles][ipc:sizzle:list] lists the saved sizzles newest first with their site, status, scene count and cover', async () => {
     const older = saved({ name: 'Older', updatedAt: '2026-01-01T00:00:00.000Z' })
     const newer = saved({ name: 'Newer', updatedAt: '2030-01-01T00:00:00.000Z' })
     const { items } = await ok('list_sizzles')
@@ -168,7 +168,7 @@ describe('MCP website sizzle tools', () => {
   })
 
   // ---------- save_sizzle_plan ----------
-  test('[mcp:save_sizzle_plan] saves the storyboard with scene ids, whole-second H3 lengths, a total and the music, and leaves it unapproved', async () => {
+  test('[mcp:save_sizzle_plan][ipc:sizzle:savePlan] saves the storyboard with scene ids, whole-second H3 lengths, a total and the music, and leaves it unapproved', async () => {
     const s = saved()
     const r = await ok('save_sizzle_plan', { sizzleId: s.id, plan: { ...PLAN, notes: 'Keep it fast.' } })
     assert.equal(r.status, 'planning')
@@ -209,7 +209,7 @@ describe('MCP website sizzle tools', () => {
   })
 
   // ---------- approve_sizzle_plan ----------
-  test('[mcp:approve_sizzle_plan] needs a storyboard first, then records the approval; saving the plan again takes it back', async () => {
+  test('[mcp:approve_sizzle_plan][ipc:sizzle:approve] needs a storyboard first, then records the approval; saving the plan again takes it back', async () => {
     const s = saved()
     await fails('approve_sizzle_plan', { sizzleId: s.id }, /Write the storyboard first\./)
     await ok('save_sizzle_plan', { sizzleId: s.id, plan: PLAN })
@@ -231,7 +231,7 @@ describe('MCP website sizzle tools', () => {
     assert.equal(fake.prompts.length, queued)
   })
 
-  test('[mcp:make_sizzle_assets] queues the picture, the song and one small H3 preview per shot, then the 1 MP finish of a preview that is done', async () => {
+  test('[mcp:make_sizzle_assets][ipc:sizzle:makeAssets] queues the picture, the song and one small H3 preview per shot, then the 1 MP finish of a preview that is done', async () => {
     const s = await approved()
     const before = fake.prompts.length
     const r = await ok('make_sizzle_assets', { sizzleId: s.id })
@@ -269,7 +269,7 @@ describe('MCP website sizzle tools', () => {
   })
 
   // ---------- get_sizzle ----------
-  test('[mcp:get_sizzle] reads a planning sizzle without queuing anything', async () => {
+  test('[mcp:get_sizzle][ipc:sizzle:get] reads a planning sizzle without queuing anything', async () => {
     const s = saved()
     const queued = fake.prompts.length
     const r = await ok('get_sizzle', { sizzleId: s.id })
@@ -315,7 +315,7 @@ describe('MCP website sizzle tools', () => {
   })
 
   // ---------- delete_sizzle ----------
-  test('[mcp:delete_sizzle] removes the sizzle and its capture, and the list no longer shows it', async () => {
+  test('[mcp:delete_sizzle][ipc:sizzle:delete] removes the sizzle and its capture, and the list no longer shows it', async () => {
     const s = saved()
     assert.ok(fs.existsSync(s.site.captures[0].file))
     const r = await ok('delete_sizzle', { sizzleId: s.id })

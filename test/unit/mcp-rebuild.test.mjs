@@ -125,7 +125,7 @@ describe('MCP rebuild tools', () => {
   })
 
   // ---------- rebuild_read ----------
-  test('[mcp:rebuild_read] takes a video apart into its three shots with frames, a contact sheet each, the tempo and the sound', async () => {
+  test('[mcp:rebuild_read][ipc:rebuild:read] takes a video apart into its three shots with frames, a contact sheet each, the tempo and the sound', async () => {
     const r = await call('rebuild_read', { file: source, rights: true, name: 'My film' })
     assert.ok(!r.isError, JSON.stringify(r.content))
     assert.equal(r.content.find((c) => c.type === 'image').mimeType, 'image/jpeg', 'a sheet of every shot\'s middle frame')
@@ -161,7 +161,7 @@ describe('MCP rebuild tools', () => {
     assert.equal(fs.existsSync(dataFile('rebuild')) ? fs.readdirSync(dataFile('rebuild')).length : 0, folders, 'a refused read leaves nothing behind')
   })
 
-  test('[mcp:rebuild_read] keeps the swap the person already asked for, and with writer: true has Claude Code read every shot', async () => {
+  test('[mcp:rebuild_read][ipc:rebuild:readWithWriter] keeps the swap the person already asked for, and with writer: true has Claude Code read every shot', async () => {
     claudeAnswers({ kind: 'live', why: 'Filmed on a phone.', description: 'A red wall, static.', captions: [{ text: 'Hello', from: 0.5, to: 99, where: 'top' }], stickers: [], camera: 'static', light: 'flat' })
     const r = await ok('rebuild_read', { file: source, rights: true, swap: { ask: 'Make her a man in a grey suit', picture: face }, writer: true })
     assert.deepEqual(r.swap, { ask: 'Make her a man in a grey suit', picture: face })
@@ -254,7 +254,7 @@ describe('MCP rebuild tools', () => {
   })
 
   // ---------- approve_rebuild_plan ----------
-  test('[mcp:approve_rebuild_plan] needs a plan first, then records the approval', async () => {
+  test('[mcp:approve_rebuild_plan][ipc:rebuild:approvePlan] needs a plan first, then records the approval', async () => {
     const r = await read()
     await fails('approve_rebuild_plan', { rebuildId: r.id }, /Write the plan first\./)
     await ok('save_rebuild_plan', { rebuildId: r.id, plan: planFor(r) })
@@ -287,7 +287,7 @@ describe('MCP rebuild tools', () => {
     assert.equal(s.status, 'frames')
   })
 
-  test('[mcp:make_rebuild_frames] paints writing and the swap out of and into the frames with the picture editor, both ends on one seed', async () => {
+  test('[mcp:make_rebuild_frames][ipc:rebuild:makeFrames] paints writing and the swap out of and into the frames with the picture editor, both ends on one seed', async () => {
     answers()
     const r = await planned({}, { swap: { ask: 'Make her a man in a grey suit', picture: face } })
     await ok('save_rebuild_reading', { rebuildId: r.id, shots: [reading(2, { captions: [{ text: 'Buy now', from: 1, to: 3, where: 'bottom' }] })] })
@@ -311,7 +311,7 @@ describe('MCP rebuild tools', () => {
   })
 
   // ---------- approve_rebuild_frames ----------
-  test('[mcp:approve_rebuild_frames] needs the plan approved and every H3 shot\'s frames made, then records the approval', async () => {
+  test('[mcp:approve_rebuild_frames][ipc:rebuild:approveFrames] needs the plan approved and every H3 shot\'s frames made, then records the approval', async () => {
     const r = await planned()
     await fails('approve_rebuild_frames', { rebuildId: r.id }, /The plan needs the person's OK first\./)
     await ok('approve_rebuild_plan', { rebuildId: r.id })
@@ -332,7 +332,7 @@ describe('MCP rebuild tools', () => {
     assert.equal(fake.prompts.length, queued)
   })
 
-  test('[mcp:make_rebuild_shots] renders each H3 shot in frames mode from its frames, two previews each', async () => {
+  test('[mcp:make_rebuild_shots][ipc:rebuild:makeShots] renders each H3 shot in frames mode from its frames, two previews each', async () => {
     fake.holdNextPrompt(2)
     const r = await withFrames()
     const before = fake.prompts.length
@@ -364,7 +364,7 @@ describe('MCP rebuild tools', () => {
     assert.equal(job.plan.resolved.previews, 3)
   })
 
-  test('[mcp:make_rebuild_shots] finishes the picked preview of each shot at 1 MP and has every shot done once the finishes are in', async () => {
+  test('[mcp:make_rebuild_shots][ipc:rebuild:pick] finishes the picked preview of each shot at 1 MP and has every shot done once the finishes are in', async () => {
     answers()
     const r = await withFrames()
     const made = await ok('make_rebuild_shots', { rebuildId: r.id })
@@ -383,7 +383,7 @@ describe('MCP rebuild tools', () => {
   })
 
   // ---------- rebuild_first_cut ----------
-  test('[mcp:rebuild_first_cut] puts every shot back in its slot in an edit: new takes retimed, the original kept, captions as titles, the old sound as a guide', async () => {
+  test('[mcp:rebuild_first_cut][ipc:rebuild:firstCut] puts every shot back in its slot in an edit: new takes retimed, the original kept, captions as titles, the old sound as a guide', async () => {
     answers()
     const r = await planned({}, {})
     await ok('save_rebuild_reading', { rebuildId: r.id, shots: [reading(1, { captions: [{ text: 'Day one', from: 0.2, to: 2, where: 'top' }] }), reading(3, { captions: [{ text: 'The end', from: 0, to: 1, where: 'bottom' }] })] })
@@ -433,7 +433,7 @@ describe('MCP rebuild tools', () => {
   })
 
   // ---------- list_rebuilds ----------
-  test('[mcp:list_rebuilds] lists rebuilds newest first with name, status, shots, length and a cover', async () => {
+  test('[mcp:list_rebuilds][ipc:rebuild:list] lists rebuilds newest first with name, status, shots, length and a cover', async () => {
     const a = await read({ name: 'Listed first' })
     const j = readRebuild(a.id)
     j.updatedAt = '2020-01-01T00:00:00.000Z'
@@ -447,7 +447,7 @@ describe('MCP rebuild tools', () => {
   })
 
   // ---------- delete_rebuild ----------
-  test('[mcp:delete_rebuild] removes the rebuild and everything made for it, and the list no longer shows it', async () => {
+  test('[mcp:delete_rebuild][ipc:rebuild:delete] removes the rebuild and everything made for it, and the list no longer shows it', async () => {
     const r = await read({ name: 'Delete me' })
     assert.ok(fs.existsSync(dataFile('rebuild', r.id, 'shots')))
     assert.deepEqual(await ok('delete_rebuild', { rebuildId: r.id }), { items: true })

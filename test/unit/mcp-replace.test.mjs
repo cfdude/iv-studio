@@ -71,7 +71,7 @@ describe('MCP Replace tools', () => {
   })
 
   // ---------- replace_check ----------
-  test('[mcp:replace_check] lists the node packs with their links and the models a mode still needs on a ComfyUI that has none', async () => {
+  test('[mcp:replace_check][ipc:replace:check] lists the node packs with their links and the models a mode still needs on a ComfyUI that has none', async () => {
     const r = await okOn(mcpBare)('replace_check', { mode: 'person' })
     assert.equal(r.ready, false)
     const pack = (name) => r.packs.find((p) => p.name.startsWith(name))
@@ -102,7 +102,7 @@ describe('MCP Replace tools', () => {
   })
 
   // ---------- replace_video ----------
-  test('[mcp:replace_video] queues nothing and lists what is missing when the ComfyUI is not ready', async () => {
+  test('[mcp:replace_video][ipc:replace:run] queues nothing and lists what is missing when the ComfyUI is not ready', async () => {
     const queued = bare.prompts.length
     await fails('replace_video', { mode: 'person', video, pictures: [face] }, /Replace needs .*ComfyUI-MiniMaxH3-Context-Loop.*SAM 3\.1.*Qwen3-VL 8B describer.*\. The Replace page lists where to get them\./, mcpBare)
     assert.equal(bare.prompts.length, queued)
@@ -182,7 +182,7 @@ describe('MCP Replace tools', () => {
   })
 
   // ---------- replace_history ----------
-  test('[mcp:replace_history] lists the runs newest first with their name, status, mode and the finished video', async () => {
+  test('[mcp:replace_history][ipc:replace:history] lists the runs newest first with their name, status, mode and the finished video', async () => {
     full.setOutputs((g) => {
       const final = Object.entries(g).find(([, n]) => n.class_type === 'MiniMaxH3ChainAssemble')?.[0] || Object.entries(g).filter(([, n]) => n.class_type === 'VHS_VideoCombine').pop()?.[0]
       return final ? { [final]: { gifs: [{ filename: 'replaced.mp4', subfolder: 'replace', type: 'output', fullpath: out }] } } : undefined

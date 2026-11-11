@@ -58,7 +58,7 @@ describe('MCP Shinobi tools', () => {
     assert.ok(r.browser === null || typeof r.browser === 'string', 'the browser Shinobi would render with, if the PC has one')
   })
 
-  test('[mcp:shinobi_status] lists the projects once the engine is installed, newest first, with media, renders and a cover', async () => {
+  test('[mcp:shinobi_status][ipc:shinobi:status][ipc:shinobi:projects] lists the projects once the engine is installed, newest first, with media, renders and a cover', async () => {
     installEngine()
     const project = (id, name, assets) => write(dataFile('shinobi', 'projects', id, 'project.json'), { name, created_at: '2026-11-01T10:00:00Z', assets })
     project('older', 'Older film', [])

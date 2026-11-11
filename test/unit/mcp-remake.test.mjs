@@ -95,7 +95,7 @@ describe('MCP remake tools', () => {
   })
 
   // ---------- remake_paint ----------
-  test('[mcp:remake_paint] prepares the clip on Remake\'s canvas and paints one frame with the picture editor, the way a swap is asked for', async () => {
+  test('[mcp:remake_paint][ipc:remake:prepare][ipc:remake:paint] prepares the clip on Remake\'s canvas and paints one frame with the picture editor, the way a swap is asked for', async () => {
     answers()
     const before = fake.prompts.length
     const s = await ok('remake_paint', { kind: 'swap', video, who: 'the man', picture: face, name: 'Mia' })
@@ -122,7 +122,7 @@ describe('MCP remake tools', () => {
     assert.deepEqual(await mcp.refusals(), [])
   })
 
-  test('[mcp:remake_paint] paints a scene change from the person\'s words and repaints just one frame in an existing session', async () => {
+  test('[mcp:remake_paint][ipc:remake:get] paints a scene change from the person\'s words and repaints just one frame in an existing session', async () => {
     answers()
     const s = await ok('remake_paint', { kind: 'change', video, ask: 'a snowy winter evening' })
     const g = fake.prompts.at(-1).prompt
@@ -160,7 +160,7 @@ describe('MCP remake tools', () => {
   })
 
   // ---------- remake_use_picture ----------
-  test('[mcp:remake_use_picture] puts the person\'s own picture on a keyframe, fitted to the canvas, and marks it as their own', async () => {
+  test('[mcp:remake_use_picture][ipc:remake:usePicture] puts the person\'s own picture on a keyframe, fitted to the canvas, and marks it as their own', async () => {
     answers()
     const s = await ok('remake_paint', { kind: 'change', video, ask: 'night' })
     const r = await ok('remake_use_picture', { session: s.id, frame: 12, picture: own })
@@ -174,7 +174,7 @@ describe('MCP remake tools', () => {
   })
 
   // ---------- remake_render ----------
-  test('[mcp:remake_render] queues a take from Viggle\'s graph with the clip, the painted frame pinned at its frame number and the person\'s own prompt', async () => {
+  test('[mcp:remake_render][ipc:remake:setPrompt][ipc:remake:render] queues a take from Viggle\'s graph with the clip, the painted frame pinned at its frame number and the person\'s own prompt', async () => {
     const s = await painted1()
     const prompt = Object.entries(SECTIONS).map(([k, v]) => `${k}:\n${v}`).join('\n\n') + '\n'
     const before = fake.prompts.length
@@ -213,7 +213,7 @@ describe('MCP remake tools', () => {
     await fails('remake_render', { session: s.id, prompt, takes: 4 }, /takes/i)
   })
 
-  test('[mcp:remake_render] has the person\'s writer write the six sections from the frames when no prompt is given, and says what the writer got wrong', async () => {
+  test('[mcp:remake_render][ipc:remake:check][ipc:remake:write] has the person\'s writer write the six sections from the frames when no prompt is given, and says what the writer got wrong', async () => {
     const s = await painted1()
     claudeAnswers(SECTIONS)
     const r = await ok('remake_render', { session: s.id })
