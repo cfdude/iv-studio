@@ -245,7 +245,7 @@ const tool = (name, description, shape, fn) =>
         if (refused) throw new Error(refused)
       }
       // an edit the chat's agent changes: what it was before, so the chat can offer "Undo this change" even when
-      // the edit isn't open (an open one also puts it on the editor's own Ctrl+Z)
+      // the edit isn't open (an open one also puts it on the editor's own undo key)
       const before = EDIT_CHANGERS.has(name) && args.editId ? editSnapshot(args.editId) : null
       spendUsed = spend
       const value = await fn(args)

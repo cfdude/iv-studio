@@ -45,7 +45,7 @@ export const CREDITS = [
       { name: 'Wan 2.1 step-distill LoRA', by: 'lightx2v', covers: ['ff_lightx2v_i2v_14b_480p_cfg_step_distill_rank64_bf16'], use: 'Fast Effects', licence: 'Apache-2.0', url: 'https://huggingface.co/Kijai/WanVideo_comfy' },
       { name: 'MiniMax H3 Turbo (ref2v, 8 steps)', by: 'lightx2v', covers: ['ff_minimax_h3_ref2v_turbo_8step_v1_0_768p_comfyui_bf16'], use: 'Reshoot in 8 steps', url: 'https://huggingface.co/lightx2v/Minimax-h3-Turbo' },
       { name: 'FILM frame interpolation', by: 'Google Research', covers: ['ff_film_net_fp16'], use: 'Smooth and slow motion', licence: 'Apache-2.0', url: 'https://github.com/google-research/frame-interpolation' },
-      { name: 'Real-ESRGAN and RIFE', use: 'Upscaling and frame interpolation for finals in the cloud and on Linux', url: 'https://github.com/xinntao/Real-ESRGAN' },
+      { name: 'Real-ESRGAN and RIFE', covers: ['esrgan_x2'], use: 'Upscaling and frame interpolation for finals in the cloud, on Linux and on a Mac', url: 'https://github.com/xinntao/Real-ESRGAN' },
       { name: 'Turnaround LoRA (Contact-Sheet diffusion)', by: 'matlod', use: 'Characters: five views of a character from one picture', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/matlod/minimax-h3-turnaround' },
       { name: 'Camera Motion and Spatial Physics LoRAs', by: 'Jojocodex', use: 'Recommended LoRAs: camera moves, and objects that collide and fall believably', licence: 'Apache-2.0', url: 'https://huggingface.co/Jojocodex/minimax-h3-Camera-Motion-lora' },
       { name: 'Natural Face Speech LoRA', by: 'vpakarinen', use: 'Recommended LoRAs: natural faces and clear speech', licence: 'Apache-2.0', url: 'https://huggingface.co/vpakarinen/natural-face-speech-h3-lora' },
