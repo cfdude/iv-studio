@@ -567,19 +567,8 @@ app.whenReady().then(() => {
   handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, dataDir: DATA, dataSource: LOCATION.missing ? 'default' : LOCATION.source, portable: PORTABLE, mcp: mcpCommand(), testCopy: TEST_COPY, incognito: INCOGNITO, links }))
   // The window never sees the Comfy.org or Civitai key, only whether one is saved.
   // A saved key the system can't open counts as not saved (and is listed as unreadable); see service/secrets.js.
-  // The Hugging Face token and the OpenAI-compatible writer's key and headers go through the same readSecret rule
-  // (an unreadable or refused one counts as not saved) and their sealed values never leave.
-  const guardedHas = (s, name) => {
-    let available = false
-    try {
-      available = !!safeStorage.isEncryptionAvailable()
-    } catch {}
-    return available && readSecret(safeStorage, s[name]).state === 'ok'
-  }
-  const publicSettings = (s) => {
-    const { hfToken, openaiKey, openaiHeaders, ...rest } = s
-    return { ...projectSettings(rest, safeStorage, process.platform), hasHfToken: guardedHas(s, 'hfToken'), hasOpenaiKey: guardedHas(s, 'openaiKey'), hasOpenaiHeaders: guardedHas(s, 'openaiHeaders') }
-  }
+  // The Hugging Face token and the OpenAI-compatible writer's key and headers are saved secrets like the rest.
+  const publicSettings = (s) => projectSettings(s, safeStorage, process.platform)
   const secretNow = () => secretStates(readSettings(BASE), safeStorage, process.platform)
   const comfyKey = () => unseal(readSettings(BASE).comfyApiKey)
   // Anonymous usage counting and the cloud beta signup (usage.js): both off until the person says yes. A test copy
@@ -662,7 +651,7 @@ app.whenReady().then(() => {
   })
   // ---------- Comfy.org account (credits for partner nodes) ----------
   // account: { hasKey, balance, error, checking }. The balance is read on open, on a click and after each paid run.
-  let account = { hasKey: !!readSettings(BASE).comfyApiKey, balance: null, error: null, checking: false }
+  let account = { hasKey: publicSettings(readSettings(BASE)).hasComfyKey, balance: null, error: null, checking: false }
   // IV_STUDIO_COMFY_API points a test copy at a stand-in for api.comfy.org (test only).
   const accountApi = { base: process.env.IV_STUDIO_COMFY_API || undefined }
   const pushAccount = () => send('account:state', account)
@@ -1335,7 +1324,7 @@ app.whenReady().then(() => {
       // the last (or current) setup's progress, for a window that opens or reloads mid-setup
       setup: setupNow?.snapshot() || null,
       hasToken: have.cloudToken === 'ok',
-      hasHfToken: guardedHas(s, 'hfToken'),
+      hasHfToken: have.hfToken === 'ok',
       // saved keys and sign-ins that can't be opened, which the page offers to remove
       removable: removableSecrets(have)
     }
@@ -1903,10 +1892,10 @@ app.whenReady().then(() => {
     const s = readSettings(BASE)
     return { ...(await openaiStatus({ ...llmOf(s), provider: 'openai' })), model: s.openaiModel || '', vision: !!s.openaiVision }
   })
-  handle('prompts:status', async () => ({
+  handle('prompts:status', async () => ({ hasComfyKey: publicSettings(readSettings(BASE)).hasComfyKey,
     ...(await ollamaStatus()),
     openai: readSettings(BASE).promptEngine === 'openai' ? { ...(await openaiStatus({ ...llmOf(readSettings(BASE)), provider: 'openai' })), model: readSettings(BASE).openaiModel || '', vision: !!readSettings(BASE).openaiVision } : null,
-    engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: publicSettings(readSettings(BASE)).hasComfyKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: agentsStatus() }))
+    engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, contextIrPrice: CONTEXT_IR_PRICE, harnesses: agentsStatus() }))
   handle('prompts:write', (request) => {
     const s = readSettings(BASE)
     const w = writerOf(request?.engine ? { ...s, promptEngine: request.engine } : s)

@@ -753,12 +753,15 @@ function OpenAiWriter({ settings, setSettings, save, notify }) {
             </button>
           </div>
         ) : (
-          <div className="set-inline grow">
-            <input type="password" value={key} placeholder="sk-…" onChange={(e) => setKey(e.target.value)} autoComplete="off" aria-label="API key" />
-            <button className="btn btn-small" disabled={!key.trim()} onClick={() => secrets({ key }, () => setKey(''))}>
-              Save
-            </button>
-          </div>
+          <>
+            <RemoveSaved name="openaiKey" settings={settings} onRemove={() => secrets({ key: '' })} />
+            <div className="set-inline grow">
+              <input type="password" value={key} placeholder="sk-…" onChange={(e) => setKey(e.target.value)} autoComplete="off" aria-label="API key" />
+              <button className="btn btn-small" disabled={!key.trim()} onClick={() => secrets({ key }, () => setKey(''))}>
+                Save
+              </button>
+            </div          </div>
+          </>
         )}
       </SetField>
       <SetField label="Extra headers" tag="optional" hint="One per line, like X-Api-Version: 2. For providers that want more than a key. Stored encrypted; agents read them from IV_STUDIO_LLM_HEADERS.">
@@ -770,12 +773,15 @@ function OpenAiWriter({ settings, setSettings, save, notify }) {
             </button>
           </div>
         ) : (
-          <div className="set-inline grow">
-            <textarea rows={2} value={headers} placeholder="X-Header-Name: value" onChange={(e) => setHeaders(e.target.value)} aria-label="Extra headers" />
-            <button className="btn btn-small" disabled={!headers.trim()} onClick={() => secrets({ headers }, () => setHeaders(''))}>
-              Save
-            </button>
-          </div>
+          <>
+            <RemoveSaved name="openaiHeaders" settings={settings} onRemove={() => secrets({ headers: '' })} />
+            <div className="set-inline grow">
+              <textarea rows={2} value={headers} placeholder="X-Header-Name: value" onChange={(e) => setHeaders(e.target.value)} aria-label="Extra headers" />
+              <button className="btn btn-small" disabled={!headers.trim()} onClick={() => secrets({ headers }, () => setHeaders(''))}>
+                Save
+              </button>
+            </div          </div>
+          </>
         )}
       </SetField>
     </>

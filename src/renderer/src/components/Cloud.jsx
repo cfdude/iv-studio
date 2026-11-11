@@ -133,12 +133,22 @@ function CloudModelsStep({ st, busy, run, notify, refresh }) {
             </button>
           </p>
         ) : (
-          <div className="key-form">
-            <input type="password" placeholder="hf_…" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} aria-label="Hugging Face token" />
-            <button className="btn btn-small" disabled={!!busy || !token.trim()} onClick={() => save(token.trim())}>
-              Save token
-            </button>
-          </div>
+          <>
+            {st.removable?.includes('hfToken') && (
+              <p className="small">
+                The saved Hugging Face token can’t be read.{' '}
+                <button className="link-btn" disabled={!!busy} onClick={() => save('')}>
+                  Remove it
+                </button>
+              </p>
+            )}
+            <div className="key-form">
+              <input type="password" placeholder="hf_…" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} aria-label="Hugging Face token" />
+              <button className="btn btn-small" disabled={!!busy || !token.trim()} onClick={() => save(token.trim())}>
+                Save token
+              </button>
+            </div>
+          </>
         )}
       </div>
     </section>

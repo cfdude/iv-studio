@@ -21,7 +21,10 @@ const REMEDIES = {
   civitaiKey: { label: 'Civitai key', action: 'reenter', text: 'The saved Civitai key can’t be read. Enter it again.' },
   runpodKey: { label: 'RunPod key', action: 'reenter', text: 'The saved RunPod key can’t be read. Enter it again.' },
   cloudToken: { label: 'Cloud GPU (Modal)', action: 'setup', text: 'The saved cloud GPU sign-in can’t be read. Set the cloud GPU up again.' },
-  runpodToken: { label: 'Cloud GPU (RunPod)', action: 'setup', text: 'The saved cloud GPU sign-in can’t be read. Set the cloud GPU up again.' }
+  runpodToken: { label: 'Cloud GPU (RunPod)', action: 'setup', text: 'The saved cloud GPU sign-in can’t be read. Set the cloud GPU up again.' },
+  hfToken: { label: 'Hugging Face token', action: 'reenter', text: 'The saved Hugging Face token can’t be read. Enter it again.' },
+  openaiKey: { label: 'OpenAI-compatible writer key', action: 'reenter', text: 'The saved key for the OpenAI-compatible writer can’t be read. Enter it again.' },
+  openaiHeaders: { label: 'OpenAI-compatible writer headers', action: 'reenter', text: 'The saved headers for the OpenAI-compatible writer can’t be read. Enter them again.' }
 }
 export const SECRET_NAMES = Object.keys(REMEDIES)
 
@@ -87,7 +90,7 @@ export const tokenClearPatch = (name, states) => {
 // `secretStoreRefused` is true on a Mac whose Keychain access was denied: Settings then shows the
 // allow-in-Keychain text and Remove, with no key entry.
 export const projectSettings = (settings, store, platform) => {
-  const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, comfyCloudKey, ...rest } = settings
+  const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, comfyCloudKey, hfToken, openaiKey, openaiHeaders, ...rest } = settings
   const states = secretStates(settings, store, platform)
   return {
     ...rest,
@@ -95,6 +98,9 @@ export const projectSettings = (settings, store, platform) => {
     hasCloudToken: states.cloudToken === 'ok',
     hasCivitaiKey: states.civitaiKey === 'ok',
     hasRunpodKey: states.runpodKey === 'ok',
+    hasHfToken: states.hfToken === 'ok',
+    hasOpenaiKey: states.openaiKey === 'ok',
+    hasOpenaiHeaders: states.openaiHeaders === 'ok',
     unreadable: SECRET_NAMES.filter((n) => states[n] === 'unreadable'),
     removable: removableSecrets(states),
     secretStoreRefused: platform === 'darwin' && !storeAvailable(store)

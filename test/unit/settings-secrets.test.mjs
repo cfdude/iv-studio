@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { describe, test } from 'node:test'
-import { projectSettings, secretStates } from '../../src/service/secrets.js'
+import { projectSettings, secretRemedy, secretStates } from '../../src/service/secrets.js'
 import { keychainRefusedText } from '../../src/shared/platform.js'
 
 const sealed = (value) => Buffer.from(`ok:${value}`).toString('base64')
@@ -78,7 +78,7 @@ describe('projectSettings', () => {
 describe('secretStates', () => {
   test('gives each secret one state the main process can gate on', () => {
     const s = secretStates({ ...base, comfyApiKey: sealed('a'), civitaiKey: junk }, makeStore(), 'darwin')
-    assert.deepEqual(s, { comfyApiKey: 'ok', civitaiKey: 'unreadable', comfyCloudKey: 'absent', runpodKey: 'absent', cloudToken: 'absent', runpodToken: 'absent' })
+    assert.deepEqual(s, { comfyApiKey: 'ok', civitaiKey: 'unreadable', comfyCloudKey: 'absent', runpodKey: 'absent', cloudToken: 'absent', runpodToken: 'absent', hfToken: 'absent', openaiKey: 'absent', openaiHeaders: 'absent' })
   })
   test('refused on darwin is not ok for anything saved', () => {
     const s = secretStates({ ...base, comfyApiKey: sealed('a') }, makeStore(false), 'darwin')
@@ -103,6 +103,31 @@ describe('comfyCloudKey', () => {
     assert.equal('comfyCloudKey' in p, false)
     assert.deepEqual(p.unreadable, ['comfyCloudKey'])
     assert.deepEqual(p.removable, ['comfyCloudKey'])
+  })
+})
+
+describe('hfToken, openaiKey and openaiHeaders', () => {
+  test('are stripped from what the window gets, with has-flags only when they open', () => {
+    const p = projectSettings({ ...base, hfToken: sealed('hf_x'), openaiKey: sealed('sk-x'), openaiHeaders: sealed('X-A: 1') }, makeStore(), 'linux')
+    for (const k of ['hfToken', 'openaiKey', 'openaiHeaders']) assert.equal(k in p, false)
+    assert.equal(p.hasHfToken, true)
+    assert.equal(p.hasOpenaiKey, true)
+    assert.equal(p.hasOpenaiHeaders, true)
+  })
+  test('an unreadable one counts as not saved, is listed with its remedy, and can be removed', () => {
+    const p = projectSettings({ ...base, hfToken: junk, openaiKey: junk, openaiHeaders: junk }, makeStore(), 'linux')
+    assert.equal(p.hasHfToken, false)
+    assert.equal(p.hasOpenaiKey, false)
+    assert.equal(p.hasOpenaiHeaders, false)
+    assert.deepEqual(p.unreadable, ['hfToken', 'openaiKey', 'openaiHeaders'])
+    assert.deepEqual(p.removable, ['hfToken', 'openaiKey', 'openaiHeaders'])
+    for (const k of p.unreadable) assert.equal(secretRemedy(k).action, 'reenter')
+  })
+  test('a refused Mac Keychain shows them as not saved and removable', () => {
+    const p = projectSettings({ ...base, openaiKey: sealed('sk-x') }, makeStore(false), 'darwin')
+    assert.equal(p.hasOpenaiKey, false)
+    assert.equal(p.secretStoreRefused, true)
+    assert.deepEqual(p.removable, ['openaiKey'])
   })
 })
 
