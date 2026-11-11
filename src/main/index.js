@@ -1569,6 +1569,8 @@ app.whenReady().then(() => {
     }
     const vram = async () => {
       const d = findGpu((await studio.comfy.systemStats({ timeout: 4000 }).catch(() => null))?.devices)
+      // an Apple GPU shares the Mac's memory: the same figure as the meter, not ComfyUI's own free number
+      if (d?.type === 'mps') return ramUsed()
       return d ? d.vram_total - d.vram_free : null
     }
     const before = { vram: await vram(), ram: await ramUsed() }
