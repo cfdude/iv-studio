@@ -41,7 +41,14 @@ describe('voice setup', () => {
     }
   })
   test('the window sees the reason through the voices status', () => {
-    assert.match(Voices.prototype.status.call({ engine: make('darwin').e }).unavailable, /later release/)
+    assert.match(Voices.prototype.status.call({ engine: make('darwin').e, eng: Voices.prototype.eng }).unavailable, /later release/)
+  })
+  test('a Mac rendering on its own cloud uses the cloud’s voices: no later-release reason, and the page lets it through', () => {
+    const cloud = { status: () => ({ installed: true, installing: false, running: false, cloud: 'runpod', setup: {} }) }
+    const st = Voices.prototype.status.call({ engine: make('darwin').e, cloud: () => cloud, eng: Voices.prototype.eng })
+    assert.equal(st.unavailable, undefined)
+    assert.equal(st.cloud, 'runpod')
+    assert.match(fs.readFileSync('src/renderer/src/components/Voices.jsx', 'utf8'), /status\.unavailable && !status\.cloud/)
   })
   test('the voices page shows it', () => {
     assert.match(fs.readFileSync('src/renderer/src/components/Voices.jsx', 'utf8'), /status\.unavailable/)

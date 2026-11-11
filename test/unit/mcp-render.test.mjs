@@ -319,10 +319,12 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   })
 
   // ---------- rank_takes ----------
-  test('[mcp:rank_takes][ipc:rank:learn][ipc:rank:job] scores each take on motion and sharpness, marks the best with its reasons and saves it on the job', async () => {
+  test('[mcp:rank_takes][ipc:rank:learn][ipc:rank:job] scores each take on cuts, motion and sharpness, marks the best with its reasons and saves it on the job', async () => {
     const job = await finished({ projectName: 'Ranked shot' })
     const { ranking } = await ok('rank_takes', { jobId: job.id })
-    assert.deepEqual(ranking.measured, ['motion', 'sharpness'])
+    assert.deepEqual(ranking.measured, ['cuts', 'motion', 'sharpness'])
+    // the synthetic takes are one shot each: no cut away inside any of them
+    assert.ok(ranking.takes.every((t) => t.parts.cuts === 1), JSON.stringify(ranking.takes.map((t) => t.parts.cuts)))
     assert.deepEqual(ranking.takes.map((t) => t.candidate), [1, 2, 3])
     const [moving, frozen, blurred] = ranking.takes
     assert.equal(moving.best, true)
@@ -344,7 +346,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
     const { ranking, weights } = await ok('rank_takes', { jobId: job.id, picked: 2 })
     assert.equal(ranking.takes.length, 3)
     // take 2 froze, so motion was what set it apart: its weight moves down by 6 percent, the others stay
-    assert.deepEqual(weights, { words: 4, likeness: 2, motion: 1.41, sharpness: 1 })
+    assert.deepEqual(weights, { words: 4, likeness: 2, cuts: 2, frames: 1.5, motion: 1.41, sharpness: 1 })
     const saved = readData('rank-weights.json')
     assert.deepEqual(saved.weights, weights)
     assert.equal(saved.picks, 1)

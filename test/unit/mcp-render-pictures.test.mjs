@@ -59,9 +59,9 @@ describe('MCP picture tools', () => {
   })
 
   // ---------- list_image_models ----------
-  test('[mcp:list_image_models][ipc:images:status] lists the eight families, none ready on a ComfyUI with no image models', async () => {
+  test('[mcp:list_image_models][ipc:images:status] lists the nine families, none ready on a ComfyUI with no image models', async () => {
     const { families, aspects, defaults } = await ok('list_image_models')
-    assert.deepEqual(families.map((f) => f.id), ['flux2', 'flux3', 'krea2', 'moss', 'qwen21', 'zimage', 'sdxl', 'h3'])
+    assert.deepEqual(families.map((f) => f.id), ['flux2', 'flux3', 'krea2', 'moss', 'qwen21', 'zimage', 'sdxl', 'h3image', 'h3'])
     assert.ok(families.every((f) => f.ready === false && f.models.length === 0 && f.edit === false))
     assert.deepEqual(aspects, ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9'])
     assert.deepEqual(defaults, { aspect: '1:1', megapixels: 1, count: 1 })
@@ -141,7 +141,7 @@ describe('MCP picture tools', () => {
       await fails('make_image', { mode: 'edit', model: FLUX2, prompt: 'x' }, /^Add the picture to edit\.$/)
       await fails('make_image', { mode: 'edit', model: FLUX2, prompt: 'x', refs: [path.join(path.dirname(picture), 'gone.png')] }, /No picture at .*gone\.png\./)
       await fails('make_image', { model: ZIMAGE, prompt: 'x', count: 5 }, /count/i)
-      await fails('make_image', { model: ZIMAGE, prompt: 'x', megapixels: 9 }, /megapixels/i)
+      await fails('make_image', { model: ZIMAGE, prompt: 'x', megapixels: 25 }, /megapixels/i)
       assert.equal(fake.prompts.length, queued)
     } finally {
       fake.setObjectInfo({})
@@ -149,7 +149,7 @@ describe('MCP picture tools', () => {
     // a family whose text encoder is missing is named as not ready
     fake.setObjectInfo({ ...OBJECT_INFO, CLIPLoader: { input: { required: { clip_name: [['other.safetensors']], type: [['lumina2']] } } } })
     try {
-      await fails('make_image', { model: ZIMAGE, prompt: 'x' }, /^Z-Image Turbo needs text encoder qwen_3_4b\.safetensors\.$/)
+      await fails('make_image', { model: ZIMAGE, prompt: 'x' }, /^Z-Image Turbo needs text encoder qwen_3_4b_fp8_mixed\.safetensors\.$/)
     } finally {
       fake.setObjectInfo({})
     }

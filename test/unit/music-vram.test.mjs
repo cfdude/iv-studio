@@ -92,13 +92,16 @@ describe('Music.status VRAM', () => {
     assert.equal(s.engines.find((e) => e.id === 'minimax').files.music3_dit, `MiniMax\\${dit.match}`)
   })
 
-  test('a remote (token) ComfyUI is reported as remote and not ready, without asking it anything', async () => {
+  test('an own-cloud (token) ComfyUI reports music from its model list, without waking the GPU to ask for its memory', async () => {
+    fake.setObjectInfo(objectInfoWithMusicModels())
     const before = fake.requests.length
-    const remote = new Music({ studio: { comfy: new Comfy(fake.url, 'iv-studio', 'tok'), manifest }, dataDir: os.tmpdir(), probe: null })
-    const s = await remote.status()
-    assert.equal(s.remote, true)
-    assert.equal(s.ready, false)
-    assert.equal(fake.requests.length, before)
+    const own = new Music({ studio: { comfy: new Comfy(fake.url, 'iv-studio', 'tok'), manifest }, dataDir: os.tmpdir(), probe: null })
+    const s = await own.status()
+    const asked = fake.requests.slice(before).map((r) => r.path)
+    assert.ok(asked.includes('/object_info'), asked.join())
+    assert.ok(!asked.includes('/system_stats'), 'no GPU woken for its memory')
+    assert.equal(s.error, undefined)
+    assert.ok(s.engines.some((e) => e.id === 'minimax'))
   })
 
   test('ComfyUI down: status carries the error and no engine is ready', async () => {
