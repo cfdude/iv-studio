@@ -649,6 +649,27 @@ describe('guard: the channel trace', () => {
     assert.equal(fs.readFileSync(file, 'utf8').includes('secret words'), false)
   })
 
+  test('the open-call count is kept in a file: up while a handler runs, back to zero when it finishes or throws', async () => {
+    const dir = makeTempDir('iv-ipc-trace-')
+    const file = path.join(dir, 'ipc-trace.jsonl')
+    const inflightFile = path.join(dir, 'ipc-inflight')
+    const registered = {}
+    const ipcMain = { handle: (channel, fn) => void (registered[channel] = fn) }
+    installIpcTrace(ipcMain, { file, inflightFile })
+    let release
+    ipcMain.handle('slow:read', () => new Promise((r) => (release = r)))
+    ipcMain.handle('x:y', () => {
+      throw new Error('boom')
+    })
+    const pending = registered['slow:read']({})
+    assert.equal(fs.readFileSync(inflightFile, 'utf8'), '1')
+    release(1)
+    await pending
+    assert.equal(fs.readFileSync(inflightFile, 'utf8'), '0')
+    await assert.rejects(async () => registered['x:y']({}), /boom/)
+    assert.equal(fs.readFileSync(inflightFile, 'utf8'), '0')
+  })
+
   test('a handler that throws is still recorded, and its error still reaches the caller', async () => {
     const dir = makeTempDir('iv-ipc-trace-')
     const file = path.join(dir, 'ipc-trace.jsonl')

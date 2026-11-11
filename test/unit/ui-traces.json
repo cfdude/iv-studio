@@ -676,10 +676,6 @@
       "args": "[]"
     },
     {
-      "channel": "agents:setup",
-      "args": "[]"
-    },
-    {
       "channel": "chat:forwardAsk",
       "args": "[{id:string,what:string}]"
     },

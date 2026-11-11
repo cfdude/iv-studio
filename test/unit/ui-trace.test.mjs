@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, test } from 'node:test'
-import { checkRow, compareTraces, normalize, POLLED, readTraces } from '../ui/trace.mjs'
+import { checkRow, compareTraces, normalize, POLLED, readTraces, rowCalls, untilCallsSettle } from '../ui/trace.mjs'
 import { tempDirReal } from '../fakes/tmp.mjs'
 
 const c = (channel, args = '[]') => ({ channel, args })
@@ -135,5 +135,48 @@ describe('trace: when ui-traces.json is read and when it is written', () => {
     const file = temp()
     checkRow({ file, id: 'journey:y', calls: [c('a')], update: true })
     assert.deepEqual(readTraces(file), { 'journey:y': [c('a')] })
+  })
+})
+
+describe('trace: the start-up calls land in a row, never split by when the window happens to make them', () => {
+  // a fake window: each turn of the page lets `script[turn]` calls land; `inflight` is the main process's open calls
+  const window = (script, inflight = () => 0) => {
+    const calls = []
+    let turn = 0
+    return {
+      calls,
+      trace: () => calls,
+      inflight,
+      turn: async () => void calls.push(...(script[turn++] || []).map((n) => c(n)))
+    }
+  }
+
+  test('it waits out a late start-up call: calls that land on later turns are in before it returns', async () => {
+    const w = window([[], ['settings:get'], [], ['app:info'], [], [], [], [], []])
+    await untilCallsSettle(w)
+    assert.deepEqual(w.calls.map((x) => x.channel), ['settings:get', 'app:info'])
+  })
+
+  test('it does not return while the main process still has a call open, even with no new call recorded', async () => {
+    let open = 4
+    const w = window([], () => (open > 0 ? open-- : 0))
+    await untilCallsSettle(w)
+    assert.equal(open, 0)
+  })
+
+  test('it gives up, naming what is still arriving, instead of waiting forever', async () => {
+    const w = window(Array.from({ length: 500 }, () => ['x']))
+    await assert.rejects(untilCallsSettle(w, { maxTurns: 50 }), /still making calls/)
+  })
+
+  test('the polls are not calls the window made for the page: they never hold the wait open', async () => {
+    const w = window(Array.from({ length: 30 }, () => ['queue:list', 'system:stats']))
+    await untilCallsSettle(w, { maxTurns: 20 })
+  })
+
+  test('the first row after a launch that asks for it is the start-up calls (before the settle point) plus its own, nothing in between', () => {
+    const trace = [c('settings:get'), c('app:info'), c('folders:videos'), c('own')]
+    assert.deepEqual(rowCalls(trace, { mark: 3, startup: 2 }), [c('settings:get'), c('app:info'), c('own')])
+    assert.deepEqual(rowCalls(trace, { mark: 3, startup: 0 }), [c('own')])
   })
 })
