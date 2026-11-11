@@ -14,6 +14,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { seedSettings } from '../fakes/mcp.mjs'
 import { guardState, registerPort, registerProgram } from '../fakes/ports.mjs'
+import { untilCallsSettle } from './trace.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 export const ROOT = path.resolve(here, '../..')
@@ -63,6 +64,7 @@ export function electronEnv(shellEnv, { home, data, userData, runDir, ports = []
     HOME: home,
     IV_STUDIO_DATA: data,
     IV_STUDIO_USER_DATA: userData,
+    IV_STUDIO_UI_HIDDEN: '1', // windows never show (src/service/uihidden.js); honoured only with IV_STUDIO_DATA and IV_TEST_RUN_DIR
     IV_TEST_RUN_DIR: runDir,
     IV_TEST_ALLOW_PORTS: ports.join(','),
     NODE_OPTIONS: `--import=${GUARD_URL}`
@@ -297,6 +299,20 @@ export async function launchApp({ name = 'app', fake = null, settings = {}, time
           return []
         }
       },
+      // the calls the main process has open right now (the guard keeps the count in a file)
+      inflight: () => {
+        try {
+          return Number(fs.readFileSync(path.join(runDir, 'ipc-inflight'), 'utf8')) || 0
+        } catch {
+          return 0
+        }
+      },
+      // returns once the window has stopped making calls (trace.mjs untilCallsSettle): one turn of the page is a round
+      // trip that lets whatever it has queued run
+      calmed: () =>
+        untilCallsSettle({ trace: () => app.ipcTrace(), inflight: () => app.inflight(), turn: () => app.evaluate(`new Promise((r) => setTimeout(r, 0))`) }),
+      // how many calls had landed when the window's start-up settled (set below, before the first test runs)
+      startupCalls: 0,
       // runs an expression in the window and returns its value; a thrown error or a rejected promise throws here
       async evaluate(expression) {
         const r = await cdp.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
@@ -339,6 +355,13 @@ export async function launchApp({ name = 'app', fake = null, settings = {}, time
         fs.rmSync(base, { recursive: true, force: true })
       }
     }
+    // the app has started once its sidebar is there (the page's first calls follow its first render), and its start-up
+    // calls have all landed once the window has stopped making them
+    for (const until = Date.now() + timeoutMs; !(await app.evaluate(`!!document.querySelector('.nav .nav-item')`)); await sleep(100)) {
+      if (Date.now() > until) throw new Error('The app opened a window but its sidebar never appeared.')
+    }
+    await app.calmed()
+    app.startupCalls = app.ipcTrace().length
     return app
   } catch (e) {
     await kill()

@@ -12,6 +12,7 @@ import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
 import { SEEDVR2_DEVICE, seedvr2Refusal } from './gpu.js'
 import { planFinish, planPreviews } from './plan.js'
+import { defaultEnhancer } from '../renderer/src/finish.js'
 import { applyFinishSpeed, applySpeed } from './speed.js'
 import { adaptGraph, capabilities, finishCaps, LIVE_NODE, NO_RIFE, NO_UPSCALER, withLivePreview } from './remote.js'
 import { Cast, resolveMentions } from './cast.js'
@@ -385,6 +386,12 @@ export class Studio {
     return this._caps
   }
 
+  // The enhancer a finish uses when none is named: this ComfyUI's own default (finish.js). Before ComfyUI has been
+  // read it is DLSS 5, as it always was; the planners say what finish_candidate will run once it has.
+  defaultFinishEnhancer() {
+    return defaultEnhancer(this._caps, this.comfy?.hosted)
+  }
+
   // ---------- planning ----------
   // With @ mentions resolved as a render would (cast.js); notes says what they turned into.
   planRender(given, finish) {
@@ -392,7 +399,7 @@ export class Studio {
     const { request, notes } = resolveMentions(applySpeed(given), this.cast.members())
     const plan = planPreviews(request, this.characters())
     const out = { resolved: plan.resolved, groups: plan.groups, notes, mode: request.mode }
-    if (finish !== false) out.finish = planFinish(plan, { candidate: 1, ...(finish || {}) }).resolved
+    if (finish !== false) out.finish = planFinish(plan, { candidate: 1, ...(finish || {}), enhancer: finish?.enhancer || this.defaultFinishEnhancer() }).resolved
     return out
   }
 
@@ -446,7 +453,7 @@ export class Studio {
     const source = this.getJob(jobId)
     if (source.kind !== 'previews') throw new Error('Needs a previews job id.')
     if (source.plan?.engine === SEEDANCE) return this.seedanceFinishPlan(source, finish)
-    return planFinish(source.plan, finish).resolved
+    return planFinish(source.plan, { ...finish, enhancer: finish?.enhancer || this.defaultFinishEnhancer() }).resolved
   }
 
   // fallbackSpeed: the saved preset, for a shot made without one; the shot's own preset wins
@@ -455,6 +462,8 @@ export class Studio {
     if (source.kind !== 'previews') throw new Error('finish_candidate needs a previews job id.')
     if (source.plan?.engine === SEEDANCE) return this.seedanceFinish(source, given)
     const caps = await this.capabilities()
+    // no enhancer named: this machine's own default (an Apple GPU, or any ComfyUI without DLSS 5, gets the upscale)
+    if (!given.enhancer) given.enhancer = defaultEnhancer(caps, this.comfy.hosted)
     // the 'upscale' enhancer has its own limits (Real-ESRGAN, RIFE); the others are the ComfyUI's
     const finish = applyFinishSpeed(given, speed || source.plan.request?.speed || fallbackSpeed, finishCaps(caps, given.enhancer))
     const can = finish.enhancer === 'upscale' ? finishCaps(caps, 'upscale') : caps

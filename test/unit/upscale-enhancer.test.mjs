@@ -67,6 +67,43 @@ describe('Studio.finishCandidate with the upscale enhancer', () => {
   })
 })
 
+describe('Studio.finishCandidate with no enhancer named (the MCP default)', () => {
+  const preview = { request: { mode: 'text', seed: 1 }, groups: ['x'], values: {}, resolved: { width: 864, height: 480, frames: 124, seconds: 5.167, previews: 3 } }
+  // what an agent that names no enhancer gets, by the machine's ComfyUI
+  const picked = async (objectInfo, device, remote = false) => {
+    let queued = null
+    const stub = {
+      comfy: { remote, hosted: remote },
+      capabilities: async () => capabilities(objectInfo, { system: { os: 'posix' }, devices: [device] }),
+      getJob: () => ({ kind: 'previews', plan: preview, name: 'n', projectId: 'p', id: 'j' }),
+      getProject: () => ({}),
+      submit: async (job) => ((queued = job), job)
+    }
+    await Studio.prototype.finishCandidate.call(stub, { jobId: 'j' })
+    return queued.plan.finish.enhancer
+  }
+  test('[mcp:finish_candidate] an Apple GPU finishes with the upscale, not DLSS 5', async () => {
+    assert.equal(await picked(BOTH, mps), 'upscale')
+    assert.equal(await picked({ DLSS5_Enhance_Video: {}, ...BOTH }, mps), 'upscale')
+  })
+  test('[mcp:finish_candidate] a machine without DLSS 5 finishes with the upscale; one with it keeps DLSS 5', async () => {
+    assert.equal(await picked(BOTH, cuda), 'upscale')
+    assert.equal(await picked({ DLSS5_Enhance_Video: {}, ...BOTH }, cuda), 'dlss')
+  })
+  // the planners that never run a finish say the same enhancer the finish will use, once ComfyUI has been read
+  test('planFinishJob and plan_render name the machine\'s default, so a plan matches what finish_candidate runs', () => {
+    const stub = (caps) => ({ _caps: caps, comfy: {}, defaultFinishEnhancer: Studio.prototype.defaultFinishEnhancer, getJob: () => ({ kind: 'previews', plan: preview }) })
+    const macCaps = capabilities(BOTH, { system: { os: 'posix' }, devices: [mps] })
+    assert.equal(Studio.prototype.planFinishJob.call(stub(macCaps), 'j', {}).enhancer, 'upscale')
+    assert.equal(Studio.prototype.planFinishJob.call(stub(macCaps), 'j', { enhancer: 'seedvr2' }).enhancer, 'seedvr2', 'a named enhancer is kept')
+    assert.equal(Studio.prototype.planFinishJob.call(stub(null), 'j', {}).enhancer, 'dlss', 'before ComfyUI is read, as it always was')
+    assert.match(fs.readFileSync('src/mcp/server.js', 'utf8'), /tool\('plan_render'[\s\S]{0,600}await studio\.capabilities\(\)/)
+  })
+  test('the schema leaves the enhancer to the machine instead of defaulting it to dlss', () => {
+    assert.doesNotMatch(fs.readFileSync('src/mcp/server.js', 'utf8'), /enhancer: z\.enum\(\['dlss', 'seedvr2', 'upscale'\]\)\.default\('dlss'\)/)
+  })
+})
+
 describe('MCP finish_candidate with the upscale enhancer on an Apple GPU ComfyUI that has both finishers', () => {
   let fake, mcp
   const call = (name, args = {}) => mcp.client.callTool({ name, arguments: args })

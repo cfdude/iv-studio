@@ -22,7 +22,7 @@ describe('page tier: the app runs guarded, in temporary folders', () => {
   let prefsBefore
   let outsider // a plain local server on a port no fake registered: a real ComfyUI on 8188, say
   const outsiderHits = []
-  traceRows(import.meta.url, () => app)
+  traceRows(import.meta.url, () => app, { startup: true })
 
   before(async () => {
     before_ = REAL_FOLDERS.map((d) => listing(d))

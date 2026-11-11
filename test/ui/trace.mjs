@@ -79,6 +79,35 @@ export function compareTraces(expected, live) {
   return { same: false, diff: [...removed, ...added].join('\n') }
 }
 
+// The calls a row owns: everything from its mark on, and, for the first row after a launch that asks for it
+// (`startup` = how many calls had landed when the window's start-up settled), those start-up calls first. The calls other
+// tests made in between belong to no row.
+export const rowCalls = (trace, { mark, startup = 0 }) => [...trace.slice(0, startup), ...trace.slice(mark)]
+
+// Returns once the window has stopped making calls: the main process has none open, and a few turns of the page in a
+// row brought no new call (the polls do not count). It is a barrier, not a sleep: each turn lets the page run what it
+// has queued (an effect that fires after an answer arrives). It cannot see a timer the page set for later, which is why
+// the polls are left out of a row and the rest are not allowed to be long. Throws after `maxMs` of wall clock, saying
+// whether calls were still arriving or still open (a loop of calls, or a handler that never answers, is worth a failure).
+//   w: { trace() the calls so far, inflight() the calls open in the main process, turn() one turn of the page }
+export async function untilCallsSettle(w, { quiet = 5, maxTurns = Infinity, maxMs = 30000 } = {}) {
+  const made = () => w.trace().filter((c) => !POLLED.includes(c.channel)).length
+  const until = Date.now() + maxMs
+  let last = -1
+  let still = 0
+  let open = 0
+  for (let i = 0; i < maxTurns && Date.now() < until; i++) {
+    await w.turn()
+    const n = made()
+    open = await w.inflight()
+    if (n === last && open === 0) still++
+    else still = 0
+    last = n
+    if (still >= quiet) return
+  }
+  throw new Error(`the window was still making calls (last: ${w.trace().at(-1)?.channel}) or the main process still had ${open} open after ${maxMs} ms`)
+}
+
 export function readTraces(file = TRACE_FILE) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'))
@@ -125,20 +154,27 @@ export function knownRows(dir = here) {
 // Call inside a describe, with import.meta.url and a function returning that describe's launched app. Each test whose
 // name carries a `[page:<id>]` or `[journey:<id>]` has the calls made during it added to that row; when the row's last
 // test ends, the row is compared (or, on an update run, recorded). A mismatch fails that last test, naming the row.
-export function traceRows(fileUrl, getApp, { file = TRACE_FILE, update = updating() } = {}) {
+export function traceRows(fileUrl, getApp, { file = TRACE_FILE, update = updating(), startup = false } = {}) {
   const tests = scanTestNames(fs.readFileSync(fileURLToPath(fileUrl), 'utf8'), 'file').tests.filter((t) => t.kind === 'test' && !t.skipped)
   const left = new Map()
   for (const t of tests) for (const id of rowIdsIn(t.name).filter(isRow)) left.set(id, (left.get(id) || 0) + 1)
   const rows = new Map()
   const known = update ? knownRows() : null
   let mark = 0
-  beforeEach(() => {
+  let first = true // the first row test after the launch owns the start-up calls, when `startup` is set
+  // Both ends wait for the window to stop calling first, so a call the page makes late (its start-up, an effect after an
+  // answer) is in the row whose test caused it and never in the next one, whatever the machine's speed.
+  beforeEach(async () => {
+    await getApp().calmed()
     mark = getApp().ipcTrace().length
   })
-  afterEach((t) => {
+  afterEach(async (t) => {
     const ids = rowIdsIn(t.name).filter(isRow)
     if (!ids.length) return
-    const calls = getApp().ipcTrace().slice(mark)
+    await getApp().calmed()
+    const own = first && startup
+    first = false
+    const calls = rowCalls(getApp().ipcTrace(), { mark, startup: own ? getApp().startupCalls : 0 })
     const problems = []
     for (const id of ids) {
       const row = rows.get(id) || { calls: [], failed: false }

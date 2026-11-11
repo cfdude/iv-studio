@@ -307,7 +307,7 @@ const finish = {
   fps: z.number().int().default(0).describe(`Frame generation: ${FRAME_GEN_FPS.join(', ')} (0 = off)`),
   audio: z.enum(['pass', 'preview', 'voice']).default('pass').describe('Final sound: the 2 MP pass, the picked preview (keeps a cloned voice), or the voice line itself'),
   rerollSeed: z.number().int().optional(),
-  enhancer: z.enum(['dlss', 'seedvr2', 'upscale']).default('dlss').describe('dlss: DLSS 5 in the finish (noise reduction, upscale2x, fps). upscale: no DLSS 5; the finish\'s own Real-ESRGAN 2x (upscale2x) and RIFE frame rate (fps 48, 72 or 120), what a Mac uses; needs Real-ESRGAN x2 (a model) and the RIFE node pack, both in Setup on a Mac or Linux. seedvr2: the finish skips DLSS and SeedVR2 then restores detail to enhanceResolution (24 fps); follow the enhanceJob of the finish job with get_job'),
+  enhancer: z.enum(['dlss', 'seedvr2', 'upscale']).optional().describe('Default: dlss where DLSS 5 is installed, else upscale (always upscale on a Mac). dlss: DLSS 5 in the finish (noise reduction, upscale2x, fps). upscale: no DLSS 5; the finish\'s own Real-ESRGAN 2x (upscale2x) and RIFE frame rate (fps 48, 72 or 120), what a Mac uses; needs Real-ESRGAN x2 (a model) and the RIFE node pack, both in Setup on a Mac or Linux. seedvr2: the finish skips DLSS and SeedVR2 then restores detail to enhanceResolution (24 fps); follow the enhanceJob of the finish job with get_job'),
   enhanceResolution: z.union([z.literal(1080), z.literal(1440), z.literal(2160)]).default(1080).describe('seedvr2: the short side'),
   dlssStrength: z.number().min(0).max(2).optional().describe("DLSS 5's strength (its noise reduction), 0-2; 0.8 is IV Studio's tested default. Higher adds contrast and skin texture; lower stays closest to the take"),
   dlssStyle: z.enum(['Default', 'Natural', 'Cinematic']).optional().describe("DLSS 5's look"),
@@ -352,8 +352,9 @@ tool('update_comfy', "Update this computer's ComfyUI through ComfyUI-Manager: sa
 tool('undo_comfy_update', "Undo the last update_comfy (or the Setup screen's Update everything): restores the snapshot it saved and restarts ComfyUI. Afterwards it switches back on any pack ComfyUI-Manager's restore switched off (plain folders a snapshot can't track, IV Studio's own pack among them) and restarts again; reenabled lists them. If ComfyUI isn't running, the snapshot is set to restore at its next start (startNeeded: true): start ComfyUI, then call this again to finish.", {}, () => studio.undoComfyUpdate({ folder: readSettings(BASE).comfyFolder || null }))
 tool('list_characters', 'Character presets (LoRA, strength, trigger word).', {}, () => studio.characters())
 tool('list_projects', 'Projects in the IV Studio library, newest first.', {}, () => studio.listProjects())
-tool('plan_render', 'Validate a request and resolve size, frames, duration, seeds and the finished size, without rendering.', { ...request, finish: z.object(finish).partial().optional() }, ({ finish: f, ...r }) => {
+tool('plan_render', 'Validate a request and resolve size, frames, duration, seeds and the finished size, without rendering.', { ...request, finish: z.object(finish).partial().optional() }, async ({ finish: f, ...r }) => {
   const req = applySpeed(r, savedSpeed(readSettings(BASE)))
+  await studio.capabilities().catch(() => null) // so the plan names the enhancer the finish will use
   return studio.planRender(req, applyFinishSpeed(f || {}, req.speed))
 })
 tool('get_speeds', "The speed presets (Quality, Balanced, Fast, Low memory): what each sets for previews and the finish, what it trades, rough times measured on an RTX 4090, and which one is saved in Settings → Your computer (Check my computer picks it from the graphics card). Pass speed to generate_previews, plan_render or finish_candidate to use another.", {}, () => ({ saved: savedSpeed(readSettings(BASE)), speeds: SPEED_IDS.map((id) => ({ id, ...SPEEDS[id] })) }))

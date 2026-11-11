@@ -575,8 +575,21 @@ export function shapeOf(v) {
 // { channel, args } (the argument shapes, without Electron's event). The real handler runs unchanged. This is the
 // page tier's channel trace (design D10): `window.ivstudio` is made by contextBridge, and the main process is where
 // every call arrives, whoever made it. Test code, not product code.
-export function installIpcTrace(ipcMain, { file }) {
+export function installIpcTrace(ipcMain, { file, inflightFile = null }) {
   const real = ipcMain.handle.bind(ipcMain)
+  // how many calls the main process has open (taken and not yet answered), kept in a file so the page tier can tell
+  // when the window's start-up calls have all landed and been answered
+  let open = 0
+  const count = (n) => {
+    open += n
+    if (!inflightFile) return
+    try {
+      fs.writeFileSync(`${inflightFile}.tmp`, String(open))
+      fs.renameSync(`${inflightFile}.tmp`, inflightFile) // never read half-written
+    } catch {
+      /* the run folder is gone */
+    }
+  }
   ipcMain.handle = (channel, listener) =>
     real(channel, (event, ...args) => {
       try {
@@ -584,7 +597,18 @@ export function installIpcTrace(ipcMain, { file }) {
       } catch {
         /* the run folder is gone */
       }
-      return listener(event, ...args)
+      count(1)
+      let result
+      try {
+        result = listener(event, ...args)
+      } catch (e) {
+        count(-1)
+        throw e
+      }
+      return Promise.resolve(result).then(
+        (v) => (count(-1), v),
+        (e) => (count(-1), Promise.reject(e))
+      )
     })
   return ipcMain
 }
@@ -638,7 +662,7 @@ if (!state.loaded) {
       const answers = JSON.parse(fs.readFileSync(path.join(here, 'dialog-answers.json'), 'utf8'))
       const electron = require('electron')
       installElectronStubs(electron, { answers, tempDir: path.join(state.runDir, 'dialogs') })
-      installIpcTrace(electron.ipcMain, { file: path.join(state.runDir, 'ipc-trace.jsonl') })
+      installIpcTrace(electron.ipcMain, { file: path.join(state.runDir, 'ipc-trace.jsonl'), inflightFile: path.join(state.runDir, 'ipc-inflight') })
       pinElectronPaths(electron.app, process.env.HOME)
       electronApp = electron.app
     } catch (e) {

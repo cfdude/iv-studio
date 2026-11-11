@@ -301,6 +301,16 @@
       "name": "APPIMAGE",
       "why": "Linux location, read only, unset on a Mac",
       "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_UI_HIDDEN",
+      "why": "page tier only: windows never show; counts only with IV_STUDIO_DATA",
+      "source": "src/service/uihidden.js:5"
+    },
+    {
+      "name": "IV_TEST_RUN_DIR",
+      "why": "page tier only: the run folder the driver makes; with IV_STUDIO_DATA it is what lets IV_STUDIO_UI_HIDDEN hide the windows",
+      "source": "src/service/uihidden.js:5"
     }
   ]
 }

@@ -71,7 +71,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
     assert.deepEqual(plan.resolved, { width: 864, height: 480, frames: 124, seconds: 5.167, fps: 24, previews: 3, model: 'fl2va', seeds: [4242, 5242, 6242] })
     assert.equal(plan.mode, 'text')
     assert.deepEqual(plan.notes, [])
-    assert.deepEqual(plan.finish, { width: 1952, height: 1088, enhancer: 'dlss', upscaleSize: { width: 1952, height: 1088 }, fps: 24, frames: 124, seconds: 5.167, singlePass: false })
+    assert.deepEqual(plan.finish, { width: 1952, height: 1088, enhancer: 'upscale', upscaleSize: { width: 1952, height: 1088 }, fps: 24, frames: 124, seconds: 5.167, singlePass: false })
     const custom = await ok('plan_render', { prompt: PROMPT, character: 'none', seed: 7, previews: 2, aspect: '9:16', seconds: 8 })
     assert.deepEqual(custom.resolved.seeds, [7, 1007])
     assert.equal(custom.resolved.previews, 2)
