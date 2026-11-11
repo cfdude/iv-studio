@@ -643,7 +643,10 @@ tool('caption_edit', `Put captions on an edit: Whisper (the voice engine) hears 
   style: z.object({ size: z.number().min(2).max(30).optional(), position: z.enum(['top', 'center', 'bottom']).optional(), color: z.string().optional(), box: z.boolean().optional() }).optional(),
   maxWords: z.number().int().min(2).max(14).default(7).describe('Most words on one line')
 }, async ({ editId, tracks, style, maxWords }) => {
-  if (!(await voices.status()).installed) throw new Error('Captions need the voice engine (its Whisper hears the words). Ask the person to press Set up voices on Audio > Voices, or run setup_voices with their OK.')
+  const vs = await voices.status()
+  // a Mac has no local voice engine yet: say so, rather than point at a setup that refuses
+  if (!vs.installed && vs.unavailable) throw new Error(`Captions need the voice engine (its Whisper hears the words). ${vs.unavailable}`)
+  if (!vs.installed) throw new Error('Captions need the voice engine (its Whisper hears the words). Ask the person to press Set up voices on Audio > Voices, or run setup_voices with their OK.')
   const e = edits.get(editId)
   const hear = async (c, m) => {
     const wav = await clipAudio(edits.ffmpeg, m.path, c.in, clipLength(c))
