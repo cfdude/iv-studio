@@ -174,7 +174,7 @@ export class Reviewer {
     try {
       const job = this.studio().getJob(jobId, { refresh: false })
       const t = this.take(job, candidate)
-      if (!t) throw new Error('That take has no video on this PC to review.')
+      if (!t) throw new Error('That take has no video on this computer to review.')
       const req = t.brief.plan?.request || {}
       const prompt = t.brief.plan?.asked?.prompt ?? req.prompt ?? ''
       const character = req.character && req.character !== 'none' ? this.studio().characters().find((c) => c.id === req.character) : null

@@ -379,7 +379,7 @@ describe('MCP rebuild tools', { skip: process.platform === 'win32' && 'the agent
     const ready = await ok('get_rebuild', { rebuildId: r.id })
     assert.deepEqual(Object.values(ready.takes).map((t) => [t.candidate, t.status]), [[1, 'done'], [2, 'done']])
     assert.equal(ready.status, 'ready')
-    for (const t of Object.values(ready.takes)) assert.equal(t.final, final, 'the finished video ComfyUI saved (already on this PC, so not copied)')
+    for (const t of Object.values(ready.takes)) assert.equal(t.final, final, 'the finished video ComfyUI saved (already on this computer, so not copied)')
   })
 
   // ---------- rebuild_first_cut ----------

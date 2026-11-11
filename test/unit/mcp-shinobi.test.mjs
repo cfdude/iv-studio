@@ -56,7 +56,7 @@ describe('MCP Shinobi tools', () => {
     assert.match(r.faceLicence, /non-commercial/)
     assert.equal(r.faceSize, 288621354)
     assert.deepEqual(r.projects, [])
-    assert.ok(r.browser === null || typeof r.browser === 'string', 'the browser Shinobi would render with, if the PC has one')
+    assert.ok(r.browser === null || typeof r.browser === 'string', 'the browser Shinobi would render with, if the computer has one')
   })
 
   test('[mcp:shinobi_status][ipc:shinobi:status][ipc:shinobi:projects] lists the projects once the engine is installed, newest first, with media, renders and a cover', async () => {

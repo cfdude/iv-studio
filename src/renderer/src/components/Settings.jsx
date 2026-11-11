@@ -16,7 +16,7 @@ const open = (url) => window.ivstudio.links.open(url)
 
 // The page's topics, in order: the index on the left and each card's number come from here.
 const SECTIONS = [
-  ['pc', 'Your PC'],
+  ['pc', 'Your computer'],
   ['access', 'Accessibility'],
   ['comfy', 'ComfyUI'],
   ['folders', 'Folders'],
@@ -48,11 +48,11 @@ function PcCard({ n, settings }) {
     <SetCard
       id="pc"
       n={n}
-      title="Your PC"
+      title="Your computer"
       sub="What this computer can do, and the defaults that suit it."
       aside={
         <button className="btn btn-small" onClick={check}>
-          {hw ? 'Check again' : 'Check my PC'}
+          {hw ? 'Check again' : 'Check my computer'}
         </button>
       }
     >
@@ -176,7 +176,7 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
       </SetField>
       {l && !l.local && (
         <SetField label="Starting it">
-          <p className="small dim set-plain">IV Studio can start ComfyUI only when it runs on this PC.</p>
+          <p className="small dim set-plain">IV Studio can start ComfyUI only when it runs on this computer.</p>
         </SetField>
       )}
       {l?.local && (
@@ -269,7 +269,7 @@ function FolderCard({ n, settings, setSettings, notify, incognito }) {
       aside={incognito ? <Pill tone="warn">In Incognito now</Pill> : null}
       foot={`Use a folder name, or a path such as Studio\\Private; it always stays inside ComfyUI’s folders. Pictures, videos and sounds you add in Incognito go into input\\${hidden.trim() || 'IV Private'}.`}
     >
-      <SetField label="Finished videos" hint={`Films and edits you export, and cloud renders brought to this PC.${videos?.free != null ? ` ${(videos.free / 1024 ** 3).toFixed(0)} GB free there.` : ''} Renders made on this PC stay in ComfyUI’s output folder, on its drive.`}>
+      <SetField label="Finished videos" hint={`Films and edits you export, and cloud renders brought to this computer.${videos?.free != null ? ` ${(videos.free / 1024 ** 3).toFixed(0)} GB free there.` : ''} Renders made on this computer stay in ComfyUI’s output folder, on its drive.`}>
         <div className="set-inline grow">
           <SetPath path={videos?.path} />
           <button className="btn btn-small" disabled={videos?.incognito} onClick={chooseVideos}>
@@ -449,7 +449,7 @@ function WriterCard({ n, settings, setSettings, notify }) {
       {h && harness && !harness.installed && (
         <SetField label={h.name}>
           <p className="small pink set-plain">
-            {h.name} isn't installed on this PC.{' '}
+            {h.name} isn't installed on this computer.{' '}
             <button className="link-btn" onClick={() => open(h.get)}>
               Get {h.name}
             </button>
@@ -457,7 +457,7 @@ function WriterCard({ n, settings, setSettings, notify }) {
         </SetField>
       )}
       {h && harness?.installed && (
-        <SetField label="Model" hint={`Your own ${h.name} writes on your ${h.login} login and plan, with no tools except reading your reference pictures; your idea and pictures go to ${h.maker}. It doesn't use this PC's GPU, so it's as quick while ComfyUI renders.`}>
+        <SetField label="Model" hint={`Your own ${h.name} writes on your ${h.login} login and plan, with no tools except reading your reference pictures; your idea and pictures go to ${h.maker}. It doesn't use this computer's GPU, so it's as quick while ComfyUI renders.`}>
           <select value={settings[h.key] || ''} onChange={(e) => save({ [h.key]: e.target.value })}>
             {harness.models.map((m) => (
               <option key={m.id} value={m.id}>
@@ -470,7 +470,7 @@ function WriterCard({ n, settings, setSettings, notify }) {
 
       {engine === 'local' && (
         <>
-          <SetField label="Ollama address" hint={`Empty means Ollama on this PC (or OLLAMA_HOST). For another container or PC, enter its address, like 192.168.1.20:11434.${status && !status.local ? (status.running ? ' Connected.' : ` Not answering at ${status.url}.`) : ''}`}>
+          <SetField label="Ollama address" hint={`Empty means Ollama on this computer (or OLLAMA_HOST). For another container or computer, enter its address, like 192.168.1.20:11434.${status && !status.local ? (status.running ? ' Connected.' : ` Not answering at ${status.url}.`) : ''}`}>
             <div className="set-inline grow">
               <input value={addr} placeholder={status?.url || 'http://127.0.0.1:11434'} onChange={(e) => setAddr(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addrChanged && save({ ollamaUrl: addr })} />
               <button className="btn btn-small" disabled={!addrChanged} onClick={() => save({ ollamaUrl: addr })}>
@@ -537,7 +537,7 @@ function WriterCard({ n, settings, setSettings, notify }) {
             </>
           ) : settings.hasComfyKey ? (
             <div className="set-inline">
-              <Pill tone="ok">Saved · encrypted on this PC</Pill>
+              <Pill tone="ok">Saved · encrypted on this computer</Pill>
               <button className="link-btn" onClick={() => saveKey('')}>
                 Remove
               </button>
@@ -556,7 +556,7 @@ function WriterCard({ n, settings, setSettings, notify }) {
                 <button className="link-btn" onClick={() => open('https://platform.comfy.org/login')}>
                   platform.comfy.org
                 </button>{' '}
-                and add credits there. The key stays on this PC.
+                and add credits there. The key stays on this computer.
               </p>
             </>
           )}
@@ -629,7 +629,7 @@ function CivitaiCard({ n, settings, setSettings, notify }) {
           </>
         ) : settings.hasCivitaiKey ? (
           <div className="set-inline">
-            <Pill tone="ok">Saved · encrypted on this PC</Pill>
+            <Pill tone="ok">Saved · encrypted on this computer</Pill>
             <button className="link-btn" onClick={() => saveKey('')}>
               Remove
             </button>
@@ -648,7 +648,7 @@ function CivitaiCard({ n, settings, setSettings, notify }) {
               <button className="link-btn" onClick={() => open('https://civitai.com/user/account')}>
                 civitai.com
               </button>{' '}
-              open Account settings, then API keys. The key stays on this PC.
+              open Account settings, then API keys. The key stays on this computer.
             </p>
           </>
         )}

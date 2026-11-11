@@ -699,7 +699,7 @@ export class Productions {
     const voiceId = this.character(sh.character)?.voiceId
     if (!voiceId) throw new Error('Give this character a voice on the Characters page first.')
     const v = this.voices()
-    if (!v) throw new Error('Voices need IV Studio on this PC.')
+    if (!v) throw new Error('Voices need IV Studio on this computer.')
     // the voice can drop a word from a short line, so each take is read back and said again (up to 3 seeds)
     // until every word is there; the most complete take is kept
     let best = null
@@ -721,7 +721,7 @@ export class Productions {
   async useRecording(id, shotId, file) {
     if (!file || !fs.existsSync(file)) throw new Error('Pick a sound file.')
     const ffmpeg = this.edits?.ffmpeg
-    if (!ffmpeg) throw new Error('Recordings need IV Studio on this PC.')
+    if (!ffmpeg) throw new Error('Recordings need IV Studio on this computer.')
     const dir = path.join(this.dir, 'lines')
     fs.mkdirSync(dir, { recursive: true })
     const out = path.join(dir, `${id}_${shotId}_${Date.now()}.wav`)
@@ -790,9 +790,9 @@ export class Productions {
   // drawer (any model that draws from words).
   async pictureModels(what) {
     const images = this.images()
-    if (!images) throw new Error(`${what} need IV Studio on this PC.`)
+    if (!images) throw new Error(`${what} need IV Studio on this computer.`)
     const st = await images.status()
-    if (st.remote) throw new Error(`${what} render on this PC’s ComfyUI. Switch to "This PC" on the Cloud page to make them.`)
+    if (st.remote) throw new Error(`${what} render on this computer’s ComfyUI. Switch to "This computer" on the Cloud page to make them.`)
     if (st.error) throw new Error(st.error)
     const ready = (ids, edit) => ids.map((f) => st.families.find((x) => x.id === f && x.ready && x.models.length && (!edit || x.edit))).find(Boolean)
     const editor = ready(['flux2', 'flux3'], true)
@@ -1156,7 +1156,7 @@ export class Productions {
   // and the words on screen. A shot with no sketch shows its action on a dark card. Saved in the app data's
   // productions\animatics and kept on the production as animatic { file, seconds, shots, at }.
   async animatic(id, { voice = false } = {}) {
-    if (!this.edits?.ffmpeg) throw new Error('The animatic needs IV Studio on this PC.')
+    if (!this.edits?.ffmpeg) throw new Error('The animatic needs IV Studio on this computer.')
     if (voice) for (const sc of this.get(id).scenes) for (const sh of sc.shots) if (this.needsLine(sh)) await this.speak(id, sh.id).catch(() => {})
     const p = this.get(id)
     const plan = animaticPlan(p.scenes)

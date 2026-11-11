@@ -74,7 +74,7 @@ export default function ProjectBin({ media, sourceId, onSource, onAdd, onTitle, 
         <input className="ed-search" value={q} placeholder="Search" onChange={(e) => setQ(e.target.value)} />
         {tab === 'project' && (
           <>
-            <button className="btn btn-small" onClick={pick} title="Add files from this PC">
+            <button className="btn btn-small" onClick={pick} title="Add files from this computer">
               + Files
             </button>
             <button className="btn btn-small" onClick={onTitle} title="Add a title at the playhead">

@@ -57,7 +57,7 @@ export function ShinobiList({ openShinobi, notify, go }) {
                 Start a film
               </button>
             </div>
-            <p className="stage-note small">Cuts on the beat, speed ramps, camera moves, typography, effects and sound, written by your agent (or a recipe) and rendered on this PC.</p>
+            <p className="stage-note small">Cuts on the beat, speed ramps, camera moves, typography, effects and sound, written by your agent (or a recipe) and rendered on this computer.</p>
           </>
         ) : (
           <>
@@ -67,7 +67,7 @@ export function ShinobiList({ openShinobi, notify, go }) {
                 {busy ? 'Setting up…' : 'Set up Shinobi'}
               </button>
             </div>
-            <p className="stage-note small">{st.browser ? `It renders with ${base(st.browser).replace('.exe', '')} and IV Studio's own ffmpeg, at a fixed version in IV Studio's own folder. Nothing else on your PC changes.` : 'Shinobi needs Microsoft Edge or Google Chrome to draw frames.'}</p>
+            <p className="stage-note small">{st.browser ? `It renders with ${base(st.browser).replace('.exe', '')} and IV Studio's own ffmpeg, at a fixed version in IV Studio's own folder. Nothing else on your computer changes.` : 'Shinobi needs Microsoft Edge or Google Chrome to draw frames.'}</p>
           </>
         )}
         <WorkflowNeeds page="shinobi" />

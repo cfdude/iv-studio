@@ -44,7 +44,7 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
     (engine === 'contextir'
       ? !status.hasComfyKey && 'MiniMax Context IR needs your Comfy.org API key.'
       : harness
-        ? !status.harnesses?.[engine]?.installed && `${HARNESS_NAME[engine]} isn't installed on this PC.`
+        ? !status.harnesses?.[engine]?.installed && `${HARNESS_NAME[engine]} isn't installed on this computer.`
         : !status.installed
         ? 'The free writer needs Ollama.'
         : status.running && !status.models.some((m) => m.name === status.model) && `The writer model ${status.model} isn't installed yet.`)

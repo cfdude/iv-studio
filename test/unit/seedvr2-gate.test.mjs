@@ -2,8 +2,9 @@
 // Studio.finishCandidate (enhancer seedvr2) and Studio.enhanceFinal (engine seedvr2). Runs the real methods on a stub.
 //   node --test test/unit/seedvr2-gate.test.mjs
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import { describe, test } from 'node:test'
-import { SEEDVR2_MPS_MESSAGE, seedvr2Refusal } from '../../src/service/gpu.js'
+import { SEEDVR2_DEVICE, SEEDVR2_MPS_MESSAGE, seedvr2Refusal } from '../../src/service/gpu.js'
 import { capabilities } from '../../src/service/remote.js'
 import { Studio } from '../../src/service/studio.js'
 
@@ -22,6 +23,18 @@ describe('seedvr2Refusal', () => {
     assert.equal(seedvr2Refusal('cuda'), null)
     assert.equal(seedvr2Refusal(null), null)
     assert.equal(seedvr2Refusal(undefined), null)
+  })
+})
+
+describe('SeedVR2 device', () => {
+  test('is the one CUDA device ComfyUI defaults to, and the refusal points an Apple GPU at the 2× upscale', () => {
+    assert.equal(SEEDVR2_DEVICE, 'cuda:0')
+    assert.match(SEEDVR2_MPS_MESSAGE, /Use the 2× upscale and frame rate options instead\.$/)
+  })
+  test('Studio builds both SeedVR2 loaders from it, so no cuda literal is left in the graph', () => {
+    const src = fs.readFileSync('src/service/studio.js', 'utf8')
+    assert.equal((src.match(/device: SEEDVR2_DEVICE/g) || []).length, 2)
+    assert.doesNotMatch(src, /'cuda:0'/)
   })
 })
 
@@ -62,7 +75,7 @@ describe('enhanceFinal', () => {
     await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps]), { jobId: 'j', engine: 'dlss' }), { message: STOP })
   })
   test('a remote ComfyUI keeps today\'s message, on any GPU', async () => {
-    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps], true), { jobId: 'j', engine: 'seedvr2' }), { message: /runs on this PC's ComfyUI only|Enhance runs on this PC/ })
+    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps], true), { jobId: 'j', engine: 'seedvr2' }), { message: /runs on this computer's ComfyUI only|Enhance runs on this computer/ })
   })
 })
 

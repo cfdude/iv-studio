@@ -184,7 +184,7 @@ describe('page tier: the start-menu journeys, to the step before a real render',
     })
   })
 
-  test('[journey:show_me_around] opens the Dashboard, checks the PC, lists the characters and what was made, and offers the menu', async () => {
+  test('[journey:show_me_around] opens the Dashboard, checks the computer, lists the characters and what was made, and offers the menu', async () => {
     await journey('show_me_around', 'home', async () => {
       const setup = await api('setup.check')
       assert.ok(setup.items.length > 5)

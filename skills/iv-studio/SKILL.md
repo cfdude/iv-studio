@@ -22,7 +22,7 @@ Apps that show MCP prompts also list them as slash commands (in Claude Code, `/m
 
 1. `check_setup`: is ComfyUI up, which GPU, are the node packs and models there? If something is
    missing, tell the person what the result says to do rather than working around it. Missing node
-   packs: offer `install_node_packs` (it adds them to this PC's ComfyUI; ComfyUI then needs a restart).
+   packs: offer `install_node_packs` (it adds them to this computer's ComfyUI; ComfyUI then needs a restart).
 2. `list_characters`: the character presets (LoRA, trigger word). Prompts write `{char}` where the
    character goes; IV Studio swaps in the trigger word. `list_ready_characters` shows IV Studio's
    ready-made ones (Tess, Theo); `install_ready_character` downloads one.
@@ -67,7 +67,7 @@ whole). Follow it whenever you write, stage or revise a scene yourself:
   screen-side `staging` and `camera` words and returns `lineWarnings` when two people swap sides from the scene's
   last staged shot. Words alone handle simple paths well; the board's value is exact, consistent sides across shots.
 - **Previs for a moving camera.** `make_previs` draws a board plan in motion as a grey clip (mannequins and boxes,
-  about 3 s on this PC). Attach it as a video in References mode and put its `words` in the prompt. Use it for an
+  about 3 s on this computer). Attach it as a video in References mode and put its `words` in the prompt. Use it for an
   arc round people, which H3 follows from a previs and barely does from words; for a push, pull, track, pan or
   walk the staging words did as well or better in tests, and render 1.6-3.5x faster. Projects films only arcing
   shots from their previs. Never let
@@ -97,12 +97,15 @@ writing a prompt yourself; `write_prompt` already follows it.
   `picked` records the person's choice, which shifts the weights towards what they keep picking.
 - **Quality.** `steps: 4` is Draft (quicker previews); 8 is the default. The finish is the same either way.
 - **Enhancer.** A finish's `enhancer` is `dlss` (the default: DLSS 5 in the finish, with the optional RTX 2x and
-  frame generation) or `seedvr2` (the finish skips DLSS, then SeedVR2 restores detail to a short side of
+  frame generation), `upscale` (no DLSS 5: the finish's own Real-ESRGAN 2x with `upscale2x`, and RIFE frame
+  interpolation with `fps` 48, 72 or 120; what a Mac uses, since DLSS 5 is Windows-only and SeedVR2 is refused on an
+  Apple GPU; Real-ESRGAN x2 and the RIFE pack are optional installs in Setup, and a finish that needs one it lacks
+  says so) or `seedvr2` (the finish skips DLSS, then SeedVR2 restores detail to a short side of
   `enhanceResolution`, 1080, 1440 or 2160, at 24 fps; slower). The SeedVR2 step is its own job, started by itself
   when the finish is done; `get_job` on the finish shows its id as `enhanceJob`. Ask the person which they want
   when it matters: DLSS 5 is quick, SeedVR2 adds more real detail to faces and textures.
 - **Enhance afterwards.** `enhance_final` runs an already finished video through either engine as a new job in the
-  same shot: `engine: "seedvr2"` with `resolution`, or `engine: "dlss"` with `scale` 1 (clean up) or 2. This PC only.
+  same shot: `engine: "seedvr2"` with `resolution`, or `engine: "dlss"` with `scale` 1 (clean up) or 2. This computer only.
 - **@ mentions.** `list_cast` gives what a prompt can name: `@Tess` (the picked character becomes `{char}`),
   another character with a face picture, or a place (`@BusStop`). A shot that mentions someone or somewhere with a
   picture renders in References mode with the pictures attached, each as `<Subject N>`. `save_place` adds a place
@@ -134,7 +137,7 @@ them on). The tools say "film" because `list_projects` already means shots.
    has one. Screenplay format: `INT. PLACE - DAY` starts a scene, a NAME in capitals on its own line with the
    words under it is dialogue, and other paragraphs are action.
 2. No script yet? `write_film_script` drafts one from the idea, the cast and the length (a minute or two on
-   this PC). Show it to the person and change it with `set_film_script` until they're happy. Speakers who
+   this computer). Show it to the person and change it with `set_film_script` until they're happy. Speakers who
    share a first name with a character preset join the cast, and so do presets named in the action of a first
    script; scene headings add places, described by the writer.
 3. `update_film` to cast characters, describe each place (every shot there uses it) and set the look. Someone
@@ -145,7 +148,7 @@ them on). The tools say "film" because `list_projects` already means shots.
    up, `draw_place_angles` draws a place from a quarter turn, the side and further back, so turned and wide
    shots keep the room (there is no true reverse view).
 4. `break_down_film` (background, minutes): each scene becomes 3-10 s shots with one speaker at most, sized to
-   the film's length, each shot gets its H3 prompt, then a storyboard sketch (a still on this PC's picture
+   the film's length, each shot gets its H3 prompt, then a storyboard sketch (a still on this computer's picture
    models). A place without a photo gets one drawn first (it shows on Cast and places), so every sketch there
    shares its room; the faces of the cast on screen are kept. Poll `get_film` until `breakdown.state` is done
    and `totals.sketching` is 0. `sketch_film_shots` redraws sketches.
@@ -221,7 +224,7 @@ come from their face pictures (Reference mode) and are named in the prompt.
 Write the prompt as a normal H3 prompt (`write_prompt` with mode continue, frames or reference can write it).
 Pass `character` when the clip shows one. Each takes GPU minutes; poll `list_generations` every 20-30 s.
 The person sees a striped placeholder on the timeline while it works, and the result lands as an
-ordinary clip they can undo. Retake needs ComfyUI on this PC.
+ordinary clip they can undo. Retake needs ComfyUI on this computer.
 
 `cut_out` keeps only who or what you name in a picture or clip (SAM 3.1, free, seconds): a PNG or a WebM
 with a see-through background. Put it on a track above other footage (add_media, edit_timeline, muted when
@@ -242,7 +245,7 @@ what it shows. The editor's right-click "Reframe to …" fits a clip to the edit
 
 ## Voices and spoken lines (Audio)
 
-IV Studio keeps a voice per character and speaks lines in it with its own voice engine on this PC:
+IV Studio keeps a voice per character and speaks lines in it with its own voice engine on this computer:
 VoxCPM2 (OpenBMB, Apache-2.0) speaks, designs and clones, and Whisper large-v3 turbo (MIT) reads the words in
 a recording. A spoken line is the shot's voice line: H3 lip-syncs to it.
 1. `voice_status`; if installed is false, the engine needs a one-time setup (about 12 GB of free
@@ -257,7 +260,7 @@ a recording. A spoken line is the shot's voice line: H3 lip-syncs to it.
 4. A different `seed` gives another read of the same words; `list_lines` shows what was said before. The
    first line after a pause takes about 25 s while the model loads, later ones about 5 s.
 
-## LoRAs (Civitai and this PC)
+## LoRAs (Civitai and this computer)
 
 LoRAs change how H3 looks and moves: styles, motion, camera, speed. IV Studio finds them on Civitai and keeps
 track of the ones already in ComfyUI.
@@ -273,7 +276,7 @@ Real-person LoRAs are never shown. Mature LoRAs appear only if the person turned
 
 ## Images (Create -> Image)
 
-1. `list_image_models`: the image families on this PC (Flux.2 Klein 9B, Flux 3 Klein, Krea 2, Moss, Qwen Image
+1. `list_image_models`: the image families on this computer (Flux.2 Klein 9B, Flux 3 Klein, Krea 2, Moss, Qwen Image
    2.1, Z-Image Turbo, SDXL and its fine-tunes, and MiniMax H3 stills), each with its checkpoints, whether it's
    ready, whether it can edit, and its licence. An H3 still is one frame of a very short H3 render: the look of
    the person's H3 shots, with their H3 character LoRAs (put the trigger word in the prompt).
@@ -286,7 +289,7 @@ Real-person LoRAs are never shown. Mature LoRAs appear only if the person turned
 
 ## Music (Audio)
 
-IV Studio makes songs and instrumentals on this PC's ComfyUI, free. Two engines:
+IV Studio makes songs and instrumentals on this computer's ComfyUI, free. Two engines:
 - `minimax`, MiniMax Music 3: full songs up to 5 minutes with the clearest sung words; a minute or two per
   song. Its length follows the lyrics (`seconds` is only a limit), so write full verses and choruses for
   a full song. Its licence allows commercial use; a product that uses it must show "MiniMax-Music3".
@@ -306,7 +309,7 @@ IV Studio makes songs and instrumentals on this PC's ComfyUI, free. Two engines:
 
 Shinobi is IV Studio's agent-driven editor. Where Edit is a hand-made timeline,
 Shinobi lets you author a whole edit in code: cuts on the beat, speed ramps, punch-ins and camera moves,
-typography, masks and effects, captions from speech, sound cues, even 3D scenes, rendered on this PC.
+typography, masks and effects, captions from speech, sound cues, even 3D scenes, rendered on this computer.
 
 1. `shinobi_status`; if it isn't set up, ask the person, then `shinobi_setup` (about 440 MB, once).
 2. `shinobi_tools` lists every tool. Call one with `shinobi` {tool, arguments}. Read the engine's guides
@@ -337,7 +340,7 @@ When the person gives you a website and wants a sizzle, promo or launch video fo
    Open on a hook, show what the site does, end on the logo, the main button's words and the web address.
 3. Show the person the storyboard (each scene, its length, the music) and wait for their OK. Then
    `approve_sizzle_plan`. Nothing renders before that.
-4. `make_sizzle_assets` makes everything on this PC: about 3-5 minutes per H3 shot, seconds per picture,
+4. `make_sizzle_assets` makes everything on this computer: about 3-5 minutes per H3 shot, seconds per picture,
    a few minutes for MiniMax music. Poll `get_sizzle` (it also moves each H3 shot from preview to its 1 MP
    finish) until status is `ready`. Look at the pieces before cutting.
 5. `sizzle_first_cut` {sizzleId} has IV Studio cut the film itself: it imports every piece into a Shinobi
@@ -381,9 +384,9 @@ The Characters page (and these tools) turn an invented person into a character p
    `list_voices` works), then `make_training_clips`:
    H3 talking clips from the face and the stills. `rank_likeness` scores them; render weak ones again
    (`make_training_clips` redo) or drop them (`set_training_item` keep false). Aim for 0.45+.
-4. Where it trains (`options.where`): `local` is free on this PC's own NVIDIA card (16 GB or more; Fizgig
+4. Where it trains (`options.where`): `local` is free on this computer's own NVIDIA card (16 GB or more; Fizgig
    installed; a Standard run takes a few hours and nothing should render meanwhile; `scan_hardware` says
-   whether this PC can), `modal` or `runpod` rent a GPU on the person's own account. The recipe is in
+   whether this computer can), `modal` or `runpod` rent a GPU on the person's own account. The recipe is in
    `options` too (preset quick/standard/thorough, learn, detail, mode, checkpoints, and a `budget` cap for the
    cloud). `estimate_training`, tell the person the minutes (and the dollars, in the cloud), and
    `start_training` only after they agree (a cloud run bills their account and needs `confirm_cost`; Theo took

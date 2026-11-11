@@ -374,7 +374,7 @@ export default function LivePip({ items, now, kindLabel, open, onOff }) {
               : item.live
                 ? 'The first step’s picture shows here in a few seconds.'
                 : item.kind === 'previews' || item.kind === 'finish'
-                  ? 'No step pictures for this render: they need ComfyUI on this PC and H3’s small preview model (Settings → Setup → H3 live preview decoder).'
+                  ? 'No step pictures for this render: they need ComfyUI on this computer and H3’s small preview model (Settings → Setup → H3 live preview decoder).'
                   : 'This kind of render shows its progress, not a picture, until it’s done.'}
           </div>
         )}

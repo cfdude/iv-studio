@@ -138,7 +138,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot }) {
     <div className="images-page create-v2">
       <Hero art="create" title="Create" kicker="New image" help="image" />
       {kindSwitch}
-      {status?.remote && <p className="notice">Pictures render on this PC’s ComfyUI. Switch to “This PC” on the Cloud page to make them.</p>}
+      {status?.remote && <p className="notice">Pictures render on this computer’s ComfyUI. Switch to “This computer” on the Cloud page to make them.</p>}
       {status?.error && <p className="notice">{status.error}</p>}
 
       <div className="create-layout">

@@ -217,7 +217,7 @@ describe('MCP setup, update, model and hardware tools', () => {
   })
 
   // ---------- hardware ----------
-  test('[mcp:scan_hardware] reads this PC, tiers an Apple Silicon Mac by its unified memory and recommends the cloud for any other machine with no NVIDIA card', async () => {
+  test('[mcp:scan_hardware] reads this computer, tiers an Apple Silicon Mac by its unified memory and recommends the cloud for any other machine with no NVIDIA card', async () => {
     const r = await ok('scan_hardware')
     assert.ok(r.scan.cpu.threads > 0)
     assert.ok(r.scan.ram > 0)

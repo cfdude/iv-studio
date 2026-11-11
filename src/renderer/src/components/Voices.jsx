@@ -73,7 +73,7 @@ export function EngineStatus({ status, check, notify }) {
       <div>
         <p className="mono pink">Voices need a one-time setup</p>
         <p className="small dim">
-          IV Studio speaks with {status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on this PC. Setup downloads about {GB(status.setup?.size || 0)} into IV Studio's folder, once.
+          IV Studio speaks with {status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on this computer. Setup downloads about {GB(status.setup?.size || 0)} into IV Studio's folder, once.
         </p>
         {working && <p className="mono small dim voice-log">{log}</p>}
       </div>

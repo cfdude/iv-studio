@@ -188,6 +188,21 @@
       "optionalFor": "live step pictures while a shot renders"
     },
     {
+      "id": "esrgan_x2",
+      "label": "Real-ESRGAN x2 (2× upscale)",
+      "loader": "UpscaleModelLoader.model_name",
+      "match": "RealESRGAN_x2plus.pth",
+      "folder": "upscale_models",
+      "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
+      "sha256": "49fafd45f8fd7aa8d31ab2a22d14d91b536c34494a5cfe31eb5d89c2fa266abb",
+      "size": 67061725,
+      "needed_for": [
+        "upscale2x"
+      ],
+      "optional": true,
+      "optionalFor": "2× upscale in finals without DLSS 5 (a Mac or Linux)"
+    },
+    {
       "id": "sam31",
       "label": "SAM 3.1 (tracks people and objects)",
       "loader": "CheckpointLoaderSimple.ckpt_name",
@@ -597,7 +612,7 @@
       "dir": "comfyui-frame-interpolation",
       "registry": "https://cdn.comfy.org/fannovel16/comfyui-frame-interpolation/1.0.11/node.zip",
       "linuxOnly": true,
-      "for": "Finals on Linux"
+      "for": "frame rates above 24 on a Mac or Linux finish"
     },
     {
       "label": "Viggle Remake nodes",

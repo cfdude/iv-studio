@@ -1,5 +1,5 @@
 // The writer's Ollama address (src/service/prompter.js): the setting, OLLAMA_HOST, and an Ollama elsewhere
-// (another container or PC), stood in for by a fake Ollama on 127.0.0.2 (on a Mac, which has only 127.0.0.1, on this
+// (another container or computer), stood in for by a fake Ollama on 127.0.0.2 (on a Mac, which has only 127.0.0.1, on this
 // machine's own network address).
 //   node test/ollama-address.mjs
 import assert from 'node:assert/strict'
@@ -14,7 +14,7 @@ const ok = async (name, fn) => {
   console.log(`ok  ${name}`)
 }
 
-await ok('addresses are tidied: scheme and port added, 0.0.0.0 means this PC, trailing slash dropped', () => {
+await ok('addresses are tidied: scheme and port added, 0.0.0.0 means this computer, trailing slash dropped', () => {
   assert.equal(normalizeOllamaUrl(''), '')
   assert.equal(normalizeOllamaUrl('192.168.1.20'), 'http://192.168.1.20:11434')
   assert.equal(normalizeOllamaUrl('ollama:11434'), 'http://ollama:11434')
@@ -24,7 +24,7 @@ await ok('addresses are tidied: scheme and port added, 0.0.0.0 means this PC, tr
   assert.throws(() => normalizeOllamaUrl('http://bad host'))
 })
 
-await ok('the setting wins, then OLLAMA_HOST, then this PC', () => {
+await ok('the setting wins, then OLLAMA_HOST, then this computer', () => {
   setOllamaSource(() => '')
   assert.equal(ollamaUrl({}), 'http://127.0.0.1:11434')
   assert.equal(ollamaUrl({ OLLAMA_HOST: '10.0.0.5' }), 'http://10.0.0.5:11434')
@@ -34,7 +34,7 @@ await ok('the setting wins, then OLLAMA_HOST, then this PC', () => {
   assert.equal(ollamaUrl({}), 'http://127.0.0.1:11434')
 })
 
-await ok('only this PC counts as local; the CPU option applies only there', () => {
+await ok('only this computer counts as local; the CPU option applies only there', () => {
   assert.equal(ollamaIsLocal('http://127.0.0.1:11434'), true)
   assert.equal(ollamaIsLocal('http://localhost:11434'), true)
   assert.equal(ollamaIsLocal('http://ollama:11434'), false)

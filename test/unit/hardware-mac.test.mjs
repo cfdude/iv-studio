@@ -46,8 +46,8 @@ describe('Apple Silicon tiers by unified memory', () => {
     for (const ram of [128, 64, 32, 16]) assert.doesNotMatch(JSON.stringify([recommend(mac(ram)).verdicts, recommend(mac(ram)).tier]), /CUDA|NVIDIA/)
   })
 
-  test('titles and summaries say This Mac, not This PC', () => {
-    for (const ram of [128, 64, 32, 16]) assert.doesNotMatch(JSON.stringify(recommend(mac(ram)).tier), /\bPC\b/i)
+  test('titles and summaries say This Mac, not This computer (or PC)', () => {
+    for (const ram of [128, 64, 32, 16]) assert.doesNotMatch(JSON.stringify(recommend(mac(ram)).tier), /\bPC\b|computer/i)
     assert.match(recommend(mac(128)).tier.title, /This Mac/)
   })
 
@@ -68,5 +68,46 @@ describe('Apple Silicon tiers by unified memory', () => {
     const r = recommend(mac(64, { arch: 'x64', vendor: 'amd', name: 'AMD Radeon Pro 5500M' }))
     assert.equal(r.tier.id, 'cloud')
     assert.doesNotMatch(r.tier.summary, /\bPC\b/)
+  })
+})
+
+describe('the default finisher (SB-23)', () => {
+  const GBn = 1024 ** 3
+  const pc = ({ platform, vendor, name }) => ({
+    os: { platform, arch: 'x64' },
+    cpu: { model: 'Test CPU', threads: 32 },
+    ram: 64 * GBn,
+    gpus: [{ vendor, name, vram: vendor === 'nvidia' ? 24 * GBn : null, driver: '581.57' }],
+    drives: [{ path: '/', total: 2000 * GBn, free: 900 * GBn }],
+    modelsDrive: { path: '/', total: 2000 * GBn, free: 900 * GBn, folder: '/ComfyUI/models' },
+    installs: { modelSizes: { ...sizes, esrgan_x2: 67061725 }, modelsPresent: [] }
+  })
+  test('[mcp:scan_hardware] a Mac gets the built-in 2× upscale with frame interpolation, never SeedVR2 or DLSS 5', () => {
+    for (const ram of [128, 64, 32]) {
+      const { prefs } = recommend(mac(ram))
+      assert.deepEqual([prefs.enhancer, prefs.upscale2x, prefs.fps], ['upscale', true, 48])
+    }
+  })
+  test('[mcp:scan_hardware] the Mac tip names what finals use and why', () => {
+    const tips = recommend(mac(64)).tips.map((t) => t.text).join(' ')
+    assert.match(tips, /2× upscale and RIFE frame interpolation/)
+    assert.match(tips, /SeedVR2 isn't available on an Apple GPU yet/)
+  })
+  test('[mcp:scan_hardware] Real-ESRGAN x2 is recommended with the video models on a Mac, as its own download group', () => {
+    const r = recommend(mac(64))
+    const g = r.downloads.find((d) => d.id === 'finish_up')
+    assert.deepEqual([g.ids, g.recommended], [['esrgan_x2'], true])
+    assert.equal(r.downloads.find((d) => d.id === 'core').recommended, true)
+  })
+  test('[mcp:scan_hardware] an NVIDIA card on Windows keeps DLSS 5 and does not need Real-ESRGAN', () => {
+    const r = recommend(pc({ platform: 'win32', vendor: 'nvidia', name: 'NVIDIA GeForce RTX 4090' }))
+    assert.equal(r.prefs.enhancer, 'dlss')
+    assert.equal(r.downloads.find((d) => d.id === 'finish_up').recommended, false)
+  })
+  test('[mcp:scan_hardware] an NVIDIA card on Linux gets SeedVR2, as before', () => {
+    assert.equal(recommend(pc({ platform: 'linux', vendor: 'nvidia', name: 'NVIDIA GeForce RTX 4090' })).prefs.enhancer, 'seedvr2')
+  })
+  test('[mcp:scan_hardware] a card SeedVR2 cannot run on (AMD or Intel) gets the built-in upscale too', () => {
+    for (const platform of ['linux', 'win32']) assert.equal(recommend(pc({ platform, vendor: 'amd', name: 'AMD Radeon RX 7900 XTX' })).prefs.enhancer, 'upscale')
   })
 })

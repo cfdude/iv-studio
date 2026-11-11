@@ -161,7 +161,7 @@ describe('page tier: the main process cannot reach the default ComfyUI', () => {
     assert.ok(!settings.comfyUrl || settings.comfyUrl === 'http://127.0.0.1:8188', 'this launch must keep the default comfyUrl')
     const models = () => app.networkRefusals().filter((r) => r.host === '127.0.0.1' && r.port === 8188 && r.path === '/experiment/models' && r.what === 'a fetch')
     const was = models().length
-    // uploadModalCharacters (index.js:1068) fetches `${comfyUrl}/experiment/models` and treats a failure as "no ComfyUI on this PC"
+    // uploadModalCharacters (index.js:1068) fetches `${comfyUrl}/experiment/models` and treats a failure as "no ComfyUI on this computer"
     const value = await app.evaluate(`window.ivstudio.cloud.uploadCharacters()`)
     assert.deepEqual(value, [])
     // nothing else in a quiet launch asks for /experiment/models, so exactly this call added the refusal

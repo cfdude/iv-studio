@@ -8,7 +8,7 @@ export const WORKFLOWS = [
     tag: 'Several shots, one continuous take',
     about: 'Write a scene as a list of 10 or 15 second shots and render them as one unbroken video, in one take or shot by shot, then retake any stretch and render it out.',
     credit: 'H3 Multishot',
-    needs: ['H3 on this PC']
+    needs: ['H3 on this computer']
   },
   {
     page: 'sizzle',
@@ -16,7 +16,7 @@ export const WORKFLOWS = [
     tag: 'A website, made into a film',
     about: 'Put in a web address. Your agent storyboards a promo film from the real site, then H3 shots, pictures, music and the site’s own screens are cut together with motion and typography.',
     credit: 'Capture, H3, Z-Image, MiniMax Music, Shinobi',
-    needs: ['Claude Code or Codex', 'Shinobi', 'H3, Z-Image and a music model on this PC']
+    needs: ['Claude Code or Codex', 'Shinobi', 'H3, Z-Image and a music model on this computer']
   },
   {
     page: 'reel',
@@ -31,7 +31,7 @@ export const WORKFLOWS = [
     name: 'Shinobi',
     tag: 'Edits your agent cuts',
     about: 'Hand footage to an agent (or a one-click style) and get a finished edit: cuts on the beat, speed ramps, typography, effects and sound.',
-    credit: 'Your agent, rendered on this PC',
+    credit: 'Your agent, rendered on this computer',
     needs: ['Shinobi’s engine (one click, about 440 MB)', 'Claude Code or Codex, or a one-click style']
   },
   {
@@ -40,7 +40,7 @@ export const WORKFLOWS = [
     tag: 'Swap who is in the shot, or change the scene',
     about: 'Put your characters in place of people in a video, or change the scene in plain words: snow, night, a new setting, something removed. IV Studio paints the frames, you check them, and the camera, motion and soundtrack stay.',
     credit: 'Viggle Remake on MiniMax H3, Qwen Image, your characters',
-    needs: ['H3 on this PC', 'Its node packs and models (the page lists them)']
+    needs: ['H3 on this computer', 'Its node packs and models (the page lists them)']
   },
   {
     page: 'rebuild',
@@ -48,7 +48,7 @@ export const WORKFLOWS = [
     tag: 'A video, taken apart and rebuilt',
     about: 'Bring a video you made. IV Studio reads it shot by shot, your agent plans how each shot is remade, you approve the plan and the frames, H3 renders the new shots and a first cut lands in Edit beside the original.',
     credit: 'Your agent, H3, Qwen Image, IV Studio’s reader',
-    needs: ['Claude Code or Codex', 'H3 on this PC']
+    needs: ['Claude Code or Codex', 'H3 on this computer']
   }
 ]
 

@@ -91,7 +91,7 @@ export class Reframes {
   // settings: 25 steps, CFG 1), then the exact original pasted back over a soft edge. About 30 s.
   async makePicture({ file, shape = '9:16', about = '', zoom = 1, megapixels = 1 }) {
     const images = this.images()
-    if (!images) throw new Error('Pictures need IV Studio on this PC.')
+    if (!images) throw new Error('Pictures need IV Studio on this computer.')
     const st = await images.status()
     const qwen = st.families.find((f) => f.id === 'qwen21' && f.ready && f.edit && f.models.length)
     const info = await this.studio().comfy.objectInfo('LoraLoaderModelOnly').catch(() => null)
@@ -131,7 +131,7 @@ export class Reframes {
     if (!file || !fs.existsSync(file)) throw new Error('Pick a video.')
     if (!SHAPES[shape]) throw new Error(`shape must be ${Object.keys(SHAPES).join(', ')}.`)
     const studio = this.studio()
-    if (studio.comfy.remote) throw new Error('Reframe runs on this PC’s ComfyUI.')
+    if (studio.comfy.remote) throw new Error('Reframe runs on this computer’s ComfyUI.')
     const info = await probe(this.edits.ffprobe, file)
     if (info.kind !== 'video') throw new Error('Reframe takes a video; pictures go through Create → Image.')
     const g = reframeGeometry({ width: info.width, height: info.height, shape, megapixels, zoom })

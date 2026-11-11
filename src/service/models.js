@@ -33,6 +33,10 @@ async function hashFile(file, hash) {
   await pipeline(fs.createReadStream(file), new Transform({ transform: (chunk, _e, cb) => (hash.update(chunk), cb()) }))
 }
 
+// A checksum pinned in models.json wins; Hugging Face's x-linked-etag covers the rest.
+// GitHub release downloads send no checksum, so those entries must pin one.
+export const expectedSha256 = (model, probed) => model.sha256 || probed || null
+
 export class ModelInstaller {
   constructor({ comfy, manifest, onUpdate }) {
     this.comfy = comfy
@@ -86,7 +90,10 @@ export class ModelInstaller {
   async download(model, signal) {
     const target = await modelTarget(this.comfy, model)
     if (fs.existsSync(target)) return this.set(model.id, { status: 'done', path: target })
-    const { sha256, size } = await upstreamInfo(model.url)
+    const info = await upstreamInfo(model.url)
+    const sha256 = expectedSha256(model, info.sha256)
+    const probed = info.size
+    const size = probed || model.size || null // GitHub's redirect answers the probe with no length
     const part = `${target}.part`
     fs.mkdirSync(path.dirname(target), { recursive: true })
 

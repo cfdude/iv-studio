@@ -106,6 +106,7 @@ export async function scanHardware({ electronGpu = null, platform = process.plat
 // What to download, by what it's for (ids from resources/models.json)
 export const MODEL_GROUPS = [
   { id: 'core', label: 'Video shots (MiniMax H3)', ids: ['fl2va', 'ref2va', 'text_encoder', 'video_vae', 'audio_vae', 'dmad', 'upscaler'], needs: 'video' },
+  { id: 'finish_up', label: 'Finals without DLSS 5: 2× upscale (Real-ESRGAN)', ids: ['esrgan_x2'], needs: 'video' },
   { id: 'design', label: 'Designing characters (Z-Image)', ids: ['zimage', 'zimage_te', 'zimage_vae'], needs: 'pictures' },
   { id: 'sdxl', label: 'SDXL pictures', ids: ['sdxl_base'], needs: 'pictures' },
   { id: 'music', label: 'Music (MiniMax Music 3 and ACE-Step)', ids: ['music3_dit', 'music3_te', 'music3_vae', 'ace15'], needs: 'music' },
@@ -143,11 +144,11 @@ export function tierOf(scan) {
 }
 
 const TIERS = {
-  top: { title: 'This PC can do everything, fast', summary: 'Render shots, pictures, music and voices here, finish at full size, and train characters on this PC.', renderOn: 'local' },
-  all: { title: 'This PC can do everything', summary: 'Render shots, pictures, music and voices here and finish at full size. Big jobs take a few minutes.', renderOn: 'local' },
-  most: { title: 'This PC can make shots, a little smaller', summary: 'Shots, pictures, music and voices all run here. Keep finals at 1 to 1.5 MP; use the cloud for the biggest jobs.', renderOn: 'both' },
+  top: { title: 'This computer can do everything, fast', summary: 'Render shots, pictures, music and voices here, finish at full size, and train characters on this computer.', renderOn: 'local' },
+  all: { title: 'This computer can do everything', summary: 'Render shots, pictures, music and voices here and finish at full size. Big jobs take a few minutes.', renderOn: 'local' },
+  most: { title: 'This computer can make shots, a little smaller', summary: 'Shots, pictures, music and voices all run here. Keep finals at 1 to 1.5 MP; use the cloud for the biggest jobs.', renderOn: 'both' },
   some: { title: 'Pictures here, video in the cloud', summary: 'Pictures, music and voices run here. Video shots are slow on this card, so make them in the cloud.', renderOn: 'both' },
-  cloud: { title: 'Make video in the cloud', summary: 'This PC has no NVIDIA card with enough memory for video. Shots render on RunPod, Modal or Comfy Cloud; IV Studio still edits, plans and organises here.', renderOn: 'cloud' }
+  cloud: { title: 'Make video in the cloud', summary: 'This computer has no NVIDIA card with enough memory for video. Shots render on RunPod, Modal or Comfy Cloud; IV Studio still edits, plans and organises here.', renderOn: 'cloud' }
 }
 
 export function recommend(scan) {
@@ -157,7 +158,7 @@ export function recommend(scan) {
   const mac = scan.os?.platform === 'darwin'
   const apple = isAppleSilicon(scan)
   if (mac) {
-    for (const k of ['title', 'summary']) tier[k] = tier[k].replace(/This PC/g, 'This Mac').replace(/this PC/g, 'this Mac')
+    for (const k of ['title', 'summary']) tier[k] = tier[k].replace(/This computer/g, 'This Mac').replace(/this computer/g, 'this Mac')
     if (t.id === 'cloud') tier.summary = apple ? 'This Mac has under 32 GB of memory, which is too little for video. Shots render on RunPod, Modal or Comfy Cloud; IV Studio still edits, plans and organises here.' : 'This Mac has no Apple Silicon chip, so video shots render on RunPod, Modal or Comfy Cloud; IV Studio still edits, plans and organises here.'
     if (t.id === 'some') tier.summary = 'Pictures, music and voices run here. Video shots are untested at this memory size, so make them in the cloud.'
   }
@@ -208,7 +209,7 @@ export function recommend(scan) {
   })
   if (ramState === 'weak' && t.id !== 'cloud') {
     tier.title = 'Pictures here, video in the cloud'
-    tier.summary = 'Your card could run H3, but this PC has too little RAM to load it. Make video shots in the cloud; pictures, music and voices run here.'
+    tier.summary = 'Your card could run H3, but this computer has too little RAM to load it. Make video shots in the cloud; pictures, music and voices run here.'
     tier.renderOn = 'both'
   }
 
@@ -217,11 +218,16 @@ export function recommend(scan) {
 
   // where the models go
   const local = tier.renderOn !== 'cloud'
+  const nvidia = g?.vendor === 'nvidia'
+  // DLSS 5: an NVIDIA card on Windows. SeedVR2: an NVIDIA card (it runs on CUDA only). Anything else, a Mac included,
+  // finishes with the 2× Real-ESRGAN upscale and RIFE frame interpolation (the 'upscale' enhancer).
+  const enhancer = nvidia ? (win ? 'dlss' : 'seedvr2') : 'upscale'
   const want = {
     core: local && t.id !== 'some' && ramState !== 'weak',
     design: local,
     sdxl: false,
     music: local && t.vram >= 15,
+    finish_up: !!(t.id !== 'some' && ramState !== 'weak' && local && enhancer === 'upscale'),
     replace: local && !apple && t.vram >= 22,
     remake_swap: false,
     remake_edit: false,
@@ -247,32 +253,31 @@ export function recommend(scan) {
   // the prompt writer
   const writer = ins.claude ? 'claude' : ins.codex ? 'codex' : 'local'
   const writerSay = {
-    claude: 'Claude Code is on this PC: it writes the best prompts and reviews takes.',
-    codex: 'Codex is on this PC: it writes good prompts and reviews takes.',
+    claude: 'Claude Code is on this computer: it writes the best prompts and reviews takes.',
+    codex: 'Codex is on this computer: it writes good prompts and reviews takes.',
     local: ins.ollama ? 'The local writer (Ollama) is ready; it runs on the processor while a render uses the graphics card.' : 'Install Ollama for a free local writer, or sign in to Claude Code or Codex for better prompts.'
   }[writer]
   verdicts.push({ id: 'writer', label: 'Prompt writer', value: { claude: 'Claude Code', codex: 'Codex', local: ins.ollama ? 'Local (Ollama)' : 'Not set up' }[writer], state: writer === 'local' && !ins.ollama ? 'ok' : 'good', say: writerSay })
 
   // what to set
-  const nvidia = g?.vendor === 'nvidia'
   const finalMp = t.id === 'top' || t.id === 'all' ? 2 : t.id === 'most' ? 1.5 : 1
-  const enhancer = nvidia && win ? 'dlss' : 'seedvr2'
   const prefs = {
     previewMp: t.id === 'top' ? 0.6 : 0.4,
     quality: t.id === 'top' || t.id === 'all' ? 'standard' : 'draft',
     finalMp,
     enhancer,
-    enhanceResolution: t.id === 'top' ? 1440 : 1080
+    enhanceResolution: t.id === 'top' ? 1440 : 1080,
+    ...(enhancer === 'upscale' ? { upscale2x: true, fps: 48 } : {})
   }
-  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale; DLSS 5 needs an NVIDIA RTX card on Windows, and SeedVR2 isn't available on an Apple GPU yet." })
-  else if (!nvidia || !win) tips.push({ state: 'info', text: 'DLSS 5 needs an NVIDIA RTX card on Windows. Finals here use SeedVR2 or the 2× upscale instead.' })
-  if (ins.comfyRunning === false && !ins.comfyFound && local) tips.push({ state: 'warn', text: 'No ComfyUI found on this PC. Install ComfyUI (the Desktop app or the portable build) for anything that renders here.' })
+  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale and RIFE frame interpolation; DLSS 5 needs an NVIDIA RTX card on Windows, and SeedVR2 isn't available on an Apple GPU yet." })
+  else if (!nvidia || !win) tips.push({ state: 'info', text: `DLSS 5 needs an NVIDIA RTX card on Windows. Finals here use ${nvidia ? 'SeedVR2 or ' : ''}the 2× upscale and RIFE frame interpolation instead.` })
+  if (ins.comfyRunning === false && !ins.comfyFound && local) tips.push({ state: 'warn', text: 'No ComfyUI found on this computer. Install ComfyUI (the Desktop app or the portable build) for anything that renders here.' })
   if (!ins.voices && local && nvidia) tips.push({ state: 'info', text: 'Voices are a one-time 12 GB setup on Audio > Voices.' })
 
   // training a character
   const training =
     nvidia && t.vram >= 16 && ramState !== 'weak'
-      ? { where: 'cloud', localReady: true, say: `This card can train a character on this PC, free: Fizgig trains H3 from 16 GB, in a few hours. Or rent a cloud GPU for about $3 to $5 and half an hour.` }
+      ? { where: 'cloud', localReady: true, say: `This card can train a character on this computer, free: Fizgig trains H3 from 16 GB, in a few hours. Or rent a cloud GPU for about $3 to $5 and half an hour.` }
       : { where: 'cloud', localReady: false, say: 'Characters train on a cloud GPU (your RunPod or Modal account), about $3 to $5 a character.' }
 
   return { tier, verdicts, tips, downloads, needBytes, need: fmt(needBytes), prefs, writer, training }

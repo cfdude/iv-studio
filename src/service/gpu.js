@@ -58,9 +58,14 @@ export function statsReadout(stats, unified) {
   return { gpu: { name: gpuLabel(d), total: apple ? unified.total : d.vram_total, free: apple ? unified.free : d.vram_free, comfyHeld: d.torch_vram_total } }
 }
 
-export const SEEDVR2_MPS_MESSAGE = 'SeedVR2 isn\'t available on an Apple GPU yet.'
+export const SEEDVR2_MPS_MESSAGE = 'SeedVR2 isn\'t available on an Apple GPU yet. Use the 2× upscale and frame rate options instead.'
 
-// SeedVR2 is pinned to a CUDA device. Returns the refusal for an Apple GPU, else null.
+// SeedVR2's loaders run on a CUDA device only (its attention and offload code has no Apple GPU path), and ComfyUI's
+// default CUDA device is cuda:0. So the graph is pinned to it here, in one place, and an Apple GPU is refused
+// (seedvr2Refusal) before a graph is built: the device never has to follow the GPU rule onto mps.
+export const SEEDVR2_DEVICE = 'cuda:0'
+
+// SeedVR2 runs on CUDA only. Returns the refusal for an Apple GPU, else null.
 // `kind` is the GPU type from capabilities() ('cuda', 'mps' or null).
 export function seedvr2Refusal(kind) {
   return kind === 'mps' ? SEEDVR2_MPS_MESSAGE : null

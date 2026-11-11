@@ -371,7 +371,7 @@ export class Images {
     const text = String(prompt || '').trim()
     if (!text) throw new Error(mode === 'edit' ? 'Say what to change in the picture.' : 'Describe the picture first.')
     const st = await this.status()
-    if (st.remote) throw new Error('Pictures render on this PC’s ComfyUI or on Comfy Cloud. Switch on the Cloud page to make them.')
+    if (st.remote) throw new Error('Pictures render on this computer’s ComfyUI or on Comfy Cloud. Switch on the Cloud page to make them.')
     if (st.error) throw new Error(st.error)
     const fam = st.families.find((f) => f.models.includes(model)) || st.families.find((f) => f.id === familyOfModel(String(model || ''))?.id)
     if (!fam) throw new Error(`"${model}" isn't an image model IV Studio knows. Pick one from list_image_models.`)

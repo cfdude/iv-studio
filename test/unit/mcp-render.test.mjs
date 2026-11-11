@@ -293,7 +293,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   test('[mcp:finish_candidate] refuses the SeedVR2 enhancer on an Apple GPU in the product\'s words and queues nothing', async () => {
     const source = await finished()
     const queued = fake.prompts.length
-    await fails('finish_candidate', { jobId: source.id, enhancer: 'seedvr2' }, /^SeedVR2 isn't available on an Apple GPU yet\.$/)
+    await fails('finish_candidate', { jobId: source.id, enhancer: 'seedvr2' }, /^SeedVR2 isn't available on an Apple GPU yet\. Use the 2× upscale and frame rate options instead\.$/)
     assert.equal(fake.prompts.length, queued)
     assert.deepEqual(await mcp.refusals(), [], 'the product refused it, not the test guard')
   })
@@ -301,17 +301,17 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   test('[mcp:enhance_final] refuses SeedVR2 on an Apple GPU in the product\'s words and queues nothing', async () => {
     const source = await finished()
     const queued = fake.prompts.length
-    await fails('enhance_final', { jobId: source.id }, /^SeedVR2 isn't available on an Apple GPU yet\.$/)
-    await fails('enhance_final', { jobId: source.id, engine: 'seedvr2', resolution: 1440 }, /^SeedVR2 isn't available on an Apple GPU yet\.$/)
+    await fails('enhance_final', { jobId: source.id }, /^SeedVR2 isn't available on an Apple GPU yet\. Use the 2× upscale and frame rate options instead\.$/)
+    await fails('enhance_final', { jobId: source.id, engine: 'seedvr2', resolution: 1440 }, /^SeedVR2 isn't available on an Apple GPU yet\. Use the 2× upscale and frame rate options instead\.$/)
     assert.equal(fake.prompts.length, queued)
     assert.deepEqual(await mcp.refusals(), [], 'the product refused it, not the test guard')
   })
 
-  test('[mcp:enhance_final] says when the render has no finished video on this PC and refuses a resolution H3 does not offer', async () => {
+  test('[mcp:enhance_final] says when the render has no finished video on this computer and refuses a resolution H3 does not offer', async () => {
     const source = await finished()
     const queued = fake.prompts.length
     // a previews job has takes, not a final
-    await fails('enhance_final', { jobId: source.id, engine: 'dlss' }, /That render has no finished video on this PC to enhance\./)
+    await fails('enhance_final', { jobId: source.id, engine: 'dlss' }, /That render has no finished video on this computer to enhance\./)
     await fails('enhance_final', { jobId: 'nope', engine: 'dlss' }, /No job nope/)
     await fails('enhance_final', { jobId: source.id, engine: 'dlss', resolution: 720 }, /resolution/i)
     await fails('enhance_final', { jobId: source.id, engine: 'dlss', scale: 3 }, /scale/i)
@@ -354,7 +354,7 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
   test('[mcp:rank_takes] only ranks a finished previews job that has its takes, and refuses an unknown job', async () => {
     fake.holdNextPrompt(1)
     const waiting = await ok('generate_previews', { prompt: PROMPT, character: 'none' })
-    await fails('rank_takes', { jobId: waiting.id }, /Only a finished previews job with its takes on this PC can be ranked\./)
+    await fails('rank_takes', { jobId: waiting.id }, /Only a finished previews job with its takes on this computer can be ranked\./)
     fake.releaseHeld()
     await fails('rank_takes', { jobId: 'nope' }, /No job nope/)
   })

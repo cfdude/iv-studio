@@ -221,7 +221,7 @@ export function RefModMaker({ notify, onMade, onCancel }) {
         These are pictures of me, of an invented person, or of someone who agreed to be made into a character.
       </label>
       <div className="composer-foot">
-        <span className="dim small">Runs on this PC: about 15 seconds a picture, free.</span>
+        <span className="dim small">Runs on this computer: about 15 seconds a picture, free.</span>
         {onCancel && (
           <button className="link-btn mono" onClick={onCancel} disabled={!!busy}>
             Cancel

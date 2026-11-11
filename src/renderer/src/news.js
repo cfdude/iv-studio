@@ -5,9 +5,9 @@ export const NEWS = [
     version: '1.0.8',
     items: [
       { text: 'Settings → Accessibility: bigger text, higher contrast text, reduce motion, clear focus outlines and underlined links. Secondary text is easier to read for everyone, too.' },
-      { text: 'A ComfyUI address typed the way a browser takes it (localhost:8000) works now. Check my PC finds a ComfyUI running on another port, like the Desktop app’s 8000, and offers Use it, an address box and Check again.' },
-      { text: 'Check my PC measures free space on the drive your ComfyUI keeps its models on, not always C:.' },
-      { text: 'Choose where finished videos go, on any drive: Settings → Folders → Finished videos, or in Check my PC.' },
+      { text: 'A ComfyUI address typed the way a browser takes it (localhost:8000) works now. Check my computer finds a ComfyUI running on another port, like the Desktop app’s 8000, and offers Use it, an address box and Check again.' },
+      { text: 'Check my computer measures free space on the drive your ComfyUI keeps its models on, not always C:.' },
+      { text: 'Choose where finished videos go, on any drive: Settings → Folders → Finished videos, or in Check my computer.' },
       { text: 'Live step pictures need H3’s small preview model, now a one-click download in Settings → Setup. Without it, the live panel says so instead of promising a picture.' }
     ]
   },
@@ -23,7 +23,7 @@ export const NEWS = [
     items: [
       { text: 'Cloud setup shows how it’s going: each step with a check or its own progress bar, the time so far and about how long is left, instead of a scrolling log (that’s under Show details).' },
       { text: 'You don’t have to watch it: leave the page or use the rest of IV Studio. A pill in the top bar shows the progress, and IV Studio tells you when the cloud is ready (with a notification if it’s in the background).' },
-      { text: 'Setting up Modal on a PC without ComfyUI no longer stops at the last step.' }
+      { text: 'Setting up Modal on a computer without ComfyUI no longer stops at the last step.' }
     ]
   },
   {
@@ -68,7 +68,7 @@ export const NEWS = [
     version: '1.0.0',
     items: [
       { text: 'IV Studio 1.0. Every page has a How it works button that walks you through its real controls, and a full tour shows the whole app in two minutes (Settings, About takes it again).' },
-      { text: 'Check my PC reads your graphics card, memory and drives and sets IV Studio up to suit them, and a guided cloud setup connects RunPod, Modal or Comfy Cloud.' },
+      { text: 'Check my computer reads your graphics card, memory and drives and sets IV Studio up to suit them, and a guided cloud setup connects RunPod, Modal or Comfy Cloud.' },
       { text: 'Create, Settings, Characters and the Workflows tools are redesigned as clear numbered steps; Sizzle, Reel, Sequences, Shinobi and Replace open on animated stages.' },
       { text: 'Shots, Projects and the Library group your work by day, filter by when, kind, who and shape, and open quickly however much you have.' },
       { text: 'Train a character free on your own graphics card, or on RunPod or Modal, with presets, a spending cap, Train more and likeness scoring. Or make a RefMod character from a few pictures in seconds.' },
@@ -118,7 +118,7 @@ export const NEWS = [
   },
   {
     version: '0.2.10',
-    items: [{ text: 'Use Ollama from another container or PC: Settings → Prompt writer → Ollama address (or OLLAMA_HOST).' }]
+    items: [{ text: 'Use Ollama from another container or computer: Settings → Prompt writer → Ollama address (or OLLAMA_HOST).' }]
   },
   {
     version: '0.2.9',
@@ -137,7 +137,7 @@ export const NEWS = [
       { text: 'References mode keeps the place from your idea from the very first shot: Write it for me no longer opens on the background of your picture.' },
       { text: 'Short films: the people and places in a script you type show up on Cast and places straight away.' },
       { text: 'The Library names every version of a shot apart: each run, each final and each enhanced copy.' },
-      { text: 'The writer on this PC no longer stalls on a runaway answer, and the prompt checker raises fewer false alarms.' }
+      { text: 'The writer on this computer no longer stalls on a runaway answer, and the prompt checker raises fewer false alarms.' }
     ]
   },
   {

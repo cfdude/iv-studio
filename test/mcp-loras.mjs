@@ -1,5 +1,5 @@
 // MCP LoRA test: the LoRA tools over stdio on a temporary data folder, against live Civitai (search, details)
-// and the ComfyUI on this PC (installed LoRAs, one looked up by hash). Downloads nothing: download_lora is only
+// and the ComfyUI on this computer (installed LoRAs, one looked up by hash). Downloads nothing: download_lora is only
 // checked to refuse without CIVITAI_API_KEY.
 //   node test/mcp-loras.mjs
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'

@@ -40,7 +40,7 @@ export const START_MENU = [
   {
     id: 'make_music',
     title: 'Write a song or score',
-    blurb: 'A song with lyrics, or music for a video, made on this PC.',
+    blurb: 'A song with lyrics, or music for a video, made on this computer.',
     args: { idea: 'The mood, style or lyrics (optional)' },
     brief: `Make music. Ask for the style, mood and length, and whether it has lyrics (MiniMax Music 3 sings clearly; ACE-Step is quicker for instrumentals). Make it with make_music, then offer it for an edit or as a shot's sound.`
   },
@@ -75,7 +75,7 @@ export const START_MENU = [
   {
     id: 'show_me_around',
     title: 'Show me what IV Studio can do',
-    blurb: 'A quick tour of what is set up on this PC and what you could make first.',
+    blurb: 'A quick tour of what is set up on this computer and what you could make first.',
     args: {},
     brief: `Give a short tour. Run check_setup, list_characters and list_renders, then say in a few plain lines what's ready, what's missing, and three things they could make right now, and offer the menu (get_menu) to start one.`
   }

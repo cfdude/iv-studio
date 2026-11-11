@@ -8,9 +8,9 @@ import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { Comfy } from './comfy.js'
 import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
-import { seedvr2Refusal } from './gpu.js'
+import { SEEDVR2_DEVICE, seedvr2Refusal } from './gpu.js'
 import { planFinish, planPreviews } from './plan.js'
-import { adaptGraph, capabilities, LIVE_NODE, withLivePreview } from './remote.js'
+import { adaptGraph, capabilities, finishCaps, LIVE_NODE, NO_RIFE, NO_UPSCALER, withLivePreview } from './remote.js'
 import { Cast, resolveMentions } from './cast.js'
 import { contextIrGraph, fromContextIr, writeHarness, writeLocal, writeStoryLocal } from './prompter.js'
 import { cleanSequenceLoras, renderOutGraph, retakeGraph, SAVES, SEQUENCE_DEFAULTS, takeGraph, validateSequence } from './sequence.js'
@@ -213,7 +213,7 @@ export class Studio {
   // Only a ComfyUI on this PC. launcher: the one IV Studio starts ComfyUI with (comfylauncher.js launcherFor), to tell
   // the ComfyUI Desktop app (which updates ComfyUI and Manager itself) from the rest.
   localOnly() {
-    if (this.comfy.remote || !isLocalUrl(this.comfy.url)) throw new Error('Updates run on this PC’s ComfyUI only.')
+    if (this.comfy.remote || !isLocalUrl(this.comfy.url)) throw new Error('Updates run on this computer’s ComfyUI only.')
   }
 
   // A ComfyUI without ComfyUI-Manager answers { manager: { present: false } } (the window offers to install it).
@@ -369,9 +369,11 @@ export class Studio {
     const source = this.getJob(jobId, { refresh: false })
     if (source.kind !== 'previews') throw new Error('finish_candidate needs a previews job id.')
     const caps = await this.capabilities()
-    if (finish.fps && !caps.fps.includes(finish.fps)) throw new Error(`This ComfyUI can make ${caps.fps.filter(Boolean).join(', ') || 'no other'} fps.`)
-    if (finish.upscale2x && !caps.upscale2x && finish.enhancer !== 'seedvr2') throw new Error('This ComfyUI has no 2x upscaler.')
-    if (finish.enhancer === 'seedvr2' && this.comfy.remote) throw new Error('SeedVR2 runs on this PC\'s ComfyUI only; the cloud finishes with its own upscaler.')
+    // the 'upscale' enhancer has its own limits (Real-ESRGAN, RIFE); the others are the ComfyUI's
+    const can = finish.enhancer === 'upscale' ? finishCaps(caps, 'upscale') : caps
+    if (finish.fps && !can.fps.includes(finish.fps)) throw new Error(`This ComfyUI can make ${can.fps.filter(Boolean).join(', ') || 'no other'} fps.${!can.dlss && !can.rife ? ` ${NO_RIFE}` : ''}`)
+    if (finish.upscale2x && !can.upscale2x && finish.enhancer !== 'seedvr2') throw new Error(NO_UPSCALER)
+    if (finish.enhancer === 'seedvr2' && this.comfy.remote) throw new Error('SeedVR2 runs on this computer\'s ComfyUI only; the cloud finishes with its own upscaler.')
     if (finish.enhancer === 'seedvr2' && seedvr2Refusal(caps.gpuKind)) throw new Error(seedvr2Refusal(caps.gpuKind))
     const plan = planFinish(source.plan, finish)
     plan.values['80'] = source.name
@@ -410,7 +412,7 @@ export class Studio {
   async submitGraph({ kind, graph: built, projectId = null, sequenceId = null, plan, name, parent, previewPlan }) {
     const caps = await this.capabilities()
     // a finish SeedVR2 will enhance skips DLSS 5 (remote.js swaps its node for a plain save, as on the cloud)
-    const graph = adaptGraph(built, plan?.finish?.enhancer === 'seedvr2' ? { ...caps, dlss: false, upscale2x: false, rife: false } : caps, { upscaleSize: plan?.resolved?.upscaleSize })
+    const graph = adaptGraph(built, finishCaps(caps, plan?.finish?.enhancer), { upscaleSize: plan?.resolved?.upscaleSize })
     const problems = checkPrompt(graph)
     if (problems.length) throw new Error(`Internal graph error: ${problems.join('; ')}`)
     await this.makeRoom(kind)
@@ -440,14 +442,14 @@ export class Studio {
   // only: the cloud image has no SeedVR2.
   // engine dlss: DLSS 5 with the finish's own settings (noise reduction Default 0.8), at scale 1 or 2.
   async enhanceFinal({ jobId, engine = 'seedvr2', resolution = 1080, scale = 1 }) {
-    if (this.comfy.remote) throw new Error('Enhance runs on this PC\'s ComfyUI only.')
+    if (this.comfy.remote) throw new Error('Enhance runs on this computer\'s ComfyUI only.')
     if (engine !== 'dlss') {
       const refusal = seedvr2Refusal((await this.capabilities().catch(() => ({}))).gpuKind)
       if (refusal) throw new Error(refusal)
     }
     const source = this.getJob(jobId)
     const out = source.outputs.find((o) => o.kind === 'final') || source.outputs.find((o) => o.kind === 'master')
-    if (!out?.path || !fs.existsSync(out.path)) throw new Error('That render has no finished video on this PC to enhance.')
+    if (!out?.path || !fs.existsSync(out.path)) throw new Error('That render has no finished video on this computer to enhance.')
     if (engine === 'dlss') return this.enhanceDlss(source, out, scale)
     const info = await this.comfy.objectInfo('SeedVR2LoadDiTModel').catch(() => null)
     const dits = info?.SeedVR2LoadDiTModel?.input?.required?.model?.[1]?.options || info?.SeedVR2LoadDiTModel?.input?.required?.model?.[0] || []
@@ -458,8 +460,8 @@ export class Studio {
     const { batch, overlap, swap } = seedvr2Batch(resolution)
     const graph = {
       load: { class_type: 'VHS_LoadVideoPath', inputs: { video: out.path, force_rate: 0, custom_width: 0, custom_height: 0, frame_load_cap: 0, skip_first_frames: 0, select_every_nth: 1, format: 'AnimateDiff' } },
-      dit: { class_type: 'SeedVR2LoadDiTModel', inputs: { model: dit, device: 'cuda:0', blocks_to_swap: swap, offload_device: 'cpu', cache_model: false, attention_mode: 'sdpa' } },
-      vae: { class_type: 'SeedVR2LoadVAEModel', inputs: { model: 'ema_vae_fp16.safetensors', device: 'cuda:0', encode_tiled: true, decode_tiled: true, offload_device: 'cpu', cache_model: false } },
+      dit: { class_type: 'SeedVR2LoadDiTModel', inputs: { model: dit, device: SEEDVR2_DEVICE, blocks_to_swap: swap, offload_device: 'cpu', cache_model: false, attention_mode: 'sdpa' } },
+      vae: { class_type: 'SeedVR2LoadVAEModel', inputs: { model: 'ema_vae_fp16.safetensors', device: SEEDVR2_DEVICE, encode_tiled: true, decode_tiled: true, offload_device: 'cpu', cache_model: false } },
       up: { class_type: 'SeedVR2VideoUpscaler', inputs: { image: ['load', 0], dit: ['dit', 0], vae: ['vae', 0], seed: 42, resolution, max_resolution: 0, batch_size: batch, uniform_batch_size: false, color_correction: 'lab', temporal_overlap: overlap, offload_device: 'cpu' } },
       save: { class_type: 'VHS_VideoCombine', inputs: { images: ['up', 0], audio: ['load', 2], frame_rate: fps, loop_count: 0, filename_prefix: `H3/enhanced/${name}`, format: 'video/h264-mp4', pix_fmt: 'yuv420p', crf: 16, save_metadata: true, trim_to_audio: false, pingpong: false, save_output: true } }
     }
@@ -485,7 +487,7 @@ export class Studio {
   async localCopy(file, dir) {
     const p = typeof file === 'string' ? file : file?.path
     if (p && fs.existsSync(p)) return p
-    if (!file?.url) throw new Error('That file is not on this PC.')
+    if (!file?.url) throw new Error('That file is not on this computer.')
     const u = new URL(file.url)
     const dest = path.join(dir, u.searchParams.get('filename'))
     if (!fs.existsSync(dest)) {
@@ -569,7 +571,7 @@ export class Studio {
     const folders = (await fetch(`${this.comfy.url}/experiment/models`, { headers: this.comfy.headers() }).then((r) => r.json())).find((f) => f.name === 'loras')?.folders || []
     const real = folders.filter((f) => fs.existsSync(f))
     const root = real.find((f) => fs.existsSync(path.join(f, 'MiniMax H3'))) || real[0]
-    if (!root) throw new Error("Couldn't find this ComfyUI's loras folder (character downloads need a ComfyUI on this PC).")
+    if (!root) throw new Error("Couldn't find this ComfyUI's loras folder (character downloads need a ComfyUI on this computer).")
     return root
   }
 
@@ -749,7 +751,7 @@ export class Studio {
   // A retake of any video file (the editor's Retake): the graph Sequences use, at their defaults. The file must
   // be on the PC that runs ComfyUI.
   async retakeFile({ name, sourcePath, start, end, mode = 'both', prompt, character = 'none', seed }) {
-    if (this.comfy.remote) throw new Error('Retake in the editor needs ComfyUI on this PC for now.')
+    if (this.comfy.remote) throw new Error('Retake in the editor needs ComfyUI on this computer for now.')
     if (!(end > start)) throw new Error('The retake must end after it starts.')
     const ch = character === 'none' ? null : this.characters().find((c) => c.id === character) || null
     const base = `${slug(name)}_${randomUUID().slice(0, 6)}`

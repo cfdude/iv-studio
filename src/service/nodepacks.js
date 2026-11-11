@@ -29,7 +29,7 @@ export function findPython(comfyRoot, platform = process.platform) {
 // Where this ComfyUI keeps its node packs and which Python runs it. ComfyUI says where custom_nodes is
 // (/internal/folder_paths); the ComfyUI folder picked in Settings is the fallback. Only a ComfyUI on this PC.
 export async function comfyPlace(comfy, folder) {
-  if (!isLocalUrl(comfy.url)) throw new Error('ComfyUI isn’t on this PC, so IV Studio can’t add node packs to it. Install them where that ComfyUI runs.')
+  if (!isLocalUrl(comfy.url)) throw new Error('ComfyUI isn’t on this computer, so IV Studio can’t add node packs to it. Install them where that ComfyUI runs.')
   let customNodes = null
   try {
     const paths = await comfy.req('/internal/folder_paths', { timeout: 20000 })

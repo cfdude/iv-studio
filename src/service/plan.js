@@ -141,16 +141,17 @@ export function planPreviews(request, characters) {
 
 // A finish re-uses the preview plan's groups and values unchanged (so the picked latent's fingerprint
 // matches and IV Latent Cache skips re-sampling), keeping only the picked preview and adding the upscale.
-// The finish's enhancer: DLSS 5 (in the graph: noise reduction, RTX 2x, frame generation) or SeedVR2 (a step after
-// a DLSS-free finish, to a short side of enhanceResolution).
-export const ENHANCERS = ['dlss', 'seedvr2']
+// The finish's enhancer: DLSS 5 (in the graph: noise reduction, RTX 2x, frame generation), SeedVR2 (a step after
+// a DLSS-free finish, to a short side of enhanceResolution) or upscale (the finish's own Real-ESRGAN 2× and RIFE
+// frame rate, with no DLSS 5: what a Mac uses).
+export const ENHANCERS = ['dlss', 'seedvr2', 'upscale']
 export const SEEDVR2_SIZES = [1080, 1440, 2160]
 export function planFinish(previewPlan, finish) {
   const f = { candidate: 1, megapixels: 2, upscale2x: false, fps: 0, audio: 'pass', rerollSeed: null, enhancer: 'dlss', enhanceResolution: 1080, ...finish }
   // SeedVR2 instead of DLSS 5: the finish skips DLSS (no 2x, no frame generation) and SeedVR2 follows it
   if (f.enhancer === 'seedvr2') Object.assign(f, { upscale2x: false, fps: 0 })
   const errors = []
-  if (!ENHANCERS.includes(f.enhancer)) errors.push(`enhancer must be ${ENHANCERS.join(' or ')}.`)
+  if (!ENHANCERS.includes(f.enhancer)) errors.push(`enhancer must be ${ENHANCERS.slice(0, -1).join(', ')} or ${ENHANCERS.at(-1)}.`)
   if (f.enhancer === 'seedvr2' && !SEEDVR2_SIZES.includes(f.enhanceResolution)) errors.push(`enhanceResolution must be ${SEEDVR2_SIZES.join(', ')}.`)
   const n = previewPlan.resolved.previews
   if (!(f.candidate >= 1 && f.candidate <= n)) errors.push(`candidate must be 1..${n}.`)
