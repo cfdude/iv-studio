@@ -760,7 +760,7 @@ function OpenAiWriter({ settings, setSettings, save, notify }) {
               <button className="btn btn-small" disabled={!key.trim()} onClick={() => secrets({ key }, () => setKey(''))}>
                 Save
               </button>
-            </div          </div>
+            </div>
           </>
         )}
       </SetField>
@@ -780,7 +780,7 @@ function OpenAiWriter({ settings, setSettings, save, notify }) {
               <button className="btn btn-small" disabled={!headers.trim()} onClick={() => secrets({ headers }, () => setHeaders(''))}>
                 Save
               </button>
-            </div          </div>
+            </div>
           </>
         )}
       </SetField>
