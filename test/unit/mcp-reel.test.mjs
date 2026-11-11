@@ -62,7 +62,7 @@ describe('MCP make_reel', () => {
     assert.ok(e.tracks.A1[0].fadeOut > 0, 'the song fades out')
     assert.ok(Math.abs(r.seconds - e.tracks.V1.at(-1).end) < 0.05, 'the reel ends with its last picture')
     // each picture became a short moving clip at the format's size; the clip was used as it was
-    const made = e.media.filter((m) => m.path.startsWith(path.join(mcp.dataDir, 'reels')))
+    const made = e.media.filter((m) => m.path.startsWith(path.join(mcp.dataDir, 'reels'))).sort((a, b) => a.name.localeCompare(b.name)) // media come back in the order of their random ids
     assert.deepEqual(made.map((m) => [m.name, m.width, m.height]), [['000.mp4', 1080, 1080], ['001.mp4', 1080, 1080], ['003.mp4', 1080, 1080]])
     assert.ok(e.media.some((m) => m.path === clip), 'the video clip is not re-made')
   })
