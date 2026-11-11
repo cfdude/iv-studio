@@ -8,10 +8,11 @@ import path from 'node:path'
 import { describe, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { ACCEPTED_PREFS, appDataIn, checkBuild, electronEnv, prefsListing, proxyArgs, waitForMarker } from '../ui/driver.mjs'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const policy = JSON.parse(fs.readFileSync(path.join(here, '../fakes/env-policy.json'), 'utf8'))
-const temp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-driver-')))
+const temp = () => tempDirReal('iv-driver-')
 
 describe('page-tier driver: the build check', () => {
   const tree = (srcAge, outAge) => {

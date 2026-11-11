@@ -23,6 +23,7 @@ import { scanHardware } from '../../src/service/hardware.js'
 import { applyEnvPolicy, checkNode, ELECTRON_FOLDERS, guardState, installElectronStubs, installIpcTrace, pinElectronPaths, readElectronPaths, shapeOf } from '../fakes/guard.mjs'
 import { registerPort, registerProgram, unregisterPort, unregisterProgram } from '../fakes/ports.mjs'
 import { withShims } from '../fakes/shims.mjs'
+import { tempDir as makeTempDir } from '../fakes/tmp.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const policy = JSON.parse(fs.readFileSync(path.join(here, '../fakes/env-policy.json'), 'utf8'))
@@ -32,7 +33,7 @@ const guardUrl = pathToFileURL(path.join(here, '../fakes/guard.mjs')).href
 
 // Runs `node -e code` through the wrapped spawn and returns what it printed.
 function nodeChild(code, env = {}) {
-  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-guard-child-'))
+  const runDir = makeTempDir('iv-guard-child-')
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['-e', code], { env: { ...process.env, ...env, IV_TEST_RUN_DIR: runDir } })
     let out = ''
@@ -66,7 +67,7 @@ describe('guard: environment', () => {
   const dirty = {}
   const all = [...policy.remove, ...policy.pin]
   for (const e of all) dirty[e.name] = `leak-${e.name}`
-  const scrubbed = applyEnvPolicy({ ...dirty, PATH: '/usr/bin', SystemRoot: 'C:\\Windows' }, policy, fs.mkdtempSync(path.join(os.tmpdir(), 'iv-env-')))
+  const scrubbed = applyEnvPolicy({ ...dirty, PATH: '/usr/bin', SystemRoot: 'C:\\Windows' }, policy, makeTempDir('iv-env-'))
 
   test('every removed variable is gone from the environment', async (t) => {
     for (const e of policy.remove) {
@@ -88,7 +89,7 @@ describe('guard: environment', () => {
   })
   test('a pinned variable already set to a temp path by the harness is kept', () => {
     const mine = path.join(tmpReal, 'iv-seeded-data')
-    const r = applyEnvPolicy({ IV_STUDIO_DATA: mine, HOME: '/Users/someone' }, policy, fs.mkdtempSync(path.join(os.tmpdir(), 'iv-env-')))
+    const r = applyEnvPolicy({ IV_STUDIO_DATA: mine, HOME: '/Users/someone' }, policy, makeTempDir('iv-env-'))
     assert.equal(r.env.IV_STUDIO_DATA, mine)
     assert.notEqual(r.env.HOME, '/Users/someone')
   })
@@ -422,7 +423,7 @@ describe('guard: Electron stand-ins', () => {
   const answers = { open: { 'Pick a folder': { kind: 'dir', name: 'picked' } }, save: { 'Save as': { name: 'out.mp4' } }, messageBox: { 'Delete it?': 1 } }
 
   test('shell, dialog and Notification record their calls and open nothing', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-electron-'))
+    const tempDir = makeTempDir('iv-electron-')
     const electron = makeElectron()
     const trace = []
     installElectronStubs(electron, { answers, tempDir, trace })
@@ -440,7 +441,7 @@ describe('guard: Electron stand-ins', () => {
   })
 
   test('showOpenDialog with a known title returns a path under the temp folder; an unknown title is cancelled', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-electron-'))
+    const tempDir = makeTempDir('iv-electron-')
     const electron = makeElectron()
     const trace = []
     installElectronStubs(electron, { answers, tempDir, trace })
@@ -457,7 +458,7 @@ describe('guard: Electron stand-ins', () => {
   })
 
   test('a dialog answer is made even when the temp folder for answers does not exist yet', async () => {
-    const tempDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-electron-')), 'not', 'yet')
+    const tempDir = path.join(makeTempDir('iv-electron-'), 'not', 'yet')
     const electron = makeElectron()
     installElectronStubs(electron, { answers, tempDir, trace: [] })
     const r = await electron.dialog.showOpenDialog({ title: 'Pick a folder', properties: ['openDirectory'] })
@@ -476,7 +477,7 @@ describe('guard: Electron stand-ins', () => {
   })
 
   test('a folder answer with contents holds those files', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-electron-'))
+    const tempDir = makeTempDir('iv-electron-')
     const electron = makeElectron()
     installElectronStubs(electron, { answers: { open: { 'Pick a folder': { kind: 'dir', name: 'comfy', contents: ['main.py', 'custom_nodes/.keep'] } } }, tempDir, trace: [] })
     const r = await electron.dialog.showOpenDialog({ title: 'Pick a folder' })
@@ -494,7 +495,7 @@ describe('guard: Electron stand-ins', () => {
 
 describe('guard: what the page tier adds', () => {
   test('a program the driver registers by exact path starts; its sibling still does not', { skip: process.platform === 'win32' && 'the test programs are sh scripts' }, async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-program-'))
+    const dir = makeTempDir('iv-program-')
     for (const n of ['launched', 'sibling']) {
       fs.writeFileSync(path.join(dir, n), '#!/bin/sh\necho ok\n', { mode: 0o755 })
     }
@@ -524,7 +525,7 @@ describe('guard: what the page tier adds', () => {
   })
 
   test('the Electron stubs write their trace to a file the driver can read', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-trace-'))
+    const dir = makeTempDir('iv-trace-')
     const traceFile = path.join(dir, 'guard-trace.json')
     const dialog = Object.fromEntries(['showOpenDialog', 'showOpenDialogSync', 'showSaveDialog', 'showSaveDialogSync', 'showMessageBox', 'showMessageBoxSync'].map((n) => [n, () => 'REAL']))
     const electron = { shell: {}, dialog }
@@ -566,7 +567,7 @@ describe('guard: what the page tier adds', () => {
     const real = { home: '/Users/someone', videos: '/Users/someone/Movies', documents: '/Users/someone/Documents', downloads: '/Users/someone/Downloads', desktop: '/Users/someone/Desktop', music: '/Users/someone/Music', pictures: '/Users/someone/Pictures', userData: '/tmp/ud' }
     const set = {}
     const app = { setPath: (n, v) => ((set[n] = v), (real[n] = v)), getPath: (n) => real[n] }
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-pin-home-'))
+    const home = makeTempDir('iv-pin-home-')
     const pinned = pinElectronPaths(app, home)
     assert.deepEqual(Object.keys(pinned), Object.keys(ELECTRON_FOLDERS))
     for (const name of Object.keys(ELECTRON_FOLDERS)) {
@@ -594,7 +595,7 @@ describe('guard: the channel trace', () => {
   })
 
   test('ipcMain.handle is wrapped: each call records its channel and argument shape in order, then runs the real handler', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ipc-trace-'))
+    const dir = makeTempDir('iv-ipc-trace-')
     const file = path.join(dir, 'ipc-trace.jsonl')
     const registered = {}
     const ipcMain = { handle: (channel, fn) => void (registered[channel] = fn) }
@@ -610,7 +611,7 @@ describe('guard: the channel trace', () => {
   })
 
   test('a handler that throws is still recorded, and its error still reaches the caller', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ipc-trace-'))
+    const dir = makeTempDir('iv-ipc-trace-')
     const file = path.join(dir, 'ipc-trace.jsonl')
     const registered = {}
     const ipcMain = { handle: (channel, fn) => void (registered[channel] = fn) }

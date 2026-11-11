@@ -7,8 +7,9 @@ import path from 'node:path'
 import { describe, test } from 'node:test'
 import { VoiceEngine } from '../../src/service/voiceengine.js'
 import { Voices } from '../../src/service/voices.js'
+import { tempDir } from '../fakes/tmp.mjs'
 
-const dir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'iv-voice-'))
+const dir = () => tempDir('iv-voice-')
 const touch = (file) => (fs.mkdirSync(path.dirname(file), { recursive: true }), fs.writeFileSync(file, '', { mode: 0o755 }), file)
 
 const make = (platform) => {

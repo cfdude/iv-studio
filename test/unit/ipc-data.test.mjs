@@ -10,8 +10,9 @@ import path from 'node:path'
 import { describe, test } from 'node:test'
 import { chooseTarget, copyData, freeBytes, listData, movableEntries, oldCopy, removeOldCopy, verifyCopy, writePointer } from '../../src/service/datafolder.js'
 import { readPointer } from '../../src/service/paths.js'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-data-')))
+const tmp = () => tempDirReal('iv-data-')
 const write = (file, text) => (fs.mkdirSync(path.dirname(file), { recursive: true }), fs.writeFileSync(file, text), file)
 
 describe('window channels: data folder', () => {

@@ -17,8 +17,9 @@ import { Edits } from '../../src/service/edits.js'
 import { Voices } from '../../src/service/voices.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { CIVITAI_FILE_BYTES, startFakeCivitai } from '../fakes/outside.mjs'
+import { tempDir } from '../fakes/tmp.mjs'
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ipc-'))
+const tmp = () => tempDir('iv-ipc-')
 const ff = (...args) => execFileSync(ffmpegStatic.ffmpegPath, ['-y', '-hide_banner', '-loglevel', 'error', ...args])
 
 describe('window channels: voices', () => {

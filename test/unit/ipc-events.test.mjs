@@ -25,8 +25,9 @@ import { Trainings } from '../../src/service/training.js'
 import { Voices } from '../../src/service/voices.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { startFakeOllama } from '../fakes/outside.mjs'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-event-')))
+const tmp = () => tempDirReal('iv-event-')
 const ff = (...args) => execFileSync(ffmpegStatic.ffmpegPath, ['-y', '-hide_banner', '-loglevel', 'error', ...args])
 const resources = path.resolve('resources')
 const until = async (done, ms = 3000) => {

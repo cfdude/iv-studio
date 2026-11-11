@@ -19,8 +19,9 @@ import { Studio } from '../../src/service/studio.js'
 import { findFizgig, MODEL_FILES, Trainings } from '../../src/service/training.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { startFakeGithub, startFakeOllama } from '../fakes/outside.mjs'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-hand-')))
+const tmp = () => tempDirReal('iv-hand-')
 const write = (file, text = 'x') => (fs.mkdirSync(path.dirname(file), { recursive: true }), fs.writeFileSync(file, text), file)
 const resources = path.resolve('resources')
 

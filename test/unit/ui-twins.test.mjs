@@ -19,6 +19,7 @@ import { Studio } from '../../src/service/studio.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { rowIdsIn, scanTestNames } from './test-names.mjs'
 import { twinContext, twinRow } from './ui-twin.mjs'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'))
@@ -31,7 +32,7 @@ describe('mocked twins: every page and journey, in trace order', () => {
   let services
   before(async () => {
     fake = await startFakeComfy({ devices: 'mps' })
-    const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-twin-')))
+    const dir = tempDirReal('iv-twin-')
     const studio = new Studio({ dataDir: dir, resourcesDir: path.join(root, 'resources'), comfyUrl: fake.url })
     services = {
       Studio: studio,

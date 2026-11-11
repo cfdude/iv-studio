@@ -14,6 +14,7 @@ import { Shinobi } from '../../src/service/shinobi.js'
 import { Studio } from '../../src/service/studio.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { guardState } from '../fakes/ports.mjs'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
 const combo = (name, options) => ({ input: { required: { [name]: [options] } } })
 const PROMPT = 'integrated_multimodal_description: [Shot 1] A woman walks into a rainy bus stop.\n\noverall_soundscape: Rain.\n\nnon_diegetic_music: N/A'
@@ -25,7 +26,7 @@ describe('window channels: Studio', () => {
   const sequence = () => studio.createSequence({ name: 'Bus stop', character: 'none', method: 'shots', seed: 100, shots: [{ prompt: PROMPT }, { prompt: 'She opens an umbrella.' }] })
   before(async () => {
     fake = await startFakeComfy({ devices: 'mps', os: 'darwin', models: { loras: [] }, objectInfo: { LoraLoaderModelOnly: combo('lora_name', ['MiniMax H3\\tess\\tess_mmh3-000040.safetensors', 'style\\grain.safetensors']) } })
-    dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ipc-')))
+    dir = tempDirReal('iv-ipc-')
     studio = new Studio({ dataDir: dir, resourcesDir: path.resolve('resources'), comfyUrl: fake.url })
   })
   after(() => fake.close())

@@ -8,9 +8,10 @@ import os from 'node:os'
 import path from 'node:path'
 import { describe, test } from 'node:test'
 import { checkRow, compareTraces, normalize, POLLED, readTraces } from '../ui/trace.mjs'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
 const c = (channel, args = '[]') => ({ channel, args })
-const temp = () => path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-traces-'))), 'ui-traces.json')
+const temp = () => path.join(tempDirReal('iv-traces-'), 'ui-traces.json')
 const put = (file, body) => fs.writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`)
 
 describe('trace: what is kept of a live sequence', () => {

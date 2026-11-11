@@ -16,8 +16,9 @@ import { Shinobi } from '../../src/service/shinobi.js'
 import { Studio } from '../../src/service/studio.js'
 import { Trainings } from '../../src/service/training.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ipc-')))
+const tmp = () => tempDirReal('iv-ipc-')
 const ff = (...args) => execFileSync(ffmpegStatic.ffmpegPath, ['-y', '-hide_banner', '-loglevel', 'error', ...args])
 const write = (file, text) => (fs.mkdirSync(path.dirname(file), { recursive: true }), fs.writeFileSync(file, text), file)
 
