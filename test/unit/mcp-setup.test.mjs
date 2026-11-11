@@ -34,18 +34,33 @@ describe('MCP setup, update, model and hardware tools', () => {
   })
 
   // ---------- check_setup ----------
-  test('[mcp:check_setup] reports ComfyUI, an Apple GPU warning and every missing node pack', async () => {
+  test('[mcp:check_setup] reports ComfyUI, an Apple GPU that passes, the missing built-in upscaler and every missing node pack', async () => {
     const r = await ok('check_setup')
     assert.equal(r.ready, false)
     const byId = Object.fromEntries(r.items.map((i) => [i.id, i]))
     assert.equal(byId.comfyui.status, 'ok')
     assert.match(byId.comfyui.detail, new RegExp(`Version 0\\.3\\.99 at ${fake.url}`))
-    assert.equal(byId.gpu.status, 'warn')
+    assert.equal(byId.gpu.status, 'ok')
     assert.match(byId.gpu.detail, /Apple GPU · 64 GB unified memory/)
+    // an Apple GPU needs ComfyUI's built-in H3 upscaler (0.44+); this fake is 0.3.99 and lists neither node
+    assert.equal(byId['gpu-upscaler'].status, 'missing')
+    assert.equal(byId['gpu-upscaler'].label, 'ComfyUI version')
+    assert.match(byId['gpu-upscaler'].fix, /Update ComfyUI to 0\.44 or newer/)
     const packs = r.items.filter((i) => i.kind === 'node_pack' && i.status === 'missing')
     assert.ok(packs.length >= 8, `only ${packs.length} missing packs`)
     assert.match(byId['pack:VideoHelperSuite'].detail, /Missing nodes: VHS_VideoCombine/)
     assert.equal(byId['pack:VideoHelperSuite'].dir, 'ComfyUI-VideoHelperSuite')
+  })
+
+  test('[mcp:check_setup] drops the upscaler item once ComfyUI lists the built-in H3 upscaler nodes', async () => {
+    fake.setObjectInfo({ MiniMaxH3LatentUpscaleWithModel: { input: { required: {} } }, LatentUpscaleModelLoader: { input: { required: {} } } })
+    try {
+      const r = await ok('check_setup')
+      assert.equal(r.items.find((i) => i.id === 'gpu').status, 'ok')
+      assert.equal(r.items.find((i) => i.id === 'gpu-upscaler'), undefined)
+    } finally {
+      fake.setObjectInfo({})
+    }
   })
 
   test('[mcp:check_setup][ipc:setup:check] counts a node pack as installed once ComfyUI lists its nodes', async () => {
@@ -202,19 +217,23 @@ describe('MCP setup, update, model and hardware tools', () => {
   })
 
   // ---------- hardware ----------
-  test('[mcp:scan_hardware] reads this PC and recommends the cloud when no NVIDIA card is found', async () => {
+  test('[mcp:scan_hardware] reads this PC, tiers an Apple Silicon Mac by its unified memory and recommends the cloud for any other machine with no NVIDIA card', async () => {
     const r = await ok('scan_hardware')
     assert.ok(r.scan.cpu.threads > 0)
     assert.ok(r.scan.ram > 0)
     assert.ok(Array.isArray(r.scan.drives) && r.scan.drives.length >= 1)
-    // the card is read with nvidia-smi (not on a Mac, refused by the guard elsewhere): no card, so no local video
+    // the card is read with nvidia-smi (not on a Mac, refused by the guard elsewhere): no card is found
     assert.deepEqual(r.scan.gpus, [])
     assert.equal(r.scan.installs.comfyRunning, true)
     assert.equal(r.scan.installs.comfyFound, true)
     assert.equal(r.scan.installs.modelsKnown, true)
     assert.ok(r.scan.installs.modelSizes.fl2va > 0)
-    assert.equal(r.recommendations.tier.id, 'cloud')
-    assert.equal(r.recommendations.tier.renderOn, 'cloud')
+    // the scan is of the machine running the tests, so the expected tier is worked out from what it reports
+    const GB = 1024 ** 3
+    const appleSilicon = r.scan.os.platform === 'darwin' && r.scan.os.arch === 'arm64'
+    const expected = !appleSilicon ? 'cloud' : r.scan.ram >= 96 * GB ? 'all' : r.scan.ram >= 64 * GB ? 'most' : r.scan.ram >= 32 * GB ? 'some' : 'cloud'
+    assert.equal(r.recommendations.tier.id, expected)
+    assert.equal(r.recommendations.tier.renderOn, expected === 'cloud' ? 'cloud' : expected === 'all' ? 'local' : 'both')
     assert.ok(r.recommendations.verdicts.some((v) => v.id === 'gpu'))
   })
 

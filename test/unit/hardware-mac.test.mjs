@@ -18,14 +18,20 @@ const mac = (ram, { arch = 'arm64', vendor = 'apple', name = 'Apple M5 Max' } = 
 const rec = (r, id) => r.downloads.find((d) => d.id === id).recommended
 
 describe('Apple Silicon tiers by unified memory', () => {
-  for (const [ram, id, render] of [[128, 'all', 'local'], [96, 'all', 'local'], [95, 'most', 'both'], [64, 'most', 'both'], [63, 'some', 'both'], [32, 'some', 'both'], [31, 'cloud', 'cloud'], [16, 'cloud', 'cloud']]) {
-    test(`${ram} GB is ${id}`, () => {
-      const r = recommend(mac(ram))
-      assert.equal(r.tier.id, id)
-      assert.equal(r.tier.renderOn, render)
-      assert.equal(tierOf(mac(ram)).id, id)
-    })
+  const tiered = (ram, id, render) => {
+    const r = recommend(mac(ram))
+    assert.equal(r.tier.id, id)
+    assert.equal(r.tier.renderOn, render)
+    assert.equal(tierOf(mac(ram)).id, id)
   }
+  test('128 GB is all', () => tiered(128, 'all', 'local'))
+  test('96 GB is all', () => tiered(96, 'all', 'local'))
+  test('95 GB is most', () => tiered(95, 'most', 'both'))
+  test('64 GB is most', () => tiered(64, 'most', 'both'))
+  test('63 GB is some', () => tiered(63, 'some', 'both'))
+  test('32 GB is some', () => tiered(32, 'some', 'both'))
+  test('31 GB is cloud', () => tiered(31, 'cloud', 'cloud'))
+  test('16 GB is cloud', () => tiered(16, 'cloud', 'cloud'))
 
   test('the same Mac with no graphics entry (the agent server has no Electron) is still found by its chip', () => {
     const s = mac(128)
