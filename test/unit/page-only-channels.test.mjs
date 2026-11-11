@@ -1,5 +1,5 @@
 // The page-only list (tasks 6.3 and 6.4): the channels and events that only the page tier can prove (they need a native
-// dialog, a shell open, a window or Electron-held state). page-only-channels.json is { channels, events }; the twins
+// dialog, a shell open, a window or Electron-held state). page-only-channels.json is { channels, events, reasons }; reasons says why each name can only be proven in the window; the twins
 // (7.6) read it. It must say the same as the gaps file and the page tests. A listed name is in one of three states:
 // `pending 7.x page:<id>` in the gaps file (its page test is not written yet), `needs ...` in the gaps file (it cannot
 // run free), or proven by a test under test/ui whose name carries both `[page:<id>]` and its own id (no gaps entry).
@@ -21,11 +21,23 @@ const PENDING_PAGE = /^pending (7\.\d+) page:(\S+)$/
 
 describe('page-only channels', () => {
   test('the list has a channels array and an events array with no repeats', () => {
-    assert.deepEqual(Object.keys(list).sort(), ['channels', 'events'])
+    assert.deepEqual(Object.keys(list).sort(), ['channels', 'events', 'reasons'])
     for (const key of ['channels', 'events']) {
       assert.ok(Array.isArray(list[key]), key)
       assert.equal(new Set(list[key]).size, list[key].length, `${key} repeats a name`)
     }
+  })
+
+  const REASON = /^(native dialog|shell open|window state|safeStorage|Electron glue): \S.{9,}$/
+  test('every listed channel and event has a reason it can only be proven in the window, and no other name has one', () => {
+    const listed = [...list.channels, ...list.events]
+    for (const name of listed) assert.match(String(list.reasons[name] ?? ''), REASON, `${name} needs a reason that starts with native dialog, shell open, window state, safeStorage or Electron glue`)
+    assert.deepEqual(Object.keys(list.reasons).filter((n) => !listed.includes(n)), [], 'a reason for a name that is not listed')
+  })
+
+  test('a reason must be a real sentence starting with one of the five kinds', () => {
+    for (const bad of ['', 'dialog', 'native dialog: ', 'because: it opens a dialog', 'Electron glue:x']) assert.doesNotMatch(bad, REASON, bad)
+    assert.match('native dialog: asks for a song with an open dialog', REASON)
   })
 
   const pageTests = () => {
