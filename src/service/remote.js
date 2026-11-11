@@ -8,6 +8,10 @@ import { findGpu } from './gpu.js'
 export const DLSS_FPS = [0, 30, 50, 60, 120] // what the DLSS program accepts
 export const CLOUD_FPS = [0, 48, 72, 120] // RIFE multiplies 24 fps by a whole number
 export const CLOUD_UPSCALER = 'RealESRGAN_x2plus.pth'
+// A finish that asks for a 2× or a frame rate above 24 is never quietly made without it: these say what is missing.
+// Setup lists both (models.json: Real-ESRGAN x2, and the Frame Interpolation (RIFE) node pack).
+export const NO_UPSCALER = 'This ComfyUI has no 2x upscaler. Download Real-ESRGAN x2 from Setup.'
+export const NO_RIFE = 'This ComfyUI has no frame interpolation (RIFE), so it can\'t make a frame rate above 24. Install the Frame Interpolation (RIFE) pack from Setup.'
 
 const isLink = (v) => Array.isArray(v) && v.length === 2 && typeof v[0] === 'string'
 const MODEL_FILE = /\.(safetensors|gguf|sft|pth|pt|ckpt|bin)$/i
@@ -23,6 +27,8 @@ export function capabilities(objectInfo, systemStats) {
     gpuKind: findGpu(systemStats?.devices)?.type || null,
     dlss: !!objectInfo.DLSS5_Enhance_Video,
     rife: !!objectInfo['RIFE VFI'],
+    // Real-ESRGAN x2 itself (upscale2x is also true when DLSS 5 does the 2×)
+    esrgan: upscalers.includes(CLOUD_UPSCALER),
     upscale2x: !!objectInfo.DLSS5_Enhance_Video || upscalers.includes(CLOUD_UPSCALER),
     fps: objectInfo.DLSS5_Enhance_Video ? DLSS_FPS : objectInfo['RIFE VFI'] ? CLOUD_FPS : [0],
     // ComfyUI 0.44+ has the H3 latent upscaler built in (the same LBH weights, from models/latent_upscale_models)
@@ -102,16 +108,18 @@ export function adaptGraph(graph, caps, { upscaleSize = null } = {}) {
       const inp = node.inputs
       const scale = Number(resolve(g, inp.Scale)) || 1
       const fps = Number(resolve(g, inp['Target FPS'])) || 0
+      if (scale > 1 && !caps.upscale2x) throw new Error(NO_UPSCALER)
+      if (fps > 24 && !caps.rife) throw new Error(NO_RIFE)
       const load = `${id}_cl_load`
       g[load] = { class_type: 'VHS_LoadVideoPath', inputs: { video: inp['Video Path'], force_rate: 0, custom_width: 0, custom_height: 0, frame_load_cap: 0, skip_first_frames: 0, select_every_nth: 1, format: 'AnimateDiff' } }
       let img = [load, 0]
-      if (scale > 1 && caps.upscale2x) {
+      if (scale > 1) {
         g[`${id}_cl_upm`] = { class_type: 'UpscaleModelLoader', inputs: { model_name: CLOUD_UPSCALER } }
         g[`${id}_cl_up`] = { class_type: 'ImageUpscaleWithModel', inputs: { upscale_model: [`${id}_cl_upm`, 0], image: img } }
         img = [`${id}_cl_up`, 0]
       }
       let rate = 24
-      if (fps > 24 && caps.rife) {
+      if (fps > 24) {
         const mult = Math.max(2, Math.round(fps / 24))
         g[`${id}_cl_rife`] = { class_type: 'RIFE VFI', inputs: { ckpt_name: 'rife47.pth', frames: img, clear_cache_after_n_frames: 10, multiplier: mult, fast_mode: true, ensemble: true, scale_factor: 1 } }
         img = [`${id}_cl_rife`, 0]

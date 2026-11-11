@@ -10,7 +10,7 @@ import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
 import { SEEDVR2_DEVICE, seedvr2Refusal } from './gpu.js'
 import { planFinish, planPreviews } from './plan.js'
-import { adaptGraph, capabilities, LIVE_NODE, withLivePreview } from './remote.js'
+import { adaptGraph, capabilities, LIVE_NODE, NO_RIFE, NO_UPSCALER, withLivePreview } from './remote.js'
 import { Cast, resolveMentions } from './cast.js'
 import { contextIrGraph, fromContextIr, writeHarness, writeLocal, writeStoryLocal } from './prompter.js'
 import { cleanSequenceLoras, renderOutGraph, retakeGraph, SAVES, SEQUENCE_DEFAULTS, takeGraph, validateSequence } from './sequence.js'
@@ -369,8 +369,8 @@ export class Studio {
     const source = this.getJob(jobId, { refresh: false })
     if (source.kind !== 'previews') throw new Error('finish_candidate needs a previews job id.')
     const caps = await this.capabilities()
-    if (finish.fps && !caps.fps.includes(finish.fps)) throw new Error(`This ComfyUI can make ${caps.fps.filter(Boolean).join(', ') || 'no other'} fps.`)
-    if (finish.upscale2x && !caps.upscale2x && finish.enhancer !== 'seedvr2') throw new Error('This ComfyUI has no 2x upscaler.')
+    if (finish.fps && !caps.fps.includes(finish.fps)) throw new Error(`This ComfyUI can make ${caps.fps.filter(Boolean).join(', ') || 'no other'} fps.${!caps.dlss && !caps.rife ? ` ${NO_RIFE}` : ''}`)
+    if (finish.upscale2x && !caps.upscale2x && finish.enhancer !== 'seedvr2') throw new Error(NO_UPSCALER)
     if (finish.enhancer === 'seedvr2' && this.comfy.remote) throw new Error('SeedVR2 runs on this PC\'s ComfyUI only; the cloud finishes with its own upscaler.')
     if (finish.enhancer === 'seedvr2' && seedvr2Refusal(caps.gpuKind)) throw new Error(seedvr2Refusal(caps.gpuKind))
     const plan = planFinish(source.plan, finish)
