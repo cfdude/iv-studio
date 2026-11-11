@@ -8,7 +8,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { parseRoutes } from './surfaces.mjs'
+import { parsePreload, parseRoutes } from './surfaces.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const list = JSON.parse(fs.readFileSync(path.join(root, 'test/unit/page-only-channels.json'), 'utf8'))
@@ -41,5 +41,15 @@ describe('page-only channels', () => {
         if (own(m[2])) assert.equal(m[1], own(m[2]), `${prefix}:${name} says ${m[1]} but page:${m[2]} is ${own(m[2])}`)
       }
     }
+  })
+})
+
+describe('window events', () => {
+  test('the channels main sends to the window are exactly the 28 event rows', () => {
+    const main = fs.readFileSync(path.join(root, 'src/main/index.js'), 'utf8')
+    const sent = [...new Set([...main.matchAll(/(?<![.\w])send\('([^']+)'/g)].map((m) => m[1]))].sort()
+    const exposed = parsePreload(fs.readFileSync(path.join(root, 'src/preload/index.js'), 'utf8')).filter((e) => e.kind === 'on').map((e) => e.channel).sort()
+    assert.equal(sent.length, 28)
+    assert.deepEqual(sent, exposed)
   })
 })

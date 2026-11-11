@@ -41,5 +41,8 @@
     "projects:list",
     "jobs:watch"
   ],
-  "events": []
+  "events": [
+    "edits:changed",
+    "update:changed"
+  ]
 }

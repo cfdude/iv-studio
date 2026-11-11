@@ -73,6 +73,20 @@ describe('window channels: LoRAs from Civitai', () => {
     assert.deepEqual(new Civitai({ dataDir: dir, comfy: new Comfy(comfy.url) }).library().prefs[name].triggers, 'neonstreet', 'a new Civitai on the same folder sees it')
     assert.deepEqual(civitai.setPrefs('other.safetensors', {}), {}, 'another LoRA starts with none')
   })
+  test('[event:loras:progress] tells the window a download has started, how far it got and that it is done, each with its version id and the LoRA\'s name', async () => {
+    const [state] = Object.values(civitai.downloadState())
+    fs.rmSync(state.path)
+    const seen = []
+    const again = new Civitai({ dataDir: dir, comfy: new Comfy(comfy.url), key: () => 'test-key', onProgress: (u) => seen.push(u) })
+    await again.download({ modelId: 101, versionId: 2001 })
+    assert.deepEqual([...new Set(seen.map((u) => u.status))], ['downloading', 'verifying', 'done'])
+    for (const u of seen) assert.deepEqual([u.versionId, u.name], [2001, 'Fake Neon Street'])
+    assert.deepEqual([seen[0].received, seen[0].total], [0, seen[0].total])
+    assert.ok(seen.some((u) => u.status === 'downloading' && u.received === CIVITAI_FILE_BYTES.length), 'a step with every byte in')
+    assert.equal(seen.at(-1).received, CIVITAI_FILE_BYTES.length)
+    assert.ok(seen.at(-1).lora, 'done says which LoRA to load')
+    await assert.rejects(new Civitai({ dataDir: dir, comfy: new Comfy(comfy.url), key: () => null, onProgress: (u) => seen.push(u) }).download({ modelId: 101, versionId: 2001 }), /needs your own Civitai API key/)
+  })
 })
 
 describe('window channels: editor', () => {
