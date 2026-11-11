@@ -48,10 +48,14 @@ export function nonGpuDetail(devices) {
   return `${other.name || other.type} (not supported yet)`
 }
 
-// The title bar's GPU segment from /system_stats: null without a cuda or mps device.
-export function statsReadout(stats) {
+// The title bar's GPU segment from /system_stats: null without a cuda or mps device. An Apple GPU shares the Mac's
+// one pool of memory, so its "in use" is the same figure as RAM's (`unified` = { total, free } from ramReadout):
+// ComfyUI's own free number comes from the OS's free-page count, which reads cache as used.
+export function statsReadout(stats, unified) {
   const d = findGpu(stats?.devices)
-  return { gpu: d ? { name: gpuLabel(d), total: d.vram_total, free: d.vram_free, comfyHeld: d.torch_vram_total } : null }
+  if (!d) return { gpu: null }
+  const apple = d.type === 'mps' && unified?.total > 0
+  return { gpu: { name: gpuLabel(d), total: apple ? unified.total : d.vram_total, free: apple ? unified.free : d.vram_free, comfyHeld: d.torch_vram_total } }
 }
 
 export const SEEDVR2_MPS_MESSAGE = 'SeedVR2 isn\'t available on an Apple GPU yet.'
