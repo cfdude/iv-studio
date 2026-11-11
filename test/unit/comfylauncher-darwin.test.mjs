@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { after, describe, test } from 'node:test'
-import { findLaunchers, startApp } from '../../src/service/comfylauncher.js'
+import { comfyHome, findLaunchers, isDesktopLauncher, startApp } from '../../src/service/comfylauncher.js'
 
 const touch = (p) => (fs.mkdirSync(path.dirname(p), { recursive: true }), fs.writeFileSync(p, ''))
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-launcher-darwin-'))
@@ -68,5 +68,72 @@ describe('startApp', () => {
   })
   test('index.js sends only a darwin .app launcher to startApp', () => {
     assert.match(fs.readFileSync('src/main/index.js', 'utf8'), /process\.platform === 'darwin' && \/\\\.app\$\/i\.test\(file\) \? await startApp/)
+  })
+})
+
+describe('Comfy Desktop on a Mac: recognising the app and finding its install', () => {
+  const desktopData = (h, installs) => {
+    const dir = path.join(h, 'Library', 'Application Support', 'Comfy Desktop')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'installations.json'), JSON.stringify(installs))
+  }
+  test('Comfy Desktop.app and ComfyUI.app are the Desktop app; a script, main.py or shortcut is not', () => {
+    assert.ok(isDesktopLauncher('/Applications/Comfy Desktop.app'))
+    assert.ok(isDesktopLauncher('/Applications/ComfyUI.app'))
+    assert.ok(isDesktopLauncher('C:/Users/x/AppData/Local/Programs/@comfyorgcomfyui-electron/ComfyUI.exe'))
+    assert.ok(!isDesktopLauncher('/Users/x/ComfyUI-Installs/ComfyUI/ComfyUI/main.py'))
+    assert.ok(!isDesktopLauncher('/Users/x/run.sh'))
+    assert.ok(!isDesktopLauncher('C:/x/Comfy Desktop.exe')) // Windows names are unchanged
+  })
+  test('the install folder is read from Comfy Desktop’s own installations.json, not guessed', () => {
+    const h = home()
+    const install = path.join(h, 'elsewhere', 'MyComfy')
+    fs.mkdirSync(path.join(install, 'ComfyUI'), { recursive: true })
+    desktopData(h, [{ installPath: path.join(h, 'gone') }, { installPath: install }])
+    assert.equal(comfyHome('/Applications/Comfy Desktop.app', { platform: 'darwin', home: h }), path.join(install, 'ComfyUI'))
+  })
+  test('Comfy Desktop’s models folder wins when it has one, and a null installPath is skipped', () => {
+    const h = home()
+    const models = path.join(h, 'Shared', 'models')
+    fs.mkdirSync(models, { recursive: true })
+    const dir = path.join(h, 'Library', 'Application Support', 'Comfy Desktop')
+    desktopData(h, [{ installPath: null }, { installPath: path.join(h, 'MyComfy') }])
+    fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ modelsDirs: [path.join(h, 'gone'), models] }))
+    assert.equal(comfyHome('/Applications/Comfy Desktop.app', { platform: 'darwin', home: h }), models)
+  })
+  test('an install with no inner ComfyUI folder is returned as it is', () => {
+    const h = home()
+    const install = path.join(h, 'MyComfy')
+    fs.mkdirSync(install, { recursive: true })
+    desktopData(h, [{ installPath: install }])
+    assert.equal(comfyHome('/Applications/Comfy Desktop.app', { platform: 'darwin', home: h }), install)
+  })
+  test('the older ComfyUI.app config.json basePath still works', () => {
+    const h = home()
+    const base = path.join(h, 'base')
+    fs.mkdirSync(base)
+    const dir = path.join(h, 'Library', 'Application Support', 'ComfyUI')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ basePath: base }))
+    assert.equal(comfyHome('/Applications/ComfyUI.app', { platform: 'darwin', home: h }), base)
+  })
+  test('no config, an unreadable one, or paths that are gone give null; main.py gives its folder', () => {
+    const h = home()
+    assert.equal(comfyHome('/Applications/Comfy Desktop.app', { platform: 'darwin', home: h }), null)
+    desktopData(h, 'not an array')
+    assert.equal(comfyHome('/Applications/Comfy Desktop.app', { platform: 'darwin', home: h }), null)
+    desktopData(h, [{ installPath: path.join(h, 'gone') }, {}, null])
+    assert.equal(comfyHome('/Applications/Comfy Desktop.app', { platform: 'darwin', home: h }), null)
+    assert.equal(comfyHome('/x/ComfyUI/main.py', { platform: 'darwin', home: h }), '/x/ComfyUI')
+  })
+  test('Windows still reads %APPDATA%\\ComfyUI\\config.json, and ignores the Mac config', () => {
+    const h = home()
+    const appData = path.join(h, 'AppData')
+    const base = path.join(h, 'winbase')
+    fs.mkdirSync(base)
+    fs.mkdirSync(path.join(appData, 'ComfyUI'), { recursive: true })
+    fs.writeFileSync(path.join(appData, 'ComfyUI', 'config.json'), JSON.stringify({ basePath: base }))
+    desktopData(h, [{ installPath: h }])
+    assert.equal(comfyHome('C:/Programs/ComfyUI.exe', { platform: 'win32', appData, home: h }), base)
   })
 })

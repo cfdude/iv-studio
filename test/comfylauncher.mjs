@@ -106,9 +106,9 @@ echo hello from comfy
   try {
     launch(path.join(mhome, 'ComfyUI', 'notes.txt'), { platform: 'darwin' })
   } catch (err) {
-    mrefused += /ComfyUI\.app/.test(err.message) ? 1 : 0
+    mrefused += /Comfy Desktop\.app/.test(err.message) ? 1 : 0
   }
-  ok(mrefused === 2, 'Mac: a missing file or something else is refused, naming ComfyUI.app')
+  ok(mrefused === 2, 'Mac: a missing file or something else is refused, naming Comfy Desktop.app')
 } finally {
   fs.rmSync(home, { recursive: true, force: true })
 }

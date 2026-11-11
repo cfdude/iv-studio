@@ -113,6 +113,33 @@ export function launcherFor(s = {}) {
   return findLaunchers()[0]?.path || null
 }
 
+// On a Mac the Desktop app records where it installed ComfyUI: Comfy Desktop.app in installations.json (installPath;
+// main.py is in its ComfyUI folder), the older ComfyUI.app in config.json (basePath). Read from disk, never assumed.
+function macDesktopHome(home) {
+  const lib = path.join(home, 'Library', 'Application Support')
+  // the drive that matters is the one the models are on: Comfy Desktop's own models folder, when it has one
+  try {
+    const dirs = JSON.parse(fs.readFileSync(path.join(lib, 'Comfy Desktop', 'settings.json'), 'utf8')).modelsDirs
+    const models = Array.isArray(dirs) ? dirs.find((d) => typeof d === 'string' && fs.existsSync(d)) : null
+    if (models) return models
+  } catch {}
+  try {
+    const installs = JSON.parse(fs.readFileSync(path.join(lib, 'Comfy Desktop', 'installations.json'), 'utf8'))
+    for (const i of Array.isArray(installs) ? installs : []) {
+      const dir = i?.installPath
+      if (typeof dir !== 'string' || !fs.existsSync(dir)) continue
+      const inner = path.join(dir, 'ComfyUI')
+      return fs.existsSync(inner) ? inner : dir
+    }
+  } catch {}
+  try {
+    const base = JSON.parse(fs.readFileSync(path.join(lib, 'ComfyUI', 'config.json'), 'utf8')).basePath
+    return base && fs.existsSync(base) ? base : null
+  } catch {
+    return null
+  }
+}
+
 // The folder a launcher's ComfyUI keeps its models in, to measure the right drive before ComfyUI is running.
 // A shortcut is followed to its target (readLink: Electron's shell.readShortcutLink); the Desktop app keeps its
 // ComfyUI wherever its installer was pointed (basePath in its config.json); a .bat, .sh or main.py lives in it.
@@ -126,9 +153,9 @@ export function comfyHome(file, { readLink = null, appData = process.env.APPDATA
     return target && !/\.lnk$/i.test(target) ? comfyHome(target, { readLink, appData, home, platform }) : null
   }
   if (isDesktopLauncher(file)) {
-    const conf = platform === 'darwin' ? path.join(home, 'Library', 'Application Support', 'ComfyUI', 'config.json') : path.join(appData, 'ComfyUI', 'config.json')
+    if (platform === 'darwin') return macDesktopHome(home)
     try {
-      const base = JSON.parse(fs.readFileSync(conf, 'utf8')).basePath
+      const base = JSON.parse(fs.readFileSync(path.join(appData, 'ComfyUI', 'config.json'), 'utf8')).basePath
       return base && fs.existsSync(base) ? base : null
     } catch {
       return null
@@ -138,7 +165,7 @@ export function comfyHome(file, { readLink = null, appData = process.env.APPDATA
 }
 
 // The ComfyUI Desktop app updates ComfyUI and ComfyUI-Manager itself (comfyupdate.js updates only its node packs).
-export const isDesktopLauncher = (file) => !!file && /^ComfyUI\.(exe|app)$/i.test(path.basename(file))
+export const isDesktopLauncher = (file) => !!file && /^(ComfyUI\.(exe|app)|Comfy Desktop\.app)$/i.test(path.basename(file))
 
 // Starts a launcher as a double-click would, in its own window, so ComfyUI keeps running when IV Studio
 // closes. Through PowerShell's Start-Process (the Windows shell), not as IV Studio's child: a child process
@@ -154,7 +181,7 @@ export function launch(file, { platform = process.platform, logFile = path.join(
     return { command: 'open', args: ['-a', file] }
   }
   if (platform !== 'win32') {
-    if (!launchable(platform).test(file)) throw new Error(platform === 'darwin' ? 'Pick ComfyUI.app, a .sh script or ComfyUI’s main.py to start ComfyUI with.' : 'Pick a .sh script or ComfyUI’s main.py to start ComfyUI with.')
+    if (!launchable(platform).test(file)) throw new Error(platform === 'darwin' ? 'Pick Comfy Desktop.app, a .sh script or ComfyUI’s main.py to start ComfyUI with.' : 'Pick a .sh script or ComfyUI’s main.py to start ComfyUI with.')
     const [cmd, args] = linuxCommand(file)
     const log = fs.openSync(logFile, 'a')
     spawn(cmd, args, { cwd: path.dirname(file), detached: true, stdio: ['ignore', log, log] }).unref()
