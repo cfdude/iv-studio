@@ -22,6 +22,12 @@ describe('MCP server on source', () => {
     assert.ok(tools.some((t) => t.name === 'check_setup'))
   })
 
+  test('[mcp:make_dailies] tells an agent the dailies folder in this platform\'s words', async () => {
+    const { tools } = await mcp.client.listTools()
+    const d = tools.find((t) => t.name === 'make_dailies').description
+    assert.match(d, process.platform === 'darwin' ? /Into ~\/Movies\/IV Studio\/Dailies\./ : /Into Videos\\IV Studio\\Dailies\./)
+  })
+
   test('check_setup against a fake reporting mps returns its GPU item', async () => {
     const r = await mcp.client.callTool({ name: 'check_setup', arguments: {} })
     assert.ok(!r.isError, JSON.stringify(r.content))

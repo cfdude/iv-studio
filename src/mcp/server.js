@@ -10,7 +10,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
 import { INSTRUCTIONS, readGuide } from '../service/agent'
-import { editsFolderText, liveEditText, rendersFolderText } from '../shared/platform'
+import { editsFolderText, liveEditText, rendersFolderText, sepText } from '../shared/platform'
 import { agentGuard, chatAsk, startedJobId } from '../service/agentrun'
 import { TOUR_PAGES, TOURS, placesToShow } from '../renderer/src/tours'
 import { GUIDE_SOURCE, loadGuide } from '../service/h3guide'
@@ -394,7 +394,7 @@ tool('get_batch', 'Where an overnight batch stands: each shot\'s status, and the
   const jobs = Object.fromEntries(b.jobs.map((j) => [j.jobId, (() => { try { return studio.getJob(j.jobId, { refresh: false }) } catch { return null } })()]))
   return { name: b.name, status: b.status, state: batchState(b, jobs), shots: b.jobs.map((j, i) => ({ shot: i + 1, label: j.label, status: jobs[j.jobId]?.status || 'gone' })), ...(b.status === 'reported' ? { report: batchReport(b, jobs) } : {}) }
 })
-tool('make_dailies', "An overnight batch's dailies: one reel of every take (the best of each shot first), each after a title card with its shot, take, seed and checks (words heard, likeness, cuts away mid-shot, first and last frames held, freezes), and notes.md saying what to look at first. Into Videos\IV Studio\Dailies. The app makes them by itself when a batch finishes; this makes them again, or for an older batch. Returns the folder, the reel and the notes.", { batchId: z.string() }, async ({ batchId }) => {
+tool('make_dailies', `An overnight batch's dailies: one reel of every take (the best of each shot first), each after a title card with its shot, take, seed and checks (words heard, likeness, cuts away mid-shot, first and last frames held, freezes), and notes.md saying what to look at first. Into ${rendersFolderText(process.platform)}${sepText(process.platform)}Dailies. The app makes them by itself when a batch finishes; this makes them again, or for an older batch. Returns the folder, the reel and the notes.`, { batchId: z.string() }, async ({ batchId }) => {
   const b = batches.get(batchId)
   const jobs = {}
   for (const j of b.jobs) {

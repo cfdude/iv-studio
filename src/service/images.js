@@ -12,6 +12,7 @@ import path from 'node:path'
 import { comboOptions, modelOptions, resolveModel } from './setup.js'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { probe } from './media.js'
+import { seedvr2Refusal } from './gpu.js'
 import { DEPTH_OUTPUTS, PICTURE_TOOLS, RELIGHT, depthGraph, inpaintGraph, relightGraph, relightText, removeBgGraph, upscaleGraph } from './picturetools.js'
 
 // the bundled ffprobe, outside the asar in a packaged app (an upscale reads the picture's size)
@@ -555,6 +556,8 @@ export class Images {
     })
     const flux3 = st.families?.find((f) => f.id === 'flux3')
     const dits = opt('SeedVR2LoadDiTModel', 'model')
+    // SeedVR2 (the upscale tool) runs on CUDA only: an Apple GPU gets the plain-words refusal instead of a failed job
+    const seedvr2No = seedvr2Refusal((await this.studio.capabilities?.().catch(() => null))?.gpuKind)
     const tools = PICTURE_TOOLS.map((t) => {
       if (t.id === 'inpaint') return { ...t, ready: !!flux3?.ready && !!info.ReferenceMultiLatent, missing: [], note: flux3?.ready ? null : 'Needs Flux 3 Klein (its model, text encoder and VAE), as for pictures.' }
       if (t.id === 'relight') {
@@ -569,6 +572,7 @@ export class Images {
         const missing = need(['moge'])
         return { ...t, ready: !missing.length && !!info.MoGeInference, missing }
       }
+      if (t.id === 'upscale' && seedvr2No) return { ...t, ready: false, missing: [], note: seedvr2No }
       if (t.id === 'upscale') return { ...t, ready: !!info.SeedVR2VideoUpscaler && dits.length > 0, missing: [], note: info.SeedVR2VideoUpscaler ? null : 'Needs the SeedVR2 node pack: Install missing node packs on Setup.' }
       return { ...t, ready: false, missing: [] }
     })
@@ -583,7 +587,6 @@ export class Images {
     if (!t) throw new Error(`Tool is one of ${PICTURE_TOOLS.map((x) => x.id).join(', ')}.`)
     if (!image || !fs.existsSync(image)) throw new Error('Pick the picture first.')
     const st = await this.toolsStatus()
-    if (st.error) throw new Error(st.error)
     if (st.error) throw new Error(st.error)
     const ts = st.tools.find((x) => x.id === tool)
     if (!ts.ready) throw new Error(ts.missing?.length ? `${t.label} needs ${ts.missing.map((m) => m.label).join(', ')}. Download on Setup.` : ts.note || `${t.label} can’t run on this ComfyUI.`)

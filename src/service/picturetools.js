@@ -5,6 +5,9 @@
 //   removebg  the subject cut out onto transparency (BiRefNet)
 //   upscale   2x or 4x with restored detail (SeedVR2, the ComfyUI-SeedVR2_VideoUpscaler pack IV Studio finishes with)
 //   depth     a depth or normal map (MoGe-2)
+
+import { SEEDVR2_DEVICE } from './gpu.js'
+
 export const PICTURE_TOOLS = [
   { id: 'inpaint', label: 'Inpaint', short: 'Paint over a part and describe the change', needs: ['flux3'] },
   { id: 'relight', label: 'Relight', short: 'New light for the whole picture', needs: ['relight_unet', 'relight_lightning', 'relight_lora'] },
@@ -70,8 +73,8 @@ export function depthGraph({ image, model = 'moge_2_vitl_normal_fp16.safetensors
 export function upscaleGraph({ image, dit, resolution, prefix }) {
   return {
     1: { class_type: 'LoadImage', inputs: { image } },
-    2: { class_type: 'SeedVR2LoadDiTModel', inputs: { model: dit, device: 'cuda:0', blocks_to_swap: 0, offload_device: 'cpu', cache_model: false, attention_mode: 'sdpa' } },
-    3: { class_type: 'SeedVR2LoadVAEModel', inputs: { model: 'ema_vae_fp16.safetensors', device: 'cuda:0', encode_tiled: true, decode_tiled: true, offload_device: 'cpu', cache_model: false } },
+    2: { class_type: 'SeedVR2LoadDiTModel', inputs: { model: dit, device: SEEDVR2_DEVICE, blocks_to_swap: 0, offload_device: 'cpu', cache_model: false, attention_mode: 'sdpa' } },
+    3: { class_type: 'SeedVR2LoadVAEModel', inputs: { model: 'ema_vae_fp16.safetensors', device: SEEDVR2_DEVICE, encode_tiled: true, decode_tiled: true, offload_device: 'cpu', cache_model: false } },
     4: { class_type: 'SeedVR2VideoUpscaler', inputs: { image: ['1', 0], dit: ['2', 0], vae: ['3', 0], seed: 42, resolution, max_resolution: 0, batch_size: 1, uniform_batch_size: false, color_correction: 'lab', temporal_overlap: 0, offload_device: 'cpu' } },
     5: save(['4', 0], prefix)
   }
