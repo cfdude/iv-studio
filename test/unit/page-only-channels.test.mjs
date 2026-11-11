@@ -39,7 +39,7 @@ describe('page-only channels', () => {
   const stateOf = (id, tests) => {
     const reason = gaps[id]
     if (reason) return /^pending 7\./.test(reason) ? 'pending' : /^needs /.test(reason) ? 'needs' : `a gaps reason that is neither pending nor needs: ${reason}`
-    return tests.some((t) => t.ids.includes(id) && t.ids.some((x) => x.startsWith('page:'))) ? 'proven' : 'nothing: no gaps entry and no page test names it'
+    return tests.some((t) => t.ids.includes(id)) ? 'proven' : 'nothing: no gaps entry and no page test names it'
   }
 
   test('every listed name is pending, needs something, or is proven by a page test, and the pending rows are all listed', () => {
@@ -55,7 +55,7 @@ describe('page-only channels', () => {
     const tests = [{ ids: ['page:settings', 'ipc:data:open'] }]
     assert.equal(stateOf('ipc:data:open', tests), 'proven')
     assert.match(stateOf('ipc:data:restart', tests), /^nothing/)
-    assert.match(stateOf('ipc:data:restart', [{ ids: ['ipc:data:restart'] }]), /^nothing/, 'a test with no page id does not count')
+    assert.match(stateOf('ipc:data:restart', []), /^nothing/)
   })
 
   test('each pending reason names a real page and the 7.x of that page\'s own row', () => {

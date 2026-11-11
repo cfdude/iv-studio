@@ -7,6 +7,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
+import { ENGINE } from '../../src/service/shinobi.js'
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -100,7 +101,7 @@ export async function runSteps(app, steps, { timeoutMs = 15000 } = {}) {
 // Opens a route and checks it. Returns { id, textLength, consoleErrors, crashes, attempts: [...] }, or throws with the
 // error text of both attempts. `inject` is page code run once the page has settled: the failing-path fixture throws
 // from it, so a page error is proved without touching the product.
-export async function checkRoute(app, id, { steps = ROUTES[id].steps, marker = ROUTES[id].marker, inject = null, minText = 150, clickMs = 15000 } = {}) {
+export async function checkRoute(app, id, { steps = ROUTES[id].steps, marker = ROUTES[id].marker, inject = null, minText = 150, clickMs = 15000, settleMs = 15000, allow = [] } = {}) {
   const attempts = []
   for (let n = 1; n <= 2; n++) {
     const errors0 = app.consoleErrors.length
@@ -109,7 +110,7 @@ export async function checkRoute(app, id, { steps = ROUTES[id].steps, marker = R
     const attempt = { attempt: n, ok: false, problems: [] }
     try {
       await runSteps(app, steps, { timeoutMs: clickMs })
-      const text = await pageText(app)
+      const text = await pageText(app, { timeoutMs: settleMs })
       if (inject) {
         await app.evaluate(inject)
         await sleep(300) // a thrown error reaches the console a moment later
@@ -119,7 +120,9 @@ export async function checkRoute(app, id, { steps = ROUTES[id].steps, marker = R
       attempt.crashes = app.crashes.slice(crashes0)
       if (text.length < minText) attempt.problems.push(`the page said only ${text.length} characters: ${JSON.stringify(text.slice(0, 120))}`)
       if (marker && !marker.test(text)) attempt.problems.push(`the page does not look like ${id} (no ${marker}): ${JSON.stringify(text.slice(0, 120))}`)
-      for (const e of attempt.consoleErrors) attempt.problems.push(`console error: ${e}`)
+      // an error a test says is expected (the guard refusing a program the page asked for) is kept in the record, not a failure
+      attempt.allowed = attempt.consoleErrors.filter((e) => allow.some((a) => a.test(e)))
+      for (const e of attempt.consoleErrors) if (!attempt.allowed.includes(e)) attempt.problems.push(`console error: ${e}`)
       for (const c of attempt.crashes) attempt.problems.push(`renderer crash: ${c}`)
     } catch (e) {
       attempt.problems.push(e.message)
@@ -130,7 +133,7 @@ export async function checkRoute(app, id, { steps = ROUTES[id].steps, marker = R
     if (attempt.ok) break
   }
   const last = attempts.at(-1)
-  const result = { id, textLength: last.textLength ?? 0, consoleErrors: last.consoleErrors?.length ?? 0, crashes: last.crashes?.length ?? 0, ok: last.ok, attempts }
+  const result = { id, textLength: last.textLength ?? 0, consoleErrors: (last.consoleErrors?.length ?? 0) - (last.allowed?.length ?? 0), allowedErrors: last.allowed?.length ?? 0, crashes: last.crashes?.length ?? 0, ok: last.ok, attempts }
   if (!last.ok) {
     const e = new Error(`page ${id} failed ${attempts.length} time(s):\n${attempts.map((a) => `  attempt ${a.attempt}: ${a.problems.join(' | ')}`).join('\n')}`)
     e.result = result
@@ -169,4 +172,55 @@ export function musicObjectInfo() {
     info[cls].input.required[input] = [[...(info[cls].input.required[input]?.[0] || []), m.match]]
   }
   return info
+}
+
+// ---------- records the window cannot make free ----------
+// A sizzle starts with a headless-browser capture and a Shinobi film with its Python engine; the guard refuses both
+// programs, so these two are written where the product keeps them (the way test/unit/mcp-sizzle.test.mjs and
+// mcp-shinobi.test.mjs do). Everything else is made through window.ivstudio.
+
+const writeJson = (file, body) => {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, typeof body === 'string' ? body : JSON.stringify(body, null, 2))
+}
+
+// a saved sizzle as the capture step leaves it, with real small pictures for the screens
+export function writeSizzle(dataDir, { id = 'sz000001', name = 'Acme', plan = null } = {}) {
+  const site = path.join(dataDir, 'sizzle', id, 'site')
+  fs.mkdirSync(path.join(site, 'images'), { recursive: true })
+  const shot = (file, color, size) => ff('-f', 'lavfi', '-i', `color=c=${color}:s=${size}`, '-frames:v', '1', file)
+  const cap = (n, color, size, what) => {
+    const file = path.join(site, `${n}.png`)
+    shot(file, color, size)
+    return { name: n, file, width: Number(size.split('x')[0]), height: Number(size.split('x')[1]), what }
+  }
+  const captures = [cap('hero', 'red', '192x108', 'The top of the page'), cap('screen-2', 'green', '192x108', 'One screen down'), cap('mobile', 'blue', '78x168', 'On a phone'), cap('logo', 'white', '60x30', 'The logo')]
+  const image = path.join(site, 'images', 'image-1.png')
+  shot(image, 'yellow', '96x54')
+  const sizzle = {
+    id,
+    name,
+    url: 'https://acme.test/',
+    format: '16:9',
+    status: 'planning',
+    createdAt: '2026-11-01T10:00:00.000Z',
+    updatedAt: '2026-11-01T10:00:00.000Z',
+    site: { url: 'https://acme.test/', title: 'Acme: rockets for everyone', description: 'We make rockets.', siteName: name, headings: ['Rockets for everyone'], ctas: ['Get a rocket'], nav: ['Home', 'Pricing'], paragraphs: ['Every rocket is built by hand in our own workshop.'], colors: ['#d33a2c', '#101820'], fonts: ['Inter'], captures, images: [{ file: image, src: 'https://acme.test/a.png', alt: 'A rocket', width: 96, height: 54 }] },
+    plan,
+    approvedAt: null,
+    assets: {},
+    shinobi: null
+  }
+  writeJson(path.join(dataDir, 'sizzle', id, 'sizzle.json'), sizzle)
+  return sizzle
+}
+
+// an engine that looks installed (its Python and the marker, as the installer leaves them) and one film in it
+export function writeShinobi(dataDir, { id = 'film0001', name = 'Rig film cut' } = {}) {
+  const python = path.join(dataDir, 'shinobi', 'venv', 'bin', 'python')
+  writeJson(python, '#!/bin/sh\n')
+  fs.chmodSync(python, 0o755)
+  writeJson(path.join(dataDir, 'shinobi', 'installed.json'), { commit: ENGINE.commit })
+  writeJson(path.join(dataDir, 'shinobi', 'projects', id, 'project.json'), { name, created_at: '2026-11-01T10:00:00Z', assets: [] })
+  return { id, name }
 }
