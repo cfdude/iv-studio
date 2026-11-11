@@ -88,11 +88,15 @@ export const ROUTES = {
   loras: { steps: video(['nav', 'LoRAs']), marker: /looks, moves and styles/i },
   cloud: { steps: video(['nav', 'Cloud']), marker: /your own gpu/i },
   settings: { steps: video(['nav', 'Settings']), marker: /your computer/i },
-  setup: { steps: video(['nav', 'Settings'], ['tab', 'Setup']), marker: /reuses the ComfyUI you already have/i },
+  // v1.1.3's Setup opens on its verdict: what needs the person, or that it is ready (Setup.jsx `verdict`)
+  setup: { steps: video(['nav', 'Settings'], ['tab', 'Setup']), marker: /things? needs? you|ready to make shots|comfyui isn.t running|comfyui is busy/i },
   media: { steps: video(['library']), marker: /everything you've made/i },
   voices: { steps: audio(['nav', 'Voices']), marker: /a voice for every character/i },
   lines: { steps: audio(['nav', 'Lines']), marker: /say it in their voice/i },
-  music: { steps: audio(['nav', 'Music']), marker: /songs and scores/i }
+  music: { steps: audio(['nav', 'Music']), marker: /songs and scores/i },
+  audio: { steps: audio(['nav', 'Audio']), marker: /everything you hear/i },
+  sounds: { steps: audio(['nav', 'Sounds']), marker: /sound effects and ambiences, made on this/i },
+  effects: { steps: tool('Effects'), marker: /each one is a short clip with motion/i }
 }
 
 export async function runSteps(app, steps, { timeoutMs = 15000 } = {}) {

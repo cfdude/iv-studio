@@ -11,7 +11,7 @@ import { after, before, describe, test } from 'node:test'
 import { START_MENU } from '../../src/service/startmenu.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { launchApp } from './driver.mjs'
-import { traceRows } from './trace.mjs'
+import { POLLED, traceRows } from './trace.mjs'
 import { checkRoute, makeFixtures, tempBase, waitFor, writeSizzle } from './pages.mjs'
 
 const PROMPT = 'integrated_multimodal_description: [Shot 1] A courier runs across a rooftop at dusk.\n\noverall_soundscape: Wind and footsteps.\n\nnon_diegetic_music: N/A'
@@ -55,6 +55,14 @@ describe('page tier: the start-menu journeys, to the step before a real render',
     fake = await startFakeComfy({ devices: 'mps' })
     app = await launchApp({ name: 'journeys', fake })
     await waitFor('the sidebar', () => app.evaluate(`!!document.querySelector('.nav .nav-item')`))
+    // v1.1.3's shell reads the chat, recipes and Dashboard idea at start-up in no fixed order; let those reads end before
+    // the first journey records its trace, or their order lands in journey:make_a_shot's row
+    const calls = () => app.ipcTrace().filter((c) => !POLLED.includes(c.channel)).length
+    await waitFor('the start-up calls to finish', async () => {
+      const n = calls()
+      await new Promise((r) => setTimeout(r, 1000))
+      return calls() === n
+    })
   })
 
   after(async () => {

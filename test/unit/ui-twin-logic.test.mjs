@@ -124,13 +124,15 @@ describe('twin: fixtures call the service method on the fake, in trace order', (
 })
 
 describe('twin: the context is read from source', () => {
-  test('it knows the real channels: ipc:setup:check is exposed, handled by Studio.checkSetup, and data:open is page-only', () => {
+  // v1.1.3's setup:check handler spans lines (it is hand-listed now), so the one-line example is sequences:list
+  test('it knows the real channels: ipc:sequences:list is exposed, handled by Studio.listSequences, setup:check is hand-listed, and data:open is page-only', () => {
     const real = twinContext()
-    assert.ok(real.exposed.has('setup:check'))
-    assert.deepEqual(real.handled.get('setup:check'), { kind: 'mapped', className: 'Studio', method: 'checkSetup', receiver: 'studio', line: real.handled.get('setup:check').line })
+    assert.ok(real.exposed.has('sequences:list'))
+    assert.deepEqual(real.handled.get('sequences:list'), { kind: 'mapped', className: 'Studio', method: 'listSequences', receiver: 'studio', line: real.handled.get('sequences:list').line })
+    assert.equal(real.handled.get('setup:check').kind, 'hand')
     assert.equal(real.handled.get('data:info').kind, 'hand')
     assert.ok(real.pageOnly.has('data:open'))
-    assert.ok(real.covered.has('ipc:setup:check'))
+    assert.ok(real.covered.has('ipc:sequences:list'))
     assert.ok(!real.exposed.has('ghost:channel'))
   })
 })

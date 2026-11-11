@@ -1,7 +1,4 @@
 {
-  "setup:check": {
-    "args": []
-  },
   "sequences:list": {
     "args": []
   },

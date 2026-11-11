@@ -91,7 +91,7 @@ describe('MCP sound tools', () => {
     assert.deepEqual(s.engine, { label: 'Stable Audio 3', by: 'Stability AI', licence: 'Stable Audio Community License', models: ['sa3', 'sa3_te'] })
   })
 
-  test('[mcp:sound_status] is ready when the nodes and both files are listed, and gives the file as ComfyUI lists it (with its folder)', async () => {
+  test('[mcp:sound_status] is ready when the nodes and both files are listed, and gives the file as ComfyUI lists it, folder included', async () => {
     await withSounds(async () => {
       const s = await ok('sound_status')
       assert.deepEqual([s.ready, s.missing, s.missingNodes], [true, [], []])

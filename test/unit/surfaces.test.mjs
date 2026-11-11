@@ -10,9 +10,9 @@ import { ROW_ID, parseHandled, parsePreload, surfaces } from './surfaces.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
-// The counts on the pinned commit (silicon bc20f1f). tools is 168 from the server's own listTools; the design's 166 was a regex count that
-// missed two. A snapshot: change these by hand, on purpose, when the code moves.
-const SNAPSHOT = { tools: 168, handled: 280, exposed: 279, events: 28, routes: 29, journeys: 11 }
+// The counts on the pinned commit (silicon with upstream v1.1.3 merged, 0d85c97). tools is from the server's own listTools;
+// the design's first figure was a regex count that missed two. A snapshot: change these by hand, on purpose, when the code moves.
+const SNAPSHOT = { tools: 214, handled: 384, exposed: 383, events: 47, routes: 32, journeys: 11 }
 
 describe('surfaces', () => {
   let s
