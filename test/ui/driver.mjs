@@ -184,7 +184,8 @@ export async function launchApp({ name = 'app', fake = null, settings = {}, time
   const userData = path.join(base, 'userdata')
   const runDir = path.join(base, 'run')
   for (const d of [home, data, userData, runDir]) fs.mkdirSync(d, { recursive: true })
-  seedSettings(data, { comfyUrl: fake?.url, extra: settings })
+  // `onboarded` is seeded so the first-run welcome overlay does not cover the pages (a test can pass its own)
+  seedSettings(data, { comfyUrl: fake?.url, extra: { onboarded: '2026-01-01T00:00:00.000Z', ...settings } })
   const seeded = JSON.parse(fs.readFileSync(path.join(data, 'settings.json'), 'utf8'))
   if (fake?.url === undefined) delete seeded.comfyUrl
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify(seeded, null, 2))

@@ -1,5 +1,13 @@
 {
-  "open": { "Where finished videos go": { "kind": "dir", "name": "picked-videos" } },
+  "open": {
+    "Where finished videos go": { "kind": "dir", "name": "picked-videos" },
+    "Start ComfyUI with": { "kind": "file", "name": "start-comfy.sh" },
+    "Your ComfyUI folder": { "kind": "dir", "name": "ComfyUI-here", "contents": ["main.py"] },
+    "Fizgig’s folder": { "kind": "dir", "name": "Fizgig-here", "contents": ["src/fizgig/families/train.py", "venv/bin/python", "venv/Scripts/python.exe"] },
+    "A song to remix": { "kind": "file", "name": "song-to-remix.wav" },
+    "A video to rebuild": { "kind": "file", "name": "video-to-rebuild.mp4" },
+    "": { "kind": "file", "name": "picked-file.png" }
+  },
   "save": {},
   "messageBox": {}
 }

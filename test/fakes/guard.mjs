@@ -382,7 +382,12 @@ export function installElectronStubs(electron, { answers = {}, tempDir = os.tmpd
       }
     }
   }
-  const { shell, dialog } = electron
+  const { shell, dialog, app } = electron
+  // a restart records the call and neither relaunches nor exits: the driver would lose the window it is driving
+  if (app) {
+    app.relaunch = (...a) => void rec('app.relaunch', { arg: a[0] ?? null })
+    app.exit = (code) => void rec('app.exit', { arg: code ?? 0 })
+  }
   shell.openExternal = async (url) => void rec('shell.openExternal', { arg: url })
   shell.openPath = async (p) => (rec('shell.openPath', { arg: p }), '')
   shell.showItemInFolder = (p) => void rec('shell.showItemInFolder', { arg: p })
@@ -393,7 +398,14 @@ export function installElectronStubs(electron, { answers = {}, tempDir = os.tmpd
     fs.mkdirSync(tempDir, { recursive: true })
     const dir = fs.mkdtempSync(path.join(tempDir, 'dialog-'))
     const target = path.join(dir, entry.name || 'picked')
-    if (entry.kind === 'dir') fs.mkdirSync(target, { recursive: true })
+    if (entry.kind === 'dir') {
+      fs.mkdirSync(target, { recursive: true })
+      // files the folder holds (names relative to it), for a folder the app checks the contents of
+      for (const f of entry.contents || []) {
+        fs.mkdirSync(path.dirname(path.join(target, f)), { recursive: true })
+        fs.writeFileSync(path.join(target, f), '')
+      }
+    }
     else if (entry.fixture) fs.copyFileSync(path.resolve(here, '../..', entry.fixture), target)
     else fs.writeFileSync(target, '')
     return target

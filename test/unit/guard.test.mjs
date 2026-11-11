@@ -375,6 +375,25 @@ describe('guard: Electron stand-ins', () => {
     assert.ok(fs.statSync(r.filePaths[0]).isDirectory())
   })
 
+  test('a restart is recorded and neither relaunches nor exits the app', () => {
+    const calls = []
+    const electron = { ...makeElectron(), app: { relaunch: () => calls.push('REAL relaunch'), exit: () => calls.push('REAL exit') } }
+    const trace = []
+    installElectronStubs(electron, { answers, tempDir: os.tmpdir(), trace })
+    electron.app.relaunch()
+    electron.app.exit(0)
+    assert.deepEqual(calls, [])
+    assert.deepEqual(trace.map((t) => t.fn), ['app.relaunch', 'app.exit'])
+  })
+
+  test('a folder answer with contents holds those files', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-electron-'))
+    const electron = makeElectron()
+    installElectronStubs(electron, { answers: { open: { 'Pick a folder': { kind: 'dir', name: 'comfy', contents: ['main.py', 'custom_nodes/.keep'] } } }, tempDir, trace: [] })
+    const r = await electron.dialog.showOpenDialog({ title: 'Pick a folder' })
+    assert.deepEqual([fs.existsSync(path.join(r.filePaths[0], 'main.py')), fs.existsSync(path.join(r.filePaths[0], 'custom_nodes', '.keep'))], [true, true])
+  })
+
   test('showMessageBoxSync returns the canned button index, then cancelId, then 0', () => {
     const electron = makeElectron()
     installElectronStubs(electron, { answers, tempDir: os.tmpdir(), trace: [] })
