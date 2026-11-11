@@ -17,7 +17,7 @@ export const NO_RIFE = 'This ComfyUI has no frame interpolation (RIFE), so it ca
 // where it is installed, so its 2× needs Real-ESRGAN x2 itself and its frame rates are RIFE's. 'seedvr2' skips the
 // DLSS side altogether (SeedVR2 follows the finish). Anything else (dlss) is the ComfyUI's own capabilities.
 export function finishCaps(caps, enhancer) {
-  if (enhancer === 'upscale') return { ...caps, dlss: false, upscale2x: caps.esrgan, fps: caps.rife ? CLOUD_FPS : [0] }
+  if (enhancer === 'upscale') return { ...caps, dlss: false, upscale2x: caps.esrgan, fps: caps.fpsBuiltIn }
   if (enhancer === 'seedvr2') return { ...caps, dlss: false, upscale2x: false, rife: false }
   return caps
 }
@@ -40,6 +40,8 @@ export function capabilities(objectInfo, systemStats) {
     esrgan: upscalers.includes(CLOUD_UPSCALER),
     upscale2x: !!objectInfo.DLSS5_Enhance_Video || upscalers.includes(CLOUD_UPSCALER),
     fps: objectInfo.DLSS5_Enhance_Video ? DLSS_FPS : objectInfo['RIFE VFI'] ? CLOUD_FPS : [0],
+    // the frame rates RIFE makes, for the 'upscale' enhancer (finishCaps), whether or not DLSS 5 is also here
+    fpsBuiltIn: objectInfo['RIFE VFI'] ? CLOUD_FPS : [0],
     // ComfyUI 0.44+ has the H3 latent upscaler built in (the same LBH weights, from models/latent_upscale_models)
     coreUpscaler: !!(objectInfo.MiniMaxH3LatentUpscaleWithModel && objectInfo.LatentUpscaleModelLoader),
     // KJNodes' per-step preview with H3's tiny VAE (models/vae_approx/taeh3.safetensors), for live previews

@@ -106,6 +106,7 @@ export async function scanHardware({ electronGpu = null, platform = process.plat
 // What to download, by what it's for (ids from resources/models.json)
 export const MODEL_GROUPS = [
   { id: 'core', label: 'Video shots (MiniMax H3)', ids: ['fl2va', 'ref2va', 'text_encoder', 'video_vae', 'audio_vae', 'dmad', 'upscaler'], needs: 'video' },
+  { id: 'finish_up', label: 'Finals without DLSS 5: 2× upscale (Real-ESRGAN)', ids: ['esrgan_x2'], needs: 'video' },
   { id: 'design', label: 'Designing characters (Z-Image)', ids: ['zimage', 'zimage_te', 'zimage_vae'], needs: 'pictures' },
   { id: 'sdxl', label: 'SDXL pictures', ids: ['sdxl_base'], needs: 'pictures' },
   { id: 'music', label: 'Music (MiniMax Music 3 and ACE-Step)', ids: ['music3_dit', 'music3_te', 'music3_vae', 'ace15'], needs: 'music' },
@@ -217,11 +218,16 @@ export function recommend(scan) {
 
   // where the models go
   const local = tier.renderOn !== 'cloud'
+  const nvidia = g?.vendor === 'nvidia'
+  // DLSS 5: an NVIDIA card on Windows. SeedVR2: an NVIDIA card (it runs on CUDA only). Anything else, a Mac included,
+  // finishes with the 2× Real-ESRGAN upscale and RIFE frame interpolation (the 'upscale' enhancer).
+  const enhancer = nvidia ? (win ? 'dlss' : 'seedvr2') : 'upscale'
   const want = {
     core: local && t.id !== 'some' && ramState !== 'weak',
     design: local,
     sdxl: false,
     music: local && t.vram >= 15,
+    finish_up: !!(t.id !== 'some' && ramState !== 'weak' && local && enhancer === 'upscale'),
     replace: local && !apple && t.vram >= 22,
     remake_swap: false,
     remake_edit: false,
@@ -254,18 +260,17 @@ export function recommend(scan) {
   verdicts.push({ id: 'writer', label: 'Prompt writer', value: { claude: 'Claude Code', codex: 'Codex', local: ins.ollama ? 'Local (Ollama)' : 'Not set up' }[writer], state: writer === 'local' && !ins.ollama ? 'ok' : 'good', say: writerSay })
 
   // what to set
-  const nvidia = g?.vendor === 'nvidia'
   const finalMp = t.id === 'top' || t.id === 'all' ? 2 : t.id === 'most' ? 1.5 : 1
-  const enhancer = nvidia && win ? 'dlss' : 'seedvr2'
   const prefs = {
     previewMp: t.id === 'top' ? 0.6 : 0.4,
     quality: t.id === 'top' || t.id === 'all' ? 'standard' : 'draft',
     finalMp,
     enhancer,
-    enhanceResolution: t.id === 'top' ? 1440 : 1080
+    enhanceResolution: t.id === 'top' ? 1440 : 1080,
+    ...(enhancer === 'upscale' ? { upscale2x: true, fps: 48 } : {})
   }
-  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale; DLSS 5 needs an NVIDIA RTX card on Windows, and SeedVR2 isn't available on an Apple GPU yet." })
-  else if (!nvidia || !win) tips.push({ state: 'info', text: 'DLSS 5 needs an NVIDIA RTX card on Windows. Finals here use SeedVR2 or the 2× upscale instead.' })
+  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale and RIFE frame interpolation; DLSS 5 needs an NVIDIA RTX card on Windows, and SeedVR2 isn't available on an Apple GPU yet." })
+  else if (!nvidia || !win) tips.push({ state: 'info', text: `DLSS 5 needs an NVIDIA RTX card on Windows. Finals here use ${nvidia ? 'SeedVR2 or ' : ''}the 2× upscale and RIFE frame interpolation instead.` })
   if (ins.comfyRunning === false && !ins.comfyFound && local) tips.push({ state: 'warn', text: 'No ComfyUI found on this PC. Install ComfyUI (the Desktop app or the portable build) for anything that renders here.' })
   if (!ins.voices && local && nvidia) tips.push({ state: 'info', text: 'Voices are a one-time 12 GB setup on Audio > Voices.' })
 

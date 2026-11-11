@@ -391,7 +391,8 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, s
       notify?.(e.message)
     }
   }
-  const dlssOk = scan.os?.platform === 'win32' && (scan.gpus || []).some((g) => g.vendor === 'nvidia')
+  const nvidiaOk = (scan.gpus || []).some((g) => g.vendor === 'nvidia')
+  const dlssOk = scan.os?.platform === 'win32' && nvidiaOk
   return (
     <>
       <section className="block create-step">
@@ -413,7 +414,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, s
           <Seg label="Previews" value={prefs.previewMp} onChange={(v) => set({ previewMp: v })} options={[[0.4, '0.4 MP'], [0.6, '0.6 MP'], [1, '1 MP']]} />
           <Seg label="Preview quality" value={prefs.quality} onChange={(v) => set({ quality: v })} options={[['draft', 'Draft · quicker'], ['standard', 'Standard']]} />
           <Seg label="Finals" value={prefs.finalMp} onChange={(v) => set({ finalMp: v })} options={[[1, '1 MP'], [1.5, '1.5 MP'], [2, '2 MP']]} />
-          <Seg label="Enhancer" value={prefs.enhancer} onChange={(v) => set({ enhancer: v })} options={[['dlss', 'DLSS 5', !dlssOk && 'Needs an NVIDIA RTX card on Windows'], ['seedvr2', 'SeedVR2']]} />
+          <Seg label="Enhancer" value={prefs.enhancer} onChange={(v) => set(v === 'upscale' ? { enhancer: v, upscale2x: true, fps: 48 } : { enhancer: v })} options={[['dlss', 'DLSS 5', !dlssOk && 'Needs an NVIDIA RTX card on Windows'], ['upscale', '2× upscale'], ['seedvr2', 'SeedVR2', !nvidiaOk && "Needs an NVIDIA card. It isn't available on an Apple GPU yet."]]} />
           <Seg
             label="Prompt writer"
             value={writer}
@@ -572,7 +573,7 @@ function Done({ rec, way, prefs, writer, started, onTour }) {
   const lines = [
     ['Renders', w ? w[2] : way],
     ['Previews', `${prefs.previewMp} MP · ${prefs.quality === 'draft' ? 'Draft' : 'Standard'}`],
-    ['Finals', `${prefs.finalMp} MP with ${prefs.enhancer === 'dlss' ? 'DLSS 5' : 'SeedVR2'}`],
+    ['Finals', `${prefs.finalMp} MP with ${{ dlss: 'DLSS 5', upscale: 'the 2× upscale', seedvr2: 'SeedVR2' }[prefs.enhancer] || 'SeedVR2'}`],
     ['Prompt writer', WRITERS[writer]],
     ['Downloads', started ? `${gbs(started.bytes)} on the way` : way === 'cloud' ? 'In the cloud' : rec.downloads.some((g) => g.recommended) ? 'Not started' : 'All here']
   ]

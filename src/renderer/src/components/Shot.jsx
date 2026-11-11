@@ -5,6 +5,7 @@ import Findings from './Findings'
 import { LiveFrame } from './Live'
 import { CompareViewer, PromptDiff, runChanges } from './Compare'
 import { lintPrompt } from '../../../service/lint'
+import { enhancerChoices, finishDefaults, fpsFor, pickEnhancer } from '../finish'
 
 const DONE = ['success', 'error', 'cancelled']
 const FINAL_MP = [1, 1.5, 2]
@@ -90,19 +91,27 @@ function ReviewCard({ review, title, videoKey, before, onRun }) {
   )
 }
 
+const ENHANCER_NAMES = { dlss: 'DLSS 5', upscale: '2× upscale', seedvr2: 'SeedVR2' }
+const ENHANCER_HINTS = {
+  dlss: 'Cleans up and can upscale 2× and add frames. Quick.',
+  upscale: 'Upscales 2× and adds frames (Real-ESRGAN and RIFE). Works on any computer.',
+  seedvr2: 'Restores detail after the finish. Slower; 24 fps.'
+}
+
 function FinishPanel({ job, candidate, onStart, notify, caps, remote }) {
-  const FPS = caps?.fps || [0, 30, 50, 60, 120]
-  const dlss = caps?.dlss !== false
-  const [opts, setOpts] = useState({ megapixels: 2, upscale2x: false, fps: 0, audio: 'pass', enhancer: 'dlss', enhanceResolution: 1080 })
-  // the defaults Check my PC chose for this computer
+  const choices = enhancerChoices(caps, remote)
+  const [opts, setOpts] = useState({ megapixels: 2, upscale2x: false, fps: 0, audio: 'pass', enhancer: pickEnhancer('dlss', choices), enhanceResolution: 1080 })
+  // the defaults Check my PC chose for this computer, once this ComfyUI has been read (what it can do decides what they become)
+  const capsRead = !!caps
   useEffect(() => {
     window.ivstudio.settings.get().then((s) => {
-      const p = s.shotPrefs
-      if (!p) return
-      setOpts((o) => ({ ...o, megapixels: p.finalMp || o.megapixels, enhancer: p.enhancer === 'dlss' && !dlss ? 'seedvr2' : p.enhancer || o.enhancer, enhanceResolution: p.enhanceResolution || o.enhanceResolution }))
+      if (s.shotPrefs) setOpts((o) => ({ ...o, ...finishDefaults(s.shotPrefs, caps, remote) }))
     }, () => {})
-  }, [])
-  const seedvr2 = opts.enhancer === 'seedvr2'
+  }, [capsRead])
+  const enhancer = pickEnhancer(opts.enhancer, choices)
+  const seedvr2 = enhancer === 'seedvr2'
+  const upscale = enhancer === 'upscale'
+  const FPS = fpsFor(caps, enhancer)
   const [size, setSize] = useState(null)
   const [busy, setBusy] = useState(false)
   const set = (patch) => setOpts((o) => ({ ...o, ...patch }))
@@ -111,15 +120,15 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote }) {
 
   useEffect(() => {
     window.ivstudio.render
-      .planFinish(job.id, { candidate, ...opts })
+      .planFinish(job.id, { candidate, ...opts, enhancer })
       .then(setSize)
       .catch(() => setSize(null))
-  }, [opts, job.id, candidate])
+  }, [opts, enhancer, job.id, candidate])
 
   async function go() {
     setBusy(true)
     try {
-      onStart(await window.ivstudio.render.finish({ jobId: job.id, candidate, ...opts }))
+      onStart(await window.ivstudio.render.finish({ jobId: job.id, candidate, ...opts, enhancer }))
     } catch (err) {
       notify(err.message)
     } finally {
@@ -147,19 +156,18 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote }) {
           </div>
         </div>
       )}
-      {dlss && !remote && (
+      {choices.length > 1 && (
         <div className="row">
           <span className="row-label">Enhancer</span>
           <div className="enhancer-pick">
             <div className="segmented">
-              <button className={!seedvr2 ? 'on' : ''} onClick={() => set({ enhancer: 'dlss' })}>
-                DLSS 5
-              </button>
-              <button className={seedvr2 ? 'on' : ''} onClick={() => set({ enhancer: 'seedvr2', upscale2x: false, fps: 0 })}>
-                SeedVR2
-              </button>
+              {choices.map((c) => (
+                <button key={c} className={enhancer === c ? 'on' : ''} onClick={() => set({ enhancer: c, ...(c === 'seedvr2' ? { upscale2x: false, fps: 0 } : {}), ...(!fpsFor(caps, c).includes(opts.fps) ? { fps: 0 } : {}) })}>
+                  {ENHANCER_NAMES[c]}
+                </button>
+              ))}
             </div>
-            <span className="dim small">{seedvr2 ? 'Restores detail after the finish. Slower; 24 fps.' : 'Cleans up and can upscale 2× and add frames. Quick.'}</span>
+            <span className="dim small">{ENHANCER_HINTS[enhancer]}</span>
           </div>
         </div>
       )}
@@ -177,12 +185,12 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote }) {
       ) : (
         <>
           <div className="row">
-            <span className="row-label">{dlss ? 'RTX upscale' : '2× upscale'}</span>
+            <span className="row-label">{enhancer === 'dlss' ? 'RTX upscale' : '2× upscale'}</span>
             <div className="segmented">
               <button className={!opts.upscale2x ? 'on' : ''} onClick={() => set({ upscale2x: false })}>
                 Off
               </button>
-              <button className={opts.upscale2x ? 'on' : ''} onClick={() => set({ upscale2x: true })}>
+              <button className={opts.upscale2x ? 'on' : ''} disabled={upscale && !caps?.esrgan} title={upscale && !caps?.esrgan ? 'Download Real-ESRGAN x2 in Setup first' : undefined} onClick={() => set({ upscale2x: true })}>
                 2×
               </button>
             </div>
@@ -196,6 +204,7 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote }) {
                 </button>
               ))}
             </div>
+            {upscale && !caps?.rife && <span className="dim small">Frame rates above 24 need the Frame Interpolation (RIFE) pack: install it in Setup.</span>}
           </div>
         </>
       )}
@@ -520,7 +529,7 @@ export default function Shot({ projectId, jobs: live, setJobs, notify, go, caps,
                   {f.status === 'error' && <p className="notice">{f.error}</p>}
                   {final && <video className="final-video" data-take={`${f.id}:final`} src={media(final.url)} controls preload="metadata" />}
                   {f.reviews?.final && <ReviewCard review={f.reviews.final} title="Review of the final" videoKey={`${f.id}:final`} before={written} onRun={(p) => editRun?.(run, project, p)} />}
-                  {final?.path && !remote && (
+                  {final?.path && !remote && (caps?.dlss !== false || enhancerChoices(caps, remote).includes('seedvr2')) && (
                     <div className="enhance-row">
                       <span className="enhance-label mono">Enhance</span>
                       <span className="dim small enhance-sub">a sharper copy beside this one</span>
@@ -530,7 +539,7 @@ export default function Shot({ projectId, jobs: live, setJobs, notify, go, caps,
                             DLSS 5 · {scale}×
                           </button>
                         ))}
-                      {[1080, 1440].map((r) => (
+                      {enhancerChoices(caps, remote).includes('seedvr2') && [1080, 1440].map((r) => (
                         <button key={`s${r}`} className="btn btn-small" disabled={!!enhancing[f.id]} onClick={() => enhance(f, { engine: 'seedvr2', resolution: r })}>
                           SeedVR2 · {r}p
                         </button>
