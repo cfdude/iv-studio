@@ -81,11 +81,11 @@ ok('a good card with 16 GB of RAM: video in the cloud anyway', () => {
   assert.equal(r.downloads.find((d) => d.id === 'core').recommended, false)
 })
 
-ok('a Mac: the cloud, with a plain reason', () => {
-  const r = recommend(machine({ vram: null, ram: 32, platform: 'darwin', vendor: 'apple', name: 'Apple M2 Pro' }))
+ok('a Mac with little memory: the cloud, with a plain reason', () => {
+  const r = recommend(machine({ vram: null, ram: 16, platform: 'darwin', vendor: 'apple', name: 'Apple M2 Pro' }))
   assert.equal(r.tier.id, 'cloud')
   assert.equal(r.tier.renderOn, 'cloud')
-  assert.match(r.verdicts.find((v) => v.id === 'gpu').say, /CUDA/)
+  assert.match(r.verdicts.find((v) => v.id === 'gpu').say, /32 GB/)
   assert.equal(r.need, '0.0 GB')
 })
 
