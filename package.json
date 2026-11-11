@@ -14,6 +14,7 @@
     "start": "electron-vite preview",
     "test": "node test/graph-parity.mjs",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/fakes/guard.mjs --test \"test/unit/*.test.mjs\"",
+    "test:ui": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/fakes/guard.mjs --test --test-concurrency=1 \"test/ui/*.test.mjs\"",
     "test:real": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"test/real/*.test.mjs\"",
     "dist": "electron-vite build && electron-builder --win --x64 --publish never",
     "dist:portable": "electron-vite build && electron-builder --win --x64 --publish never --config electron-builder.portable.cjs",

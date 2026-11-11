@@ -103,7 +103,6 @@
   "event:characters:progress": "needs GitHub",
   "page:media": "pending 7.2",
   "page:edit": "pending 7.3",
-  "page:home": "pending 7.2",
   "page:create": "pending 7.2",
   "page:loras": "pending 7.2",
   "page:voices": "pending 7.2",

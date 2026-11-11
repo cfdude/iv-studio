@@ -1,1 +1,5 @@
-{ "open": {}, "save": {}, "messageBox": {} }
+{
+  "open": { "Where finished videos go": { "kind": "dir", "name": "picked-videos" } },
+  "save": {},
+  "messageBox": {}
+}
