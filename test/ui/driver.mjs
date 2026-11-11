@@ -374,3 +374,16 @@ export function listing(dir, skip = /iv-studio|evidence/i) {
   walk(dir)
   return out.sort()
 }
+
+// An unpackaged Electron on macOS writes AppKit/StoreKit defaults to ~/Library/Preferences/com.github.Electron.plist in the
+// account's real home. CFFIXED_USER_HOME does not move it (tried 2026-11-11: the file still changed with it set to the
+// temp home), and the file holds no app data (AppleTextDirection, NSForceRightToLeftWritingDirection,
+// NSTreatUnknownArgumentsAsOpen, SKPurchaseIntentUpdatesLastChecked). That one file is accepted. Any other Electron or
+// IV Studio preferences file that appears or changes in the real home fails the page tier, and so does app data in it.
+export const ACCEPTED_PREFS = path.join(REAL_HOME, 'Library', 'Preferences', 'com.github.Electron.plist')
+const PREFS_WATCHED = /^com\.github\.electron|iv-?studio/i
+// name and modification time of the watched preferences files under `dir`, the accepted one left out
+export const prefsListing = (dir = path.dirname(ACCEPTED_PREFS), accepted = ACCEPTED_PREFS) =>
+  listing(dir, /^$/).filter((l) => PREFS_WATCHED.test(path.basename(l.split('\t')[0])) && l.split('\t')[0] !== accepted)
+// true when the bytes mention app data: a service, a key or token, or a user path
+export const appDataIn = (bytes) => /comfy|civitai|runpod|modal|iv[- ]?studio|token|secret|api[-_ ]?key|\/Users\/|\/private\/var/i.test(Buffer.from(bytes).toString('latin1'))

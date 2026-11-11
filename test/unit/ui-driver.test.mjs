@@ -7,7 +7,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { describe, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { checkBuild, electronEnv, proxyArgs, waitForMarker } from '../ui/driver.mjs'
+import { ACCEPTED_PREFS, appDataIn, checkBuild, electronEnv, prefsListing, proxyArgs, waitForMarker } from '../ui/driver.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const policy = JSON.parse(fs.readFileSync(path.join(here, '../fakes/env-policy.json'), 'utf8'))
@@ -74,5 +74,46 @@ describe('page-tier driver: the guard marker', () => {
     const early = temp()
     fs.writeFileSync(path.join(early, 'guard-loaded.json'), JSON.stringify({ processType: 'browser', electron: true, paths: null }))
     await assert.rejects(waitForMarker(early, { timeoutMs: 300 }), /never became ready/)
+  })
+})
+
+describe('page-tier driver: the real Electron preferences check', () => {
+  const prefs = () => {
+    const dir = temp()
+    for (const f of ['com.github.Electron.plist', 'com.apple.finder.plist']) fs.writeFileSync(path.join(dir, f), 'x')
+    return dir
+  }
+  const accepted = (dir) => path.join(dir, 'com.github.Electron.plist')
+
+  test('the accepted file may change, and unrelated preferences files are not watched', () => {
+    const dir = prefs()
+    const was = prefsListing(dir, accepted(dir))
+    fs.writeFileSync(accepted(dir), 'changed')
+    fs.writeFileSync(path.join(dir, 'com.apple.finder.plist'), 'changed')
+    assert.deepEqual(prefsListing(dir, accepted(dir)), was)
+  })
+
+  test('another Electron or IV Studio preferences file that appears or changes is seen', () => {
+    const dir = prefs()
+    const was = prefsListing(dir, accepted(dir))
+    fs.writeFileSync(path.join(dir, 'com.github.Electron.helper.plist'), 'x')
+    assert.notDeepEqual(prefsListing(dir, accepted(dir)), was)
+    const f = path.join(dir, 'com.iv-studio.app.plist')
+    fs.writeFileSync(f, 'x')
+    const mid = prefsListing(dir, accepted(dir))
+    assert.equal(mid.length, 2)
+    const later = new Date(Date.now() + 5000)
+    fs.utimesSync(f, later, later)
+    assert.notDeepEqual(prefsListing(dir, accepted(dir)), mid)
+  })
+
+  test('app data in the accepted file is seen, its known window defaults are not', () => {
+    assert.equal(appDataIn(Buffer.from('AppleTextDirection NSForceRightToLeftWritingDirection NSTreatUnknownArgumentsAsOpen SKPurchaseIntentUpdatesLastChecked')), false)
+    for (const bad of ['comfyUrl', 'civitaiKey', 'cloudToken', '/Users/someone/Movies', 'IV Studio', 'iv-studio-data']) assert.equal(appDataIn(Buffer.from(bad)), true, bad)
+  })
+
+  test('the accepted file is the Electron defaults file in the real home', () => {
+    assert.equal(path.basename(ACCEPTED_PREFS), 'com.github.Electron.plist')
+    assert.match(ACCEPTED_PREFS, /Library\/Preferences\//)
   })
 })

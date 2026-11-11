@@ -9,23 +9,24 @@ import os from 'node:os'
 import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
-import { evidenceDir, freePort, launchApp, listing, REAL_HOME } from './driver.mjs'
+import { ACCEPTED_PREFS, appDataIn, evidenceDir, freePort, launchApp, listing, prefsListing, REAL_HOME } from './driver.mjs'
 import { traceRows } from './trace.mjs'
 
 const tmpReal = fs.realpathSync(os.tmpdir())
 const under = (p, dir) => p === dir || p.startsWith(dir + path.sep)
 const REAL_FOLDERS = [path.join(REAL_HOME, 'Movies'), path.join(REAL_HOME, '.claude', 'skills')]
-
 describe('page tier: the app runs guarded, in temporary folders', () => {
   let fake
   let app
   let before_
+  let prefsBefore
   let outsider // a plain local server on a port no fake registered: a real ComfyUI on 8188, say
   const outsiderHits = []
   traceRows(import.meta.url, () => app)
 
   before(async () => {
     before_ = REAL_FOLDERS.map((d) => listing(d))
+    prefsBefore = prefsListing()
     fake = await startFakeComfy({ devices: 'mps' })
     outsider = http.createServer((req, res) => (outsiderHits.push(req.url), res.end('hello')))
     await new Promise((r) => outsider.listen(0, '127.0.0.1', r))
@@ -36,6 +37,9 @@ describe('page tier: the app runs guarded, in temporary folders', () => {
     await app?.close()
     await fake?.close()
     await new Promise((r) => outsider?.close(r))
+    await new Promise((r) => setTimeout(r, 1500)) // cfprefsd writes defaults a moment after the app quits
+    assert.deepEqual(prefsListing(), prefsBefore, 'an Electron or IV Studio preferences file in the real home changed during the run')
+    if (fs.existsSync(ACCEPTED_PREFS)) assert.equal(appDataIn(fs.readFileSync(ACCEPTED_PREFS)), false, `${ACCEPTED_PREFS} holds app data`)
   })
 
   test("the main process's guard marker is present, scrubbed nothing, and puts home under the temp folder", async () => {
