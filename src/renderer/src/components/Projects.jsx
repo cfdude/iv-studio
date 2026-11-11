@@ -407,7 +407,7 @@ function Story({ v, act, notify, setStep }) {
         <div className="wiz-working">
           <span className="wiz-spinner" aria-hidden="true" />
           <h2 className="wiz-q">Writing your script…</h2>
-          <p className="wiz-help">The writer on this PC turns your idea into scenes and lines. It takes a minute or two.</p>
+          <p className="wiz-help">The writer on this computer turns your idea into scenes and lines. It takes a minute or two.</p>
         </div>
       </section>
     )
@@ -750,7 +750,7 @@ function Board({ v, act, characters, openShot, setStep, mode }) {
             ))}
           </div>
           <h2 className="wiz-q">Turn the script into a storyboard</h2>
-          <p className="wiz-help">IV Studio reads your script and plans every shot: what we see, the camera and who speaks. Then it sketches each panel, so you can see the film before you make it. Planning runs on this PC and takes a minute or two.</p>
+          <p className="wiz-help">IV Studio reads your script and plans every shot: what we see, the camera and who speaks. Then it sketches each panel, so you can see the film before you make it. Planning runs on this computer and takes a minute or two.</p>
           {b?.state === 'error' && <p className="small pink">The last try stopped: {b.error}</p>}
           <button className="btn btn-primary wiz-next" onClick={plan}>
             ✦ Plan my storyboard

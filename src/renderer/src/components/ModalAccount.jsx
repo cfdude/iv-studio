@@ -42,7 +42,7 @@ export default function ModalAccount({ st, busy, run, info, notify, onChanged, c
         <button className="link-btn mono" disabled={!!busy || signingOut} onClick={signOut}>
           {signingOut ? 'Signing out…' : 'Sign out'}
         </button>
-        <span className="dim small">Not working, or the wrong account? Sign out, then sign in again. Other Modal tools on this PC are signed out too.</span>
+        <span className="dim small">Not working, or the wrong account? Sign out, then sign in again. Other Modal tools on this computer are signed out too.</span>
       </div>
     )
   if (waiting)

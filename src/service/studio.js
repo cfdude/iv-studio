@@ -213,7 +213,7 @@ export class Studio {
   // Only a ComfyUI on this PC. launcher: the one IV Studio starts ComfyUI with (comfylauncher.js launcherFor), to tell
   // the ComfyUI Desktop app (which updates ComfyUI and Manager itself) from the rest.
   localOnly() {
-    if (this.comfy.remote || !isLocalUrl(this.comfy.url)) throw new Error('Updates run on this PC’s ComfyUI only.')
+    if (this.comfy.remote || !isLocalUrl(this.comfy.url)) throw new Error('Updates run on this computer’s ComfyUI only.')
   }
 
   // A ComfyUI without ComfyUI-Manager answers { manager: { present: false } } (the window offers to install it).
@@ -373,7 +373,7 @@ export class Studio {
     const can = finish.enhancer === 'upscale' ? finishCaps(caps, 'upscale') : caps
     if (finish.fps && !can.fps.includes(finish.fps)) throw new Error(`This ComfyUI can make ${can.fps.filter(Boolean).join(', ') || 'no other'} fps.${!can.dlss && !can.rife ? ` ${NO_RIFE}` : ''}`)
     if (finish.upscale2x && !can.upscale2x && finish.enhancer !== 'seedvr2') throw new Error(NO_UPSCALER)
-    if (finish.enhancer === 'seedvr2' && this.comfy.remote) throw new Error('SeedVR2 runs on this PC\'s ComfyUI only; the cloud finishes with its own upscaler.')
+    if (finish.enhancer === 'seedvr2' && this.comfy.remote) throw new Error('SeedVR2 runs on this computer\'s ComfyUI only; the cloud finishes with its own upscaler.')
     if (finish.enhancer === 'seedvr2' && seedvr2Refusal(caps.gpuKind)) throw new Error(seedvr2Refusal(caps.gpuKind))
     const plan = planFinish(source.plan, finish)
     plan.values['80'] = source.name
@@ -442,14 +442,14 @@ export class Studio {
   // only: the cloud image has no SeedVR2.
   // engine dlss: DLSS 5 with the finish's own settings (noise reduction Default 0.8), at scale 1 or 2.
   async enhanceFinal({ jobId, engine = 'seedvr2', resolution = 1080, scale = 1 }) {
-    if (this.comfy.remote) throw new Error('Enhance runs on this PC\'s ComfyUI only.')
+    if (this.comfy.remote) throw new Error('Enhance runs on this computer\'s ComfyUI only.')
     if (engine !== 'dlss') {
       const refusal = seedvr2Refusal((await this.capabilities().catch(() => ({}))).gpuKind)
       if (refusal) throw new Error(refusal)
     }
     const source = this.getJob(jobId)
     const out = source.outputs.find((o) => o.kind === 'final') || source.outputs.find((o) => o.kind === 'master')
-    if (!out?.path || !fs.existsSync(out.path)) throw new Error('That render has no finished video on this PC to enhance.')
+    if (!out?.path || !fs.existsSync(out.path)) throw new Error('That render has no finished video on this computer to enhance.')
     if (engine === 'dlss') return this.enhanceDlss(source, out, scale)
     const info = await this.comfy.objectInfo('SeedVR2LoadDiTModel').catch(() => null)
     const dits = info?.SeedVR2LoadDiTModel?.input?.required?.model?.[1]?.options || info?.SeedVR2LoadDiTModel?.input?.required?.model?.[0] || []
@@ -487,7 +487,7 @@ export class Studio {
   async localCopy(file, dir) {
     const p = typeof file === 'string' ? file : file?.path
     if (p && fs.existsSync(p)) return p
-    if (!file?.url) throw new Error('That file is not on this PC.')
+    if (!file?.url) throw new Error('That file is not on this computer.')
     const u = new URL(file.url)
     const dest = path.join(dir, u.searchParams.get('filename'))
     if (!fs.existsSync(dest)) {
@@ -571,7 +571,7 @@ export class Studio {
     const folders = (await fetch(`${this.comfy.url}/experiment/models`, { headers: this.comfy.headers() }).then((r) => r.json())).find((f) => f.name === 'loras')?.folders || []
     const real = folders.filter((f) => fs.existsSync(f))
     const root = real.find((f) => fs.existsSync(path.join(f, 'MiniMax H3'))) || real[0]
-    if (!root) throw new Error("Couldn't find this ComfyUI's loras folder (character downloads need a ComfyUI on this PC).")
+    if (!root) throw new Error("Couldn't find this ComfyUI's loras folder (character downloads need a ComfyUI on this computer).")
     return root
   }
 
@@ -751,7 +751,7 @@ export class Studio {
   // A retake of any video file (the editor's Retake): the graph Sequences use, at their defaults. The file must
   // be on the PC that runs ComfyUI.
   async retakeFile({ name, sourcePath, start, end, mode = 'both', prompt, character = 'none', seed }) {
-    if (this.comfy.remote) throw new Error('Retake in the editor needs ComfyUI on this PC for now.')
+    if (this.comfy.remote) throw new Error('Retake in the editor needs ComfyUI on this computer for now.')
     if (!(end > start)) throw new Error('The retake must end after it starts.')
     const ch = character === 'none' ? null : this.characters().find((c) => c.id === character) || null
     const base = `${slug(name)}_${randomUUID().slice(0, 6)}`

@@ -932,7 +932,7 @@ app.whenReady().then(() => {
     return true
   })
   handle('cloud:provider', (p) => {
-    if (readSettings(BASE).target === 'cloud') throw new Error('Switch rendering to My PC first.')
+    if (readSettings(BASE).target === 'cloud') throw new Error('Switch rendering to This computer first.')
     writeSettings({ cloudProvider: ['runpod', 'comfycloud'].includes(p) ? p : 'modal' }, BASE)
     return p
   })
@@ -966,7 +966,7 @@ app.whenReady().then(() => {
   // sign out of Modal, to sign in again or with another account (not while rendering on it)
   handle('cloud:signOut', () => {
     const s = readSettings(BASE)
-    if (s.target === 'cloud' && (s.cloudProvider || 'modal') === 'modal') throw new Error('Switch rendering to This PC first, then sign out of Modal.')
+    if (s.target === 'cloud' && (s.cloudProvider || 'modal') === 'modal') throw new Error('Switch rendering to This computer first, then sign out of Modal.')
     if (cloud.signing) cloud.cancelSignIn()
     const r = cloud.signOut()
     // the app it deployed belongs to that account: setting up again starts fresh
@@ -1013,7 +1013,7 @@ app.whenReady().then(() => {
           saveCloud({ modelsAt: new Date().toISOString() })
           t.start('characters')
           const done = await uploadModalCharacters()
-          if (done === null) t.done('characters', 'No ComfyUI on this PC, so there are no character files to upload')
+          if (done === null) t.done('characters', 'No ComfyUI on this computer, so there are no character files to upload')
           else t.done('characters', done.length ? `${done.length} file${done.length === 1 ? '' : 's'} uploaded` : 'No character files to upload')
           return readSettings(BASE).cloud
         },
@@ -1150,7 +1150,7 @@ app.whenReady().then(() => {
     requireSealable()
     return cloudTask('setting up RunPod', () => tracked('runpod', async (t) => {
       const s = readSettings(BASE)
-      if (s.target === 'cloud') throw new Error('Switch rendering to My PC first.')
+      if (s.target === 'cloud') throw new Error('Switch rendering to This computer first.')
       await runpod.stopAll()
       const known = s.runpod?.volumeId ? { id: s.runpod.volumeId, dataCenter: s.runpod.dataCenter } : null
       if (!known) send('cloud:log', 'Finding a data center with network storage and a free GPU…')
@@ -1333,7 +1333,7 @@ app.whenReady().then(() => {
   const startComfy = () =>
     (comfyStarting ||= (async () => {
       const s = readSettings(BASE)
-      if (!isLocalUrl(s.comfyUrl)) throw new Error('ComfyUI isn’t on this PC (Settings → ComfyUI), so IV Studio can’t start it.')
+      if (!isLocalUrl(s.comfyUrl)) throw new Error('ComfyUI isn’t on this computer (Settings → ComfyUI), so IV Studio can’t start it.')
       if (await comfyUp(s.comfyUrl)) return { seconds: 0, already: true }
       const file = launcherOf(s)
       if (!file) throw new Error('No ComfyUI launcher found. Pick one in Settings → ComfyUI.')
@@ -1408,7 +1408,7 @@ app.whenReady().then(() => {
     PORTABLE
       ? 'This is the portable copy: its data folder is the “data” folder beside IV Studio.exe. Move the whole IV Studio folder to move it.'
       : LOCATION.source === 'env'
-        ? 'IV_STUDIO_DATA sets the data folder on this PC, so it can’t be moved from here.'
+        ? 'IV_STUDIO_DATA sets the data folder on this computer, so it can’t be moved from here.'
         : 'The data folder can’t be moved from this copy.'
   const target = (picked) => chooseTarget(picked, { from: BASE, defaultDir: LOCATION.defaultDir })
   handle('data:info', () => ({

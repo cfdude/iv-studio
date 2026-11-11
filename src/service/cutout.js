@@ -51,7 +51,7 @@ export class Cutouts {
   async make({ file, what = 'person', soften = 1.2, name }) {
     if (!file || !fs.existsSync(file)) throw new Error('Pick a picture or a video.')
     const studio = this.studio()
-    if (studio.comfy.remote) throw new Error('Cut-outs run on this PC’s ComfyUI.')
+    if (studio.comfy.remote) throw new Error('Cut-outs run on this computer’s ComfyUI.')
     const kind = IMAGE.test(file) ? 'image' : 'video'
     const info = await probe(this.edits.ffprobe, file)
     const words = String(what || 'person').trim()

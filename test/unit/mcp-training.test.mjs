@@ -1,7 +1,7 @@
 // MCP character-training tools (task 5.7, part 4): the design steps (faces, scenes, stills, clips, the person's own files),
-// the cost estimate, and the checkpoint steps for a run that finished on this PC. Called through the real MCP server on
+// the cost estimate, and the checkpoint steps for a run that finished on this computer. Called through the real MCP server on
 // source under the test guard, against the fake ComfyUI (Z-Image Turbo for the stills; H3's reference mode for the clips).
-// Starting and stopping a run need Modal (or Fizgig's Python on this PC), and likeness scoring needs Shinobi's Python:
+// Starting and stopping a run need Modal (or Fizgig's Python on this computer), and likeness scoring needs Shinobi's Python:
 // start_training, stop_training, rank_likeness and score_checkpoints have gaps entries and row-less guard tests in
 // mcp-training-guard.test.mjs.
 //   node --test test/unit/mcp-training.test.mjs
@@ -319,7 +319,7 @@ describe('MCP character training tools', () => {
     assert.equal(e.capped, false)
   })
 
-  test('[mcp:estimate_training] prices this PC at nothing, RunPod by its own GPU list, and says when a budget will stop the run early', async () => {
+  test('[mcp:estimate_training] prices this computer at nothing, RunPod by its own GPU list, and says when a budget will stop the run early', async () => {
     const t = await ok('create_character_training', { name: 'Priced2' })
     await ok('update_character_training', { trainingId: t.id, consent: true })
     await ok('add_training_files', { trainingId: t.id, kind: 'still', files: Array(8).fill(still) })
@@ -348,7 +348,7 @@ describe('MCP character training tools', () => {
   })
 
   // ---------- test_checkpoints and adopt_checkpoint ----------
-  // a training that finished on this PC: its LoRA files are in its own run folder
+  // a training that finished on this computer: its LoRA files are in its own run folder
   const trained = async (name = 'Trained') => {
     answerStills()
     const picked = await withFace(name)

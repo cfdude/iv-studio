@@ -1,4 +1,4 @@
-// Check my PC: what recommend() says for made-up machines, and the nvidia-smi and GPU readers. node test/hardware.mjs
+// Check my computer: what recommend() says for made-up machines, and the nvidia-smi and GPU readers. node test/hardware.mjs
 import assert from 'node:assert/strict'
 import { electronGpus, parseNvidiaSmi, recommend, tierOf } from '../src/service/hardware.js'
 

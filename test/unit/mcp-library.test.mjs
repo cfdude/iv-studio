@@ -133,7 +133,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
   })
 
   // ---------- list_ready_characters, install_ready_character ----------
-  test('[mcp:list_ready_characters][ipc:characters:catalog] lists the ready-made characters with their picture and whether the LoRA is on this PC', async () => {
+  test('[mcp:list_ready_characters][ipc:characters:catalog] lists the ready-made characters with their picture and whether the LoRA is on this computer', async () => {
     const { items } = await ok('list_ready_characters')
     assert.deepEqual(items.map((c) => c.id), ['tess', 'theo'])
     for (const c of items) {

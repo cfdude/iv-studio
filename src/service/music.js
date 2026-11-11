@@ -191,7 +191,7 @@ export class Music {
       if (!(bpm >= 30 && bpm <= 300)) throw new Error('Tempo is 30 to 300 BPM.')
     }
     const st = await this.status()
-    if (st.remote) throw new Error('Music runs on this PC\'s ComfyUI. Switch to "This PC" in Settings to make music.')
+    if (st.remote) throw new Error('Music runs on this computer\'s ComfyUI. Switch to "This computer" in Settings to make music.')
     const eng = st.engines.find((e) => e.id === engine)
     if (eng.missingNodes?.length) throw new Error(`This ComfyUI has no ${eng.missingNodes.join(', ')} node. Update ComfyUI (0.33 or newer has it).`)
     if (eng.missing.length) throw new Error(`${spec.label} needs ${eng.missing.map((m) => m.label).join(', ')}. Download ${eng.missing.length === 1 ? 'it' : 'them'} on the Music page.`)
@@ -262,7 +262,7 @@ export class Music {
     const tone = key || read.key || MUSIC_DEFAULTS.key
 
     const st = await this.status()
-    if (st.remote) throw new Error('Music runs on this PC\'s ComfyUI. Switch to "This PC" in Settings to make music.')
+    if (st.remote) throw new Error('Music runs on this computer\'s ComfyUI. Switch to "This computer" in Settings to make music.')
     const eng = st.engines.find((e) => e.id === 'ace')
     if (eng.missingNodes?.length) throw new Error(`This ComfyUI has no ${eng.missingNodes.join(', ')} node. Update ComfyUI (0.33 or newer has it).`)
     if (eng.missing.length) throw new Error(`Remix uses ACE-Step 1.5 Turbo, which needs ${eng.missing.map((m) => m.label).join(', ')}. Download ${eng.missing.length === 1 ? 'it' : 'them'} on the Music page.`)

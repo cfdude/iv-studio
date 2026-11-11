@@ -260,7 +260,7 @@ export class Remake {
   async painter() {
     if (!this.images) throw new Error('Painting needs IV Studio’s picture tools.')
     const st = await this.images.status()
-    if (st.remote) throw new Error('Remake paints its frames on this PC’s ComfyUI. Switch to "This PC" on the Cloud page.')
+    if (st.remote) throw new Error('Remake paints its frames on this computer’s ComfyUI. Switch to "This computer" on the Cloud page.')
     const fam = ['qwen21', 'flux2', 'flux3'].map((id) => st.families.find((f) => f.id === id && f.edit && f.models.length)).find(Boolean)
     if (!fam) throw new Error('Painting needs a picture editor: Qwen Image 2.1, Flux.2 Klein or Flux 3 Klein. Set one up in Settings → Setup.')
     return { family: fam.id, model: fam.models.find((m) => !/uc-/i.test(m)) || fam.models[0] }

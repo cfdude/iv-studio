@@ -108,7 +108,7 @@ export async function captureSite({ url, browser, outDir, onLog = () => {} }) {
     throw new Error('That is not a web address.')
   }
   if (!/^https?:$/.test(target.protocol)) throw new Error('Use an http or https address.')
-  if (!browser) throw new Error('Capturing a website needs Microsoft Edge, Google Chrome or Chromium on this PC.')
+  if (!browser) throw new Error('Capturing a website needs Microsoft Edge, Google Chrome or Chromium on this computer.')
   fs.mkdirSync(path.join(outDir, 'images'), { recursive: true })
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-capture-'))
   const proc = spawn(browser, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--hide-scrollbars', '--mute-audio', 'about:blank'], { windowsHide: true, stdio: 'ignore' })

@@ -42,7 +42,7 @@ export class Previs {
   async make({ stage, seconds = 5, aspect = '16:9', name = 'previs' }) {
     if (!stage?.camera) throw new Error('A previs needs a staging board plan.')
     const browser = this.browser()
-    if (!browser) throw new Error('A previs is drawn in Microsoft Edge, Google Chrome or Chromium; none is on this PC.')
+    if (!browser) throw new Error('A previs is drawn in Microsoft Edge, Google Chrome or Chromium; none is on this computer.')
     const frames = resolveFrames(seconds)
     const { width, height } = resolveSize(aspect, 0.4)
     const poses = previsFrames(stage, { frames })

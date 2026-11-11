@@ -130,7 +130,7 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
     await run(k ? 'Checking the key' : 'Removing the key', async () => {
       await window.ivstudio.cloud.runpodKey(k)
       setKey('')
-      if (k) notify('RunPod key saved (encrypted on this PC).')
+      if (k) notify('RunPod key saved (encrypted on this computer).')
     })
     refresh()
   }
@@ -139,7 +139,7 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
       <Step n={1} title="RunPod account" done={!!rp.hasKey}>
         {rp.hasKey ? (
           <p className="small">
-            A RunPod API key is saved (encrypted on this PC).{' '}
+            A RunPod API key is saved (encrypted on this computer).{' '}
             <button className="link-btn" disabled={!!busy} onClick={() => saveKey('')}>
               Remove it
             </button>
@@ -232,7 +232,7 @@ function ComfyCloudSteps({ st, busy, run, notify, refresh }) {
       await window.ivstudio.cloud.comfyCloudKey(k)
       setKey('')
       if (k) {
-        notify('Comfy API key saved (encrypted on this PC). Checking what works there…')
+        notify('Comfy API key saved (encrypted on this computer). Checking what works there…')
         await window.ivstudio.cloud.comfyCloudCheck()
       }
     })
@@ -244,7 +244,7 @@ function ComfyCloudSteps({ st, busy, run, notify, refresh }) {
       <Step n={1} title="Comfy account" done={!!cc.hasKey}>
         {cc.hasKey ? (
           <p className="small">
-            {cc.ownKey ? 'A Comfy API key is saved (encrypted on this PC).' : 'Using the Comfy.org key you saved for the prompt writer.'}{' '}
+            {cc.ownKey ? 'A Comfy API key is saved (encrypted on this computer).' : 'Using the Comfy.org key you saved for the prompt writer.'}{' '}
             {cc.ownKey && (
               <button className="link-btn" disabled={!!busy} onClick={() => saveKey('')}>
                 Remove it
@@ -390,7 +390,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
       <Hero art="cloud" title="Cloud" kicker="Your own GPU · by the second" />
       <p className="lede">
         No strong graphics card? Render on a cloud GPU instead.
-        <span className="lede-small dim">Pick a cloud service below and set it up once; then switch between this PC and the cloud whenever you like.</span>
+        <span className="lede-small dim">Pick a cloud service below and set it up once; then switch between this computer and the cloud whenever you like.</span>
       </p>
       {['cloudToken', 'runpodToken'].filter((n) => st.removable?.includes(n)).map((n) => (
         <p key={n} className="notice">
@@ -412,13 +412,13 @@ export default function Cloud({ notify, recheck, setup, info }) {
           <span className="mono label">Render on</span>
           <span className={`cloud-status mono small ${onCloud ? 'on' : ''}`}>
             <span className="cloud-status-dot" />
-            {busy ? `${busy}…` : onCloud ? wake || `Rendering on ${PROVIDERS.find((p) => p.id === st.provider)?.label}` : 'Rendering on this PC'}
+            {busy ? `${busy}…` : onCloud ? wake || `Rendering on ${PROVIDERS.find((p) => p.id === st.provider)?.label}` : 'Rendering on this computer'}
           </span>
           {setUpDone && !comfyCloud && <ShutDownGpu notify={notify} className="btn btn-small cloud-stop" />}
         </div>
         <div className="cloud-choices two">
           <button className={`cloud-choice ${!onCloud ? 'on' : ''}`} disabled={!!busy} aria-pressed={!onCloud} onClick={() => !onCloud || use('local')}>
-            <span className="cloud-choice-name">This PC</span>
+            <span className="cloud-choice-name">This computer</span>
             <span className="small dim">Your own graphics card. Free.</span>
           </button>
           <button className={`cloud-choice ${onCloud ? 'on' : ''}`} disabled={!!busy || !setUpDone} aria-pressed={onCloud} title={setUpDone ? undefined : 'Set the cloud service up below first'} onClick={() => onCloud || use('cloud')}>
@@ -429,7 +429,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
 
         <div className="cloud-control-head">
           <span className="mono label">Cloud service</span>
-          {onCloud && <span className="small dim">Switch to This PC to change it.</span>}
+          {onCloud && <span className="small dim">Switch to This computer to change it.</span>}
         </div>
         <div className="cloud-choices three">
           {PROVIDERS.map((p) => {
@@ -452,7 +452,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
       {!runpod && !comfyCloud && (
         <>
           <Step n={1} title="Cloud tools" done={st.toolkit}>
-            <p className="small dim">A private copy of Modal's client in IV Studio's own folder (about 100 MB). Nothing else on your PC changes.</p>
+            <p className="small dim">A private copy of Modal's client in IV Studio's own folder (about 100 MB). Nothing else on your computer changes.</p>
             {!st.toolkit && (
               <button className="btn btn-small" disabled={!!busy} onClick={() => run('Installing', () => window.ivstudio.cloud.install())}>
                 Install the cloud tools

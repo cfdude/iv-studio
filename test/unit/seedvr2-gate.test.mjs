@@ -75,7 +75,7 @@ describe('enhanceFinal', () => {
     await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps]), { jobId: 'j', engine: 'dlss' }), { message: STOP })
   })
   test('a remote ComfyUI keeps today\'s message, on any GPU', async () => {
-    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps], true), { jobId: 'j', engine: 'seedvr2' }), { message: /runs on this PC's ComfyUI only|Enhance runs on this PC/ })
+    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps], true), { jobId: 'j', engine: 'seedvr2' }), { message: /runs on this computer's ComfyUI only|Enhance runs on this computer/ })
   })
 })
 

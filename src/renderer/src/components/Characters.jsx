@@ -194,7 +194,7 @@ export function CharacterList({ openCharacter, notify, characters, setCharacters
               <span>Best likeness</span>
               <span>about 30 min</span>
               <span>$3–4 on cloud</span>
-              {pcCanTrain && <span className="train-free">Free on your PC</span>}
+              {pcCanTrain && <span className="train-free">Free on your computer</span>}
             </span>
             <span className="dim small">Design an invented person, give them talking clips and a voice, then train their LoRA {pcCanTrain ? 'free on your own graphics card, or in the cloud in about half an hour' : 'on a cloud GPU (your RunPod or Modal account)'}.</span>
             <span className="train-path-steps mono">Design → Clips → Train → Pick</span>
@@ -206,7 +206,7 @@ export function CharacterList({ openCharacter, notify, characters, setCharacters
             <span className="train-path-name">Make a RefMod</span>
             <span className="train-path-chips mono">
               <span>Seconds</span>
-              <span className="train-free">Free on your PC</span>
+              <span className="train-free">Free on your computer</span>
               <span>From your pictures</span>
             </span>
             <span className="dim small">Up to six pictures (and a voice clip) become a RefMod character. No training; it works in Create shots.</span>
@@ -730,7 +730,7 @@ function Clips({ t, job, act, save, trainingId, meta, notify, next }) {
       <section className="block create-step">
         <StepHead n={2} title="Talking clips" />
         <p className="small dim">
-          Clips teach how they move and talk. IV Studio renders them with H3 on this PC from two of your stills{voice ? ' and the voice' : ''}: eight 5-second clips, about a minute each. Edit the lines if you like.
+          Clips teach how they move and talk. IV Studio renders them with H3 on this computer from two of your stills{voice ? ' and the voice' : ''}: eight 5-second clips, about a minute each. Edit the lines if you like.
         </p>
         {!t.clips.some((c) => c.source === 'generated') && (
           <>
@@ -821,7 +821,7 @@ export function usePcCanTrain(setup) {
 }
 
 const PLACES = {
-  local: { name: 'This PC', who: 'Your graphics card' },
+  local: { name: 'This computer', who: 'Your graphics card' },
   runpod: { name: 'RunPod', who: 'Your RunPod account' },
   modal: { name: 'Modal', who: 'Your Modal account' }
 }
@@ -900,7 +900,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
     const e = extra ? moreEst : est
     if (!e) return
     const yes = await ask({
-      kicker: free ? 'On this PC, free' : `Uses your ${PLACES[where].name} account`,
+      kicker: free ? 'On this computer, free' : `Uses your ${PLACES[where].name} account`,
       title: extra ? `Train ${t.name} ${extra} more epochs?` : `Train ${t.name}?`,
       message: free
         ? 'Fizgig trains on your graphics card. Don’t render while it trains; it keeps going if you close IV Studio.'
@@ -909,7 +909,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
           : `Modal bills by the second and stops the GPU when training ends${opts.budget ? `, or at your $${opts.budget} cap (even if IV Studio is closed)` : ''}.`,
       details: [
         ['Recipe', extra ? `carries on from epoch ${t.train.epochs}, same recipe` : `${PRESET_TEXT[opts.preset || 'standard'][0]} · rank ${est.rank} · ${est.epochs} epochs · ${opts.learn === 'look' ? 'look only' : 'look and voice'}${opts.detail === 'fine' ? ' · fine detail' : ''}${opts.mode === 'whole' ? ' · whole look' : ''}`],
-        ['Where', free ? 'This PC' : `${PLACES[where].name} · ${gpus.find((g) => g.id === gpu)?.label || gpu}`],
+        ['Where', free ? 'This computer' : `${PLACES[where].name} · ${gpus.find((g) => g.id === gpu)?.label || gpu}`],
         ...(where === 'modal' ? [['Workspace', cloud.workspace]] : []),
         ['Time', `about ${e.minutes} minutes (${e.steps} steps)${free ? ', a first estimate here' : ''}`],
         ['Cost', free ? 'free' : `about $${e.dollars}${opts.budget && e.dollars > opts.budget ? `, capped at $${opts.budget}` : ''}`]
@@ -1071,7 +1071,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
             const from = list.length ? Math.min(...list.map((g) => g.perHour)) : 0
             return (
               <button key={w} className={`train-preset ${where === w ? 'on' : ''}`} disabled={running} onClick={() => set({ where: w })}>
-                {readyBy[w] ? <span className="wel-rec mono cw-ready">Ready</span> : w === 'local' && pcCanTrain ? <span className="wel-rec mono cw-ready">Your PC can</span> : null}
+                {readyBy[w] ? <span className="wel-rec mono cw-ready">Ready</span> : w === 'local' && pcCanTrain ? <span className="wel-rec mono cw-ready">Your computer can</span> : null}
                 <h3>{PLACES[w].name}</h3>
                 <span className="mono small train-preset-cost">{w === 'local' ? 'Free' : `from $${from.toFixed(2)} an hour`}</span>
                 <p className="dim small">
@@ -1120,7 +1120,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
             ) : local.error ? (
               <p>{local.error}</p>
             ) : (
-              <p>These H3 training files aren’t in this PC’s ComfyUI yet: {local.missing.join(', ')}.</p>
+              <p>These H3 training files aren’t in this computer’s ComfyUI yet: {local.missing.join(', ')}.</p>
             )}
           </div>
         )}
@@ -1199,7 +1199,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
           )}
           {t.train.budgetHit && <p className="small pink">It reached your spending cap and stopped; the checkpoints saved by then are ready to test.</p>}
           {t.train.error && <p className="small pink">{t.train.error}</p>}
-          {st === 'training' && <p className="small dim">It keeps training {t.train.where === 'local' ? 'on this PC' : `on ${PLACES[t.train.where || 'modal'].name}`} if you close IV Studio; come back here to see how far it got.</p>}
+          {st === 'training' && <p className="small dim">It keeps training {t.train.where === 'local' ? 'on this computer' : `on ${PLACES[t.train.where || 'modal'].name}`} if you close IV Studio; come back here to see how far it got.</p>}
           {running && (
             <button className="link-btn mono" onClick={async () => (await ask({ title: 'Stop training?', message: 'Billing stops at once. The epochs saved so far stay in your Modal storage.', confirm: 'Stop training', danger: true })) && act('Stopping', () => T.stop(trainingId))}>
               Stop training

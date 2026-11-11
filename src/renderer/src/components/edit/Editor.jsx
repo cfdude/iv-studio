@@ -360,7 +360,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
   async function reframe(clip) {
     const m = edit.media[clip.media]
     const shape = SHAPE_OF[edit.settings.format] || '9:16'
-    const ok = await ask({ kicker: 'Reframe', title: `Reframe to ${shape}?`, message: `${m.kind === 'image' ? 'The picture' : 'The shot'} is kept as it is in the middle, and what lies beyond its edges is drawn to fill the ${shape} frame. ${m.kind === 'image' ? 'About half a minute.' : 'A few minutes on this PC for a 5 s shot (up to 15 s of it).'}`, confirm: 'Reframe' })
+    const ok = await ask({ kicker: 'Reframe', title: `Reframe to ${shape}?`, message: `${m.kind === 'image' ? 'The picture' : 'The shot'} is kept as it is in the middle, and what lies beyond its edges is drawn to fill the ${shape} frame. ${m.kind === 'image' ? 'About half a minute.' : 'A few minutes on this computer for a 5 s shot (up to 15 s of it).'}`, confirm: 'Reframe' })
     if (!ok) return
     notify(`Reframing ${m.name} to ${shape}…`, 'info')
     try {

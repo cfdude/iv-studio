@@ -1,5 +1,5 @@
 // Starting ComfyUI (src/service/comfylauncher.js): which launchers are found, in what order, and that only a
-// ComfyUI on this PC can be started. Builds a fake home folder; starts nothing.
+// ComfyUI on this computer can be started. Builds a fake home folder; starts nothing.
 //   node test/comfylauncher.mjs
 import fs from 'node:fs'
 import os from 'node:os'
@@ -11,8 +11,8 @@ let fail = 0
 const ok = (cond, what) => (cond ? (pass++, console.log(`  ok   ${what}`)) : (fail++, console.log(`  FAIL ${what}`)))
 const touch = (p) => (fs.mkdirSync(path.dirname(p), { recursive: true }), fs.writeFileSync(p, ''))
 
-ok(isLocalUrl('http://127.0.0.1:8188') && isLocalUrl('http://localhost:8188/') && isLocalUrl('http://[::1]:8188'), 'this PC: 127.0.0.1, localhost and ::1')
-ok(!isLocalUrl('http://192.168.1.20:8188') && !isLocalUrl('https://pod-8189.proxy.runpod.net') && !isLocalUrl('not a url'), 'not this PC: another machine, the cloud, nonsense')
+ok(isLocalUrl('http://127.0.0.1:8188') && isLocalUrl('http://localhost:8188/') && isLocalUrl('http://[::1]:8188'), 'this computer: 127.0.0.1, localhost and ::1')
+ok(!isLocalUrl('http://192.168.1.20:8188') && !isLocalUrl('https://pod-8189.proxy.runpod.net') && !isLocalUrl('not a url'), 'not this computer: another machine, the cloud, nonsense')
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-launcher-'))
 const env = { USERPROFILE: home, APPDATA: path.join(home, 'AppData', 'Roaming'), LOCALAPPDATA: path.join(home, 'AppData', 'Local'), PUBLIC: path.join(home, 'Public') }

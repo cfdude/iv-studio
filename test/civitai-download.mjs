@@ -1,4 +1,4 @@
-// Civitai downloads against a mock Civitai on this PC (no key, no network, nothing written to ComfyUI): a good
+// Civitai downloads against a mock Civitai on this computer (no key, no network, nothing written to ComfyUI): a good
 // download lands in loras/Civitai/<model>/ with its library entry, a file whose bytes don't match Civitai's
 // SHA-256 is removed, no key is a clear error, and real-person (poi) models are refused.
 //   node test/civitai-download.mjs

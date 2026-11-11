@@ -1,4 +1,4 @@
-// Website capture: screenshots, copy, colours, fonts, logo and pictures from a real page, with the PC's
+// Website capture: screenshots, copy, colours, fonts, logo and pictures from a real page, with the computer's
 // Edge or Chrome. Writes into a temporary folder (printed at the end).
 //   node test/site-capture.mjs [https://infinitevariance.ai]
 import fs from 'node:fs'

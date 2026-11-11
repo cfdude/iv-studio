@@ -21,7 +21,7 @@ ok('addresses as people type them', () => {
   assert.equal(normalizeComfyUrl('https://abc-8188.proxy.runpod.net'), 'https://abc-8188.proxy.runpod.net')
   assert.equal(normalizeComfyUrl(''), 'http://127.0.0.1:8188')
   assert.throws(() => normalizeComfyUrl('ftp://x'))
-  assert.equal(isLocalUrl(normalizeComfyUrl('localhost:8000')), true, 'a bare localhost:8000 reads as this PC')
+  assert.equal(isLocalUrl(normalizeComfyUrl('localhost:8000')), true, 'a bare localhost:8000 reads as this computer')
 })
 
 ok('an address saved before the fix works, and a bad one is refused', () => {

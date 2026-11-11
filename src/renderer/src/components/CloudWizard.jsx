@@ -106,7 +106,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
 
   async function choose(id) {
     if (id === p) return
-    if (onCloud) return notify?.('Switch to This PC on the Cloud page first, then change the cloud service.')
+    if (onCloud) return notify?.('Switch to This computer on the Cloud page first, then change the cloud service.')
     await run('Switching', () => window.ivstudio.cloud.provider(id))
     setGpu(null)
     setKey('')
@@ -121,7 +121,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
         await window.ivstudio.cloud.comfyCloudCheck()
       }
       setKey('')
-      notify?.('Key saved (encrypted on this PC).', 'ok')
+      notify?.('Key saved (encrypted on this computer).', 'ok')
     })
   }
   async function setUp() {
@@ -145,7 +145,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
     account: [`Connect ${LABEL[p]}`, 'Your own account; IV Studio keeps the key here'],
     gpu: ['Pick a GPU', 'Bigger is faster; it shuts itself off'],
     setup: ['Set it up', 'Once, then every render just wakes it'],
-    ready: [ready ? 'Ready' : 'Almost there', 'Switch between this PC and the cloud any time']
+    ready: [ready ? 'Ready' : 'Almost there', 'Switch between this computer and the cloud any time']
   }
 
   return createPortal(
@@ -174,7 +174,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
             {step === 'service' && (
               <section className="block create-step">
                 <StepHead n={1} title="Which cloud service?" sub="All three bill your own account; IV Studio adds nothing on top." />
-                {onCloud && <p className="wel-note small">You’re rendering in the cloud now. Switch to This PC on the Cloud page to change the service.</p>}
+                {onCloud && <p className="wel-note small">You’re rendering in the cloud now. Switch to This computer on the Cloud page to change the service.</p>}
                 <div className="wel-ways cw-services">
                   {[
                     ['runpod', 'Rent a GPU by the second. Your storage stays between sessions (about $7 a month for 100 GB).', `from $${(cheapest(st.runpodGpus) ?? 0).toFixed(2)} an hour`, 'Shots, sequences and your characters', 'RunPod'],
@@ -202,10 +202,10 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
 
             {step === 'account' && (
               <section className="block create-step">
-                <StepHead n={2} title={p === 'modal' ? 'Install and sign in' : `Your ${LABEL[p]} key`} sub={p === 'modal' ? 'Modal signs in through your browser.' : 'Saved encrypted on this PC; the window never sees it again.'} />
+                <StepHead n={2} title={p === 'modal' ? 'Install and sign in' : `Your ${LABEL[p]} key`} sub={p === 'modal' ? 'Modal signs in through your browser.' : 'Saved encrypted on this computer; the window never sees it again.'} />
                 {p === 'modal' ? (
                   <div className="cw-tasks">
-                    <Task done={st.toolkit} title="Cloud tools" text="A private copy of Modal’s client in IV Studio’s own folder (about 100 MB). Nothing else on your PC changes.">
+                    <Task done={st.toolkit} title="Cloud tools" text="A private copy of Modal’s client in IV Studio’s own folder (about 100 MB). Nothing else on your computer changes.">
                       {!st.toolkit && (
                         <button className="btn btn-primary" disabled={!!busy} onClick={() => run('Installing the cloud tools', () => window.ivstudio.cloud.install())}>
                           Install
@@ -406,7 +406,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
               ) : (
                 <>
                   <button className="btn" onClick={onClose} disabled={!!busy}>
-                    Stay on this PC for now
+                    Stay on this computer for now
                   </button>
                   <button className="btn btn-primary" onClick={switchOn} disabled={!!busy || !ready}>
                     Render in the cloud →

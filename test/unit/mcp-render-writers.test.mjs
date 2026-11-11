@@ -99,7 +99,7 @@ describe('MCP review and prompt writer tools', { skip: process.platform === 'win
   test('[mcp:review_take] says when there is no take to look at and refuses an unknown job', async () => {
     fake.holdNextPrompt(1)
     const waiting = await ok('generate_previews', { prompt: PROMPT, character: 'none' })
-    await fails('review_take', { jobId: waiting.id, candidate: 1 }, /That take has no video on this PC to review\./)
+    await fails('review_take', { jobId: waiting.id, candidate: 1 }, /That take has no video on this computer to review\./)
     fake.releaseHeld()
     await fails('review_take', { jobId: 'nope' }, /No job nope/)
     await fails('review_take', { jobId: waiting.id, candidate: 4 }, /candidate/i)

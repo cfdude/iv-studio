@@ -11,7 +11,7 @@ const QUICK = [
   ['picture', 'New picture', 'Make or edit a picture on six image models.', 'library'],
   ['film', 'Short film', 'A script becomes shots, takes and a rough cut.', 'projects'],
   ['edit', 'Cut an edit', 'Your renders, music and titles on a timeline.', 'edit'],
-  ['music', 'New song', 'A song or a score, made on this PC.', 'music'],
+  ['music', 'New song', 'A song or a score, made on this computer.', 'music'],
   ['line', 'Voice line', "Words in a character's own voice.", 'lines'],
   ['sizzle', 'Website film', 'A web address becomes a promo film.', 'sizzle'],
   ['character', 'New character', 'Design and train a recurring actor.', 'characters']

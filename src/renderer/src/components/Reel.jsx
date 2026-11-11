@@ -154,7 +154,7 @@ export default function Reel({ notify, openEdit, go }) {
                   if (f) setSong({ file: f, name: base(f) })
                 }}
               >
-                {own ? `♪ ${song.name}` : '+ A sound file from this PC'}
+                {own ? `♪ ${song.name}` : '+ A sound file from this computer'}
               </button>
             </div>
           </Step>

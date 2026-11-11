@@ -141,7 +141,7 @@ function run(command, args, { input, cwd, timeoutMs }) {
 // folder; the user text names them. Returns the parsed object.
 export async function harnessJson({ engine, model, system, user, schema, images = [], timeoutMs = 300000 }) {
   const exe = findHarnesses()[engine]
-  if (!exe) throw new Error(`${HARNESSES[engine] || engine} isn't installed on this PC. Choose another writer in Settings → Prompt writer.`)
+  if (!exe) throw new Error(`${HARNESSES[engine] || engine} isn't installed on this computer. Choose another writer in Settings → Prompt writer.`)
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-studio-writer-'))
   try {
     for (const im of images) fs.writeFileSync(path.join(dir, im.name), Buffer.from(im.data, 'base64'))

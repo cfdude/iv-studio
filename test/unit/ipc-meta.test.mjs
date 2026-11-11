@@ -64,7 +64,7 @@ test('[ipc:training:meta] hands over the GPUs of each place a character can trai
   assertHandlerNames(assert, 'training:meta', ['TRAIN_GPUS', 'RUNPOD_TRAIN_GPUS', 'LOCAL_TRAIN', 'SCENES', 'TALKS', 'TRAIN_DEFAULTS'])
   assert.ok(TRAIN_GPUS.length > 1 && RUNPOD_TRAIN_GPUS.length > 1)
   for (const g of [...TRAIN_GPUS, ...RUNPOD_TRAIN_GPUS, LOCAL_TRAIN]) assert.ok(g.id && g.label && g.perHour >= 0 && g.secPerStep > 0, `${g.id} needs an id, a label, a price and a speed`)
-  assert.equal(LOCAL_TRAIN.perHour, 0, 'training on this PC costs nothing')
+  assert.equal(LOCAL_TRAIN.perHour, 0, 'training on this computer costs nothing')
   assert.ok(SCENES.length > 0 && SCENES.every((s) => typeof s === 'string'))
   assert.ok(TALKS.length > 0 && TALKS.every((t) => t.scene && t.line && t.sound))
   assert.equal(TRAIN_DEFAULTS.where, 'modal')

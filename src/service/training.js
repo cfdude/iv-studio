@@ -146,7 +146,7 @@ export const RUNPOD_TRAIN_GPUS = [
 ]
 // This PC: free. Measured on Matt's RTX 4090 (24 GB, 64 GB RAM) with Theo's set, 2026-11-07: Fizgig's auto plan
 // (a 4-bit base, 40 blocks streamed) 3.17 s a step, peak 9.5 GB; the int8 base (40 blocks streamed) 6.73 s, peak 13.8 GB.
-export const LOCAL_TRAIN = { id: 'local', label: 'This PC', perHour: 0, secPerStep: 3.2, secPerStepInt8: 6.7, note: 'Free. Your graphics card is busy while it trains.' }
+export const LOCAL_TRAIN = { id: 'local', label: 'This computer', perHour: 0, secPerStep: 3.2, secPerStepInt8: 6.7, note: 'Free. Your graphics card is busy while it trains.' }
 export const TRAIN_WHERE = ['modal', 'runpod', 'local']
 export const trainGpus = (where) => (where === 'runpod' ? RUNPOD_TRAIN_GPUS : where === 'local' ? [LOCAL_TRAIN] : TRAIN_GPUS)
 
@@ -775,9 +775,9 @@ export class Trainings {
     return { files: found, missing }
   }
   async localReady() {
-    if (!this.fizgig()) throw new Error('Fizgig isn’t on this PC. Install it (github.com/shootthesound/Fizgig), then pick its folder on the Train step, or train on Modal or RunPod.')
+    if (!this.fizgig()) throw new Error('Fizgig isn’t on this computer. Install it (github.com/shootthesound/Fizgig), then pick its folder on the Train step, or train on Modal or RunPod.')
     const { missing } = await this.localFiles()
-    if (missing.length) throw new Error(`These H3 training files aren’t in this PC’s ComfyUI: ${missing.join(', ')}. Get them on Setup, or train in the cloud.`)
+    if (missing.length) throw new Error(`These H3 training files aren’t in this computer’s ComfyUI: ${missing.join(', ')}. Get them on Setup, or train in the cloud.`)
   }
   localRunning() {
     return [...this.localRuns.values()].some(Boolean)

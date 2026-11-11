@@ -78,7 +78,7 @@ describe('window channels: faces and Fizgig', () => {
       } catch {}
     }
     const by = Object.fromEntries(out.map((f) => [f.id, f]))
-    assert.equal(by[withLocal.id].picture, local, 'a file on this PC is used where it is')
+    assert.equal(by[withLocal.id].picture, local, 'a file on this computer is used where it is')
     assert.equal(by[withView.id].picture, path.join(dir, 'trainings', withView.id, 'stills', 'face_00001_.png'))
     assert.equal(fs.readFileSync(by[withView.id].picture, 'utf8'), 'from comfyui')
     assert.equal(by[noFace.id], undefined)

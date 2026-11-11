@@ -11,8 +11,8 @@ import { highContrast, setContrast } from '../a11y'
 // person picked (hardware:apply). Each stage has its own banner art (assets/pages/pc-*.webp, drawn with Codex).
 const STEPS = [
   ['hello', 'Welcome', 'What IV Studio does'],
-  ['scan', 'Scan', 'Reading your PC'],
-  ['pc', 'Your PC', 'What it can do'],
+  ['scan', 'Scan', 'Reading your computer'],
+  ['pc', 'Your computer', 'What it can do'],
   ['way', 'Your way', 'Where things render'],
   ['get', 'Downloads', 'What to get'],
   ['done', 'Ready', 'Off you go']
@@ -150,8 +150,8 @@ export default function Welcome({ onClose, go, notify, first }) {
 
   const titles = {
     hello: ['Welcome to IV Studio', 'Let’s set it up for your computer'],
-    scan: ['Checking your PC', 'Nothing leaves this computer'],
-    pc: ['Your PC', 'What this computer can do'],
+    scan: ['Checking your computer', 'Nothing leaves this computer'],
+    pc: ['Your computer', 'What this computer can do'],
     way: ['Your way of working', 'Where things render, and the defaults'],
     get: ['What to download', 'Models go into ComfyUI’s own folders'],
     done: ['You’re set', 'Change any of this later in Settings']
@@ -160,7 +160,7 @@ export default function Welcome({ onClose, go, notify, first }) {
   return createPortal(
     <div className="welcome" role="dialog" aria-modal="true" aria-label="Welcome to IV Studio">
       <div className="welcome-panel">
-        <button className="welcome-skip link-btn mono" onClick={skip} title="Close the wizard (Esc). Open it again from Settings → Check my PC.">
+        <button className="welcome-skip link-btn mono" onClick={skip} title="Close the wizard (Esc). Open it again from Settings → Check my computer.">
           {step === 'done' ? 'Done' : first ? 'Skip for now' : 'Close'} ×
         </button>
         <div className="welcome-scroll" ref={body}>
@@ -201,7 +201,7 @@ export default function Welcome({ onClose, go, notify, first }) {
             )}
             {step === 'hello' && (
               <button className="btn btn-primary" onClick={next}>
-                Check my PC →
+                Check my computer →
               </button>
             )}
             {step !== 'hello' && step !== 'done' && (
@@ -235,7 +235,7 @@ function Hello({ hc, contrast }) {
     ['Shots', 'Write an idea, hunt a few takes, pick one and finish it at full size.'],
     ['Characters and voices', 'Your own cast, with faces, voices and trained looks.'],
     ['Films and edits', 'Short films from a script, cut together in the editor.'],
-    ['On your PC or in the cloud', 'Free on your own graphics card, or rented by the minute.']
+    ['On your computer or in the cloud', 'Free on your own graphics card, or rented by the minute.']
   ]
   return (
     <section className="block create-step">
@@ -285,7 +285,7 @@ function Scan({ rows, shown, error, retry }) {
   const placeholder = ['Graphics card', 'Memory', 'Processor', 'Drives', 'ComfyUI', 'Prompt writers', 'Voices', 'Cloud']
   return (
     <section className="block create-step">
-      <StepHead n={2} title="Reading your PC" sub="Graphics card, memory, processor, drives and what’s installed." />
+      <StepHead n={2} title="Reading your computer" sub="Graphics card, memory, processor, drives and what’s installed." />
       {error ? (
         <div className="wel-error">
           <p>The scan didn’t finish: {error}</p>
@@ -357,7 +357,7 @@ function YourPc({ rec, scan }) {
 }
 
 const WAYS = [
-  ['local', 'pc', 'This PC', 'Everything renders on your graphics card. Free, private, as fast as your card.'],
+  ['local', 'pc', 'This computer', 'Everything renders on your graphics card. Free, private, as fast as your card.'],
   ['both', 'both', 'Both', 'Pictures, music and voices here; the heaviest video in the cloud when you need it.'],
   ['cloud', 'cloud', 'The cloud', 'Video renders on RunPod, Modal or Comfy Cloud, billed by the minute or per run.']
 ]
@@ -409,7 +409,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, s
         </div>
       </section>
       <section className="block create-step">
-        <StepHead title="Defaults for your shots" sub="Set to suit this PC. Every shot can still change them." />
+        <StepHead title="Defaults for your shots" sub="Set to suit this computer. Every shot can still change them." />
         <div className="wel-segs">
           <Seg label="Previews" value={prefs.previewMp} onChange={(v) => set({ previewMp: v })} options={[[0.4, '0.4 MP'], [0.6, '0.6 MP'], [1, '1 MP']]} />
           <Seg label="Preview quality" value={prefs.quality} onChange={(v) => set({ quality: v })} options={[['draft', 'Draft · quicker'], ['standard', 'Standard']]} />
@@ -420,8 +420,8 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, s
             value={writer}
             onChange={setWriter}
             options={[
-              ['claude', 'Claude Code', !installs.claude && 'Claude Code isn’t on this PC'],
-              ['codex', 'Codex', !installs.codex && 'Codex isn’t on this PC'],
+              ['claude', 'Claude Code', !installs.claude && 'Claude Code isn’t on this computer'],
+              ['codex', 'Codex', !installs.codex && 'Codex isn’t on this computer'],
               ['local', 'Local (Ollama)']
             ]}
           />
@@ -431,7 +431,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, s
         </p>
       </section>
       <section className="block create-step">
-        <StepHead title="Where finished videos go" sub="Films and edits you export, and cloud renders brought to this PC. Change it any time in Settings → Folders." />
+        <StepHead title="Where finished videos go" sub="Films and edits you export, and cloud renders brought to this computer. Change it any time in Settings → Folders." />
         <div className="wel-videos">
           <span className="mono wel-videos-path">{videos?.path || '…'}</span>
           {videos?.free != null && <span className="mono small dim">{gbs(videos.free)} free</span>}
@@ -439,7 +439,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, s
             Change…
           </button>
         </div>
-        <p className="wel-note dim small">Renders made on this PC are kept in ComfyUI’s own output folder, on the drive ComfyUI is on{scan.modelsDrive ? ` (${scan.modelsDrive.path.replace(/\\$/, '')})` : ''}.</p>
+        <p className="wel-note dim small">Renders made on this computer are kept in ComfyUI’s own output folder, on the drive ComfyUI is on{scan.modelsDrive ? ` (${scan.modelsDrive.path.replace(/\\$/, '')})` : ''}.</p>
       </section>
     </>
   )
@@ -480,7 +480,7 @@ function FindComfy({ installs, startComfy, comfyStarting, rescan, notify }) {
         </>
       ) : (
         <>
-          <p>{installs.comfyFound ? 'ComfyUI isn’t answering, so IV Studio can’t see which models you already have, or download into it. If it’s still starting up, wait for it to finish loading, then check again.' : 'No ComfyUI found on this PC. Install ComfyUI (the Desktop app from comfy.org, or the portable build), then check again.'}</p>
+          <p>{installs.comfyFound ? 'ComfyUI isn’t answering, so IV Studio can’t see which models you already have, or download into it. If it’s still starting up, wait for it to finish loading, then check again.' : 'No ComfyUI found on this computer. Install ComfyUI (the Desktop app from comfy.org, or the portable build), then check again.'}</p>
           <div className="wel-find-btns">
             {installs.comfyFound && (
               <button className="btn btn-primary" onClick={startComfy} disabled={comfyStarting || busy}>
@@ -511,7 +511,7 @@ function Get({ rec, way, pick, setPick, packs, setPacks, installs, scan, started
     return (
       <section className="block create-step">
         <StepHead n={5} title="Nothing to download here" sub="In the cloud, the models live on your cloud storage." />
-        <p className="wel-lede">The Cloud page sets up RunPod, Modal or Comfy Cloud and fetches the models there the first time. This PC only needs IV Studio.</p>
+        <p className="wel-lede">The Cloud page sets up RunPod, Modal or Comfy Cloud and fetches the models there the first time. This computer only needs IV Studio.</p>
       </section>
     )
   const groups = rec.downloads
@@ -524,12 +524,12 @@ function Get({ rec, way, pick, setPick, packs, setPacks, installs, scan, started
   return (
     <section className="block create-step">
       <StepHead n={5} title="What to download" sub="The ones for how you’ll work are ticked. Each is checked against its published fingerprint." />
-      <p className="wel-lede">IV Studio uses the ComfyUI already on this PC, wherever it is (the Desktop app, or a portable ComfyUI on another drive). These download into that ComfyUI’s models folder, so they go on its drive.</p>
+      <p className="wel-lede">IV Studio uses the ComfyUI already on this computer, wherever it is (the Desktop app, or a portable ComfyUI on another drive). These download into that ComfyUI’s models folder, so they go on its drive.</p>
       {!installs.modelsKnown && <FindComfy installs={installs} startComfy={startComfy} comfyStarting={comfyStarting} rescan={rescan} notify={notify} />}
       {allHere && (
         <div className="wel-allhere">
           <Icon name="check" />
-          <p>Everything this way of working needs is already on this PC. Tick anything extra you’d like.</p>
+          <p>Everything this way of working needs is already on this computer. Tick anything extra you’d like.</p>
         </div>
       )}
       <ul className="wel-downloads">

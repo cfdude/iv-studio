@@ -1,5 +1,5 @@
 // What the test guard keeps from the MCP training tools that need something unfaked (task 5.7, part 4): start_training and
-// stop_training need Modal (or Fizgig's Python on this PC), and rank_likeness and score_checkpoints need Shinobi's Python
+// stop_training need Modal (or Fizgig's Python on this computer), and rank_likeness and score_checkpoints need Shinobi's Python
 // for InsightFace. Their rows have gaps entries (`needs Modal`, `spawns python`) and no row id here: these tests prove
 // what each tool does on the way to the part it cannot run, and that nothing started or was spent.
 //   node --test test/unit/mcp-training-guard.test.mjs
@@ -80,18 +80,18 @@ describe('guard and the MCP training tools that need Modal or Python', () => {
     assert.equal(fake.prompts.length, queued)
   })
 
-  test('guard keeps start_training off this PC\'s Python: a run that was on this PC cannot carry on without Fizgig and its files', async () => {
+  test('guard keeps start_training off this computer\'s Python: a run that was on this computer cannot carry on without Fizgig and its files', async () => {
     const id = await set('Local run')
     const t = readTraining(id)
     t.train = { where: 'local', name: 'run1', state: 'done', gpu: 'local', options: { where: 'local' }, epochs: 20 }
     writeTraining(t)
     const before = await refusedCount()
-    await fails('start_training', { trainingId: id, confirm_cost: 0, more: 10 }, /Fizgig isn’t on this PC\. Install it/)
+    await fails('start_training', { trainingId: id, confirm_cost: 0, more: 10 }, /Fizgig isn’t on this computer\. Install it/)
     assert.equal(await refusedCount(), before)
     assert.equal(readTraining(id).train.state, 'done', 'the finished run is left as it was')
   })
 
-  test('guard keeps stop_training off Modal: without the cloud tools it says to set them up, and a run on this PC with no process is just marked stopped', async () => {
+  test('guard keeps stop_training off Modal: without the cloud tools it says to set them up, and a run on this computer with no process is just marked stopped', async () => {
     const id = await set('Stopper')
     await fails('stop_training', { trainingId: id }, /Set up the cloud tools first \(Cloud page, step 1\)\./)
     const t = readTraining(id)
@@ -147,7 +147,7 @@ describe('guard and the MCP training tools that need Modal or Python', () => {
     assert.equal(readTraining(id).bestEpoch, undefined)
   })
 
-  test('guard: the cloud options start_training does not offer are not passed on, so a run asked for on RunPod or this PC through MCP still goes to Modal', async () => {
+  test('guard: the cloud options start_training does not offer are not passed on, so a run asked for on RunPod or this computer through MCP still goes to Modal', async () => {
     const id = await set('Where')
     const queued = await refusedCount()
     // where is not in start_training's options; it is dropped and the Modal checks run

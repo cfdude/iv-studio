@@ -73,7 +73,7 @@ export function SizzleList({ notify, openSizzle, go }) {
             {busy ? 'Capturing…' : 'Capture the site'}
           </button>
         </div>
-        <p className="stage-note small">{busy || 'IV Studio captures the site, your agent writes a storyboard, you approve it, and the shots, music and voice-over are made on this PC.'}</p>
+        <p className="stage-note small">{busy || 'IV Studio captures the site, your agent writes a storyboard, you approve it, and the shots, music and voice-over are made on this computer.'}</p>
         <WorkflowNeeds page="sizzle" />
       </Stage>
 

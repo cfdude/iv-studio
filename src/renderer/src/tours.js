@@ -257,7 +257,7 @@ export const TOURS = {
     steps: [
       { title: 'Render on a cloud GPU', text: 'No strong graphics card, or want more? Shots can render on your own RunPod, Modal or Comfy Cloud account, billed by the second.' },
       { at: '.cloud-guided', title: 'Guided setup', text: 'The easiest way in: pick a service, connect it, choose a GPU and set it up. Setup shows each step with a timer and how long is left; you can leave the page, and IV Studio tells you when it’s ready.' },
-      { at: '.cloud-control', title: 'Where it renders', text: 'Switch between this PC and the cloud whenever you like.' },
+      { at: '.cloud-control', title: 'Where it renders', text: 'Switch between this computer and the cloud whenever you like.' },
       { at: '.engine-badge', title: 'The meter', text: 'While on the cloud, the title bar shows GPU time and cost. Shut down GPU stops it at once; it also stops by itself when idle.' }
     ]
   },
@@ -266,7 +266,7 @@ export const TOURS = {
     steps: [
       { at: '.settings-tabs', title: 'Settings and Setup', text: 'Settings is how IV Studio works for you. Setup checks what ComfyUI has and downloads what it needs.' },
       { at: '.set-nav', title: 'Jump around', text: 'Every topic in one list. Click one to jump to it.' },
-      { at: '#set-pc', title: 'Your PC', text: 'What your computer can do. Check again re-runs the scan and its recommended defaults.' },
+      { at: '#set-pc', title: 'Your computer', text: 'What your computer can do. Check again re-runs the scan and its recommended defaults.' },
       { at: '#set-access', title: 'Accessibility', text: 'Bigger text, higher contrast, less motion, clear focus outlines and underlined links. Each applies at once.' },
       { at: '#set-comfy', title: 'ComfyUI', text: 'Where ComfyUI is (typing localhost:8000 is fine), and whether IV Studio starts it for you when it opens.' },
       { at: '#set-folders', title: 'Folders', text: 'Where finished videos go, on any drive, and where renders save inside ComfyUI.' },
@@ -285,7 +285,7 @@ export const TOURS = {
   voices: {
     title: 'Voices',
     steps: [
-      { at: '.engine-strip', title: 'The voice engine', text: 'Voices run on this PC. The first time, set them up once (about 12 GB).' },
+      { at: '.engine-strip', title: 'The voice engine', text: 'Voices run on this computer. The first time, set them up once (about 12 GB).' },
       { at: '.voice-grid', title: 'Your voices', text: 'Play each one, rename it, and give it to a character. That character’s shots then speak in it.' },
       { at: '.audio-card', title: 'A new voice', text: 'Describe a voice that doesn’t exist yet, or save one from a recording. Never a real person’s voice without their consent.' }
     ]

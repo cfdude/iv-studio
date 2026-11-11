@@ -46,8 +46,8 @@ describe('Apple Silicon tiers by unified memory', () => {
     for (const ram of [128, 64, 32, 16]) assert.doesNotMatch(JSON.stringify([recommend(mac(ram)).verdicts, recommend(mac(ram)).tier]), /CUDA|NVIDIA/)
   })
 
-  test('titles and summaries say This Mac, not This PC', () => {
-    for (const ram of [128, 64, 32, 16]) assert.doesNotMatch(JSON.stringify(recommend(mac(ram)).tier), /\bPC\b/i)
+  test('titles and summaries say This Mac, not This computer (or PC)', () => {
+    for (const ram of [128, 64, 32, 16]) assert.doesNotMatch(JSON.stringify(recommend(mac(ram)).tier), /\bPC\b|computer/i)
     assert.match(recommend(mac(128)).tier.title, /This Mac/)
   })
 

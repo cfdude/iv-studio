@@ -237,10 +237,10 @@ try {
     await assert.rejects(undo(comfy, null, { comfyRoot: tmp() }), /no update to undo/)
   })
 
-  // ---------- Task 4: studio refuses a ComfyUI that isn't on this PC ----------
-  await ok('Studio: updates run on this PC’s ComfyUI only', async () => {
+  // ---------- Task 4: studio refuses a ComfyUI that isn't on this computer ----------
+  await ok('Studio: updates run on this computer’s ComfyUI only', async () => {
     const studio = new Studio({ dataDir: tmp(), resourcesDir: path.resolve('resources'), comfyUrl: 'http://127.0.0.1:8188', comfyToken: 'x' })
-    for (const fn of ['comfyUpdates', 'updateComfy', 'undoComfyUpdate', 'installManager']) await assert.rejects(studio[fn](), /this PC’s ComfyUI only/, fn)
+    for (const fn of ['comfyUpdates', 'updateComfy', 'undoComfyUpdate', 'installManager']) await assert.rejects(studio[fn](), /this computer’s ComfyUI only/, fn)
   })
 } finally {
   server.close()

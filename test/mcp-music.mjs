@@ -1,4 +1,4 @@
-// MCP music test: music tools over stdio on a temporary data folder, against the ComfyUI on this PC. It makes
+// MCP music test: music tools over stdio on a temporary data folder, against the ComfyUI on this computer. It makes
 // one 20 s ACE-Step song (about 15 s on a 4090) and, with --minimax, one 30 s MiniMax Music 3 song (a few
 // minutes). Both engines' models must be downloaded (Audio > Music).
 //   node test/mcp-music.mjs [--minimax]
