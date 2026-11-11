@@ -298,7 +298,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
   })
 
   // ---------- list_renders ----------
-  test('[mcp:list_renders] lists a shot\'s previews and final newest first, each with a key and a path', async () => {
+  test('[mcp:list_renders][ipc:edits:library] lists a shot\'s previews and final newest first, each with a key and a path', async () => {
     const mk = (n) => path.join(path.dirname(files.png), `render${n}.mp4`)
     writeData('projects/shot0001.json', { id: 'shot0001', name: 'Rooftop', createdAt: NOW, updatedAt: NOW, jobs: ['jobprev0001', 'jobfin00001'], sequenceId: null })
     writeData('jobs/jobprev0001.json', { id: 'jobprev0001', kind: 'previews', projectId: 'shot0001', status: 'success', createdAt: '2026-11-10T10:00:00.000Z', finishedAt: '2026-11-10T10:05:00.000Z', plan: { request: { mode: 'text', character: 'tess', aspect: '16:9' } }, outputs: [{ kind: 'preview', candidate: 1, path: mk(1) }, { kind: 'preview', candidate: 2, path: mk(2) }] })
@@ -362,7 +362,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
   })
 
   // ---------- prepare_media ----------
-  test('[mcp:prepare_media] crops a picture into a new file in the media folder and leaves the original', async () => {
+  test('[mcp:prepare_media][ipc:media:probe][ipc:media:prepare] crops a picture into a new file in the media folder and leaves the original', async () => {
     const before = fs.readFileSync(files.png)
     const r = await ok('prepare_media', { file: files.png, crop: { x: 16, y: 16, w: 64, h: 32 } })
     assert.equal(r.kind, 'image')

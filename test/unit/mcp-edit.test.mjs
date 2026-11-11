@@ -69,7 +69,7 @@ describe('MCP edit tools', () => {
     assert.deepEqual((await ok('list_edits')).items, [])
   })
 
-  test('[mcp:create_edit] makes an empty edit with the default name, 1080p and 24 fps', async () => {
+  test('[mcp:create_edit][ipc:edits:create] makes an empty edit with the default name, 1080p and 24 fps', async () => {
     const e = await ok('create_edit')
     assert.equal(e.name, 'Untitled edit')
     assert.deepEqual(e.settings, { format: '1080p', fps: 24 })
@@ -89,7 +89,7 @@ describe('MCP edit tools', () => {
     await fails('create_edit', { fps: 61 }, /fps/i)
   })
 
-  test('[mcp:list_edits] lists each edit with its clip count, length and format, newest first', async () => {
+  test('[mcp:list_edits][ipc:edits:list] lists each edit with its clip count, length and format, newest first', async () => {
     const { id, video } = await withMedia('Listed')
     await ok('edit_timeline', { editId: id, ops: [{ op: 'add_clip', media: video.id }] })
     const { items } = await ok('list_edits')
@@ -101,7 +101,7 @@ describe('MCP edit tools', () => {
     assert.deepEqual(times, [...times].sort().reverse())
   })
 
-  test('[mcp:get_edit] describes the media with ids, the tracks and their clips in order', async () => {
+  test('[mcp:get_edit][ipc:edits:get] describes the media with ids, the tracks and their clips in order', async () => {
     const m = await withMedia('Described')
     await ok('edit_timeline', { editId: m.id, ops: [{ op: 'add_clip', media: m.video.id }, { op: 'add_clip', media: m.picture.id, track: 'V2', start: 0.5 }, { op: 'add_clip', media: m.audio.id }, { op: 'add_title', content: 'Hello', start: 1 }] })
     const e = await ok('get_edit', { editId: m.id })
@@ -143,7 +143,7 @@ describe('MCP edit tools', () => {
   })
 
   // ---------- add_media ----------
-  test('[mcp:add_media] adds a video, a picture and a sound to the bin with what ffprobe found, and puts nothing on the timeline', async () => {
+  test('[mcp:add_media][ipc:edits:addOutput] adds a video, a picture and a sound to the bin with what ffprobe found, and puts nothing on the timeline', async () => {
     const e = await ok('create_edit')
     const r = await ok('add_media', { editId: e.id, files: [clip, still, song] })
     assert.deepEqual(r.placed, [])
@@ -321,7 +321,7 @@ describe('MCP edit tools', () => {
   })
 
   // ---------- export_edit, get_edit_export, cancel_edit_export ----------
-  test('[mcp:export_edit] renders the timeline to an MP4 in the Edits folder and records the export on the edit', async () => {
+  test('[mcp:export_edit][ipc:edits:export] renders the timeline to an MP4 in the Edits folder and records the export on the edit', async () => {
     const m = await withMedia('Export me')
     await ok('edit_timeline', { editId: m.id, ops: [{ op: 'add_clip', media: m.video.id, out: 1 }, { op: 'add_title', content: 'Hi', start: 0, duration: 1 }] })
     const started = await ok('export_edit', { editId: m.id })
@@ -382,7 +382,7 @@ describe('MCP edit tools', () => {
     assert.ok(fs.existsSync(st.file))
   })
 
-  test('[mcp:cancel_edit_export] stops a running export and the state turns cancelled; with none running it says nothing was cancelled', async () => {
+  test('[mcp:cancel_edit_export][ipc:edits:cancelExport] stops a running export and the state turns cancelled; with none running it says nothing was cancelled', async () => {
     const m = await withMedia()
     await ok('edit_timeline', { editId: m.id, ops: [{ op: 'add_clip', media: m.video.id }] })
     assert.equal((await ok('cancel_edit_export', { editId: m.id })).cancelled, false)
@@ -395,7 +395,7 @@ describe('MCP edit tools', () => {
   })
 
   // ---------- delete_edit (last: it changes the list) ----------
-  test('[mcp:delete_edit] removes the timeline and leaves its media files and exports on disk', async () => {
+  test('[mcp:delete_edit][ipc:edits:delete] removes the timeline and leaves its media files and exports on disk', async () => {
     const m = await withMedia('Doomed')
     await ok('edit_timeline', { editId: m.id, ops: [{ op: 'add_clip', media: m.video.id, out: 0.5 }] })
     await ok('export_edit', { editId: m.id })

@@ -59,7 +59,7 @@ describe('MCP picture tools', () => {
   })
 
   // ---------- list_image_models ----------
-  test('[mcp:list_image_models] lists the eight families, none ready on a ComfyUI with no image models', async () => {
+  test('[mcp:list_image_models][ipc:images:status] lists the eight families, none ready on a ComfyUI with no image models', async () => {
     const { families, aspects, defaults } = await ok('list_image_models')
     assert.deepEqual(families.map((f) => f.id), ['flux2', 'flux3', 'krea2', 'moss', 'qwen21', 'zimage', 'sdxl', 'h3'])
     assert.ok(families.every((f) => f.ready === false && f.models.length === 0 && f.edit === false))
@@ -156,7 +156,7 @@ describe('MCP picture tools', () => {
   })
 
   // ---------- get_image ----------
-  test('[mcp:get_image] shows a waiting set queued, then its pictures copied into the images folder once ComfyUI saves them', async () => {
+  test('[mcp:get_image][ipc:images:get] shows a waiting set queued, then its pictures copied into the images folder once ComfyUI saves them', async () => {
     fake.setObjectInfo(OBJECT_INFO)
     try {
       fake.holdNextPrompt(1)
@@ -200,7 +200,7 @@ describe('MCP picture tools', () => {
   })
 
   // ---------- list_images ----------
-  test('[mcp:list_images] lists every picture set newest first with its status, files, model, prompt and seed', async () => {
+  test('[mcp:list_images][ipc:images:list] lists every picture set newest first with its status, files, model, prompt and seed', async () => {
     fake.setObjectInfo(OBJECT_INFO)
     try {
       const first = await ok('make_image', { model: ZIMAGE, prompt: 'List one.', seed: 101 })
@@ -220,7 +220,7 @@ describe('MCP picture tools', () => {
   })
 
   // ---------- cancel_image ----------
-  test('[mcp:cancel_image] takes a waiting set out of ComfyUI\'s queue and marks it cancelled', async () => {
+  test('[mcp:cancel_image][ipc:images:cancel] takes a waiting set out of ComfyUI\'s queue and marks it cancelled', async () => {
     fake.setObjectInfo(OBJECT_INFO)
     try {
       fake.holdNextPrompt(1)
@@ -239,7 +239,7 @@ describe('MCP picture tools', () => {
   })
 
   // ---------- delete_image ----------
-  test('[mcp:delete_image] deletes the set, its pictures and its project, and leaves ComfyUI\'s own copy', async () => {
+  test('[mcp:delete_image][ipc:images:delete] deletes the set, its pictures and its project, and leaves ComfyUI\'s own copy', async () => {
     fake.setObjectInfo(OBJECT_INFO)
     try {
       const set = await ok('make_image', { model: ZIMAGE, prompt: 'A fox to delete.' })

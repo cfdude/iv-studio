@@ -42,7 +42,7 @@ describe('MCP make_reel', () => {
     await mcp?.close()
   })
 
-  test('[mcp:make_reel] cuts the pictures and a clip to the song\'s beat as a new edit with the song on A1, fading out at the end', async () => {
+  test('[mcp:make_reel][ipc:reels:make] cuts the pictures and a clip to the song\'s beat as a new edit with the song on A1, fading out at the end', async () => {
     const r = await ok('make_reel', { items: [pics[0], pics[1], clip, pics[2]], song: clicks, pace: 'normal', format: 'square', name: 'My reel' })
     assert.ok(Math.abs(r.bpm - 120) < 3, `tempo ${r.bpm}`)
     assert.ok(r.strength >= 0.3, `a clear pulse, ${r.strength}`)

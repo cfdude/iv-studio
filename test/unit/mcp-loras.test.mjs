@@ -73,7 +73,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
   })
 
   // ---------- search_loras ----------
-  test('[mcp:search_loras] returns the H3 LoRA cards and hides a real person and mature LoRAs', async () => {
+  test('[mcp:search_loras][ipc:loras:search] returns the H3 LoRA cards and hides a real person and mature LoRAs', async () => {
     const r = await ok('search_loras', {})
     assert.deepEqual(r.items.map((i) => i.id), [101, 104])
     assert.deepEqual(r.next, null)
@@ -109,7 +109,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
   })
 
   // ---------- get_lora ----------
-  test('[mcp:get_lora] gives one LoRA in full: its version, trigger words, licence and notes as plain text', async () => {
+  test('[mcp:get_lora][ipc:loras:model] gives one LoRA in full: its version, trigger words, licence and notes as plain text', async () => {
     const m = await ok('get_lora', { modelId: 101 })
     assert.equal(m.name, 'Fake Neon Street')
     assert.equal(m.url, `${civitai.url}/models/101`)
@@ -137,7 +137,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
     assert.equal(civitai.requests.length, before)
   })
 
-  test('[mcp:download_lora] saves the file under the fake ComfyUI loras folder, checked against the published SHA-256', async () => {
+  test('[mcp:download_lora][ipc:loras:download] saves the file under the fake ComfyUI loras folder, checked against the published SHA-256', async () => {
     const r = await ok('download_lora', { modelId: 101 })
     const target = path.join(lorasDir(), 'Civitai', 'Fake_Neon_Street', 'fake_neon_street.safetensors')
     assert.deepEqual([r.lora, r.path, r.sha256, r.name, r.trainedWords], [INSTALLED, target, CIVITAI_FILE_SHA256, 'Fake Neon Street', ['neonstreet']])
@@ -175,7 +175,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
   })
 
   // ---------- list_my_loras ----------
-  test('[mcp:list_my_loras] lists the LoRAs ComfyUI can load, the H3 ones by default, with what Civitai said', async () => {
+  test('[mcp:list_my_loras][ipc:loras:yours] lists the LoRAs ComfyUI can load, the H3 ones by default, with what Civitai said', async () => {
     fs.writeFileSync(path.join(lorasDir(), 'other_style.safetensors'), 'not for h3')
     fs.writeFileSync(path.join(lorasDir(), 'minimax_h3_look.safetensors'), 'named for h3')
     fake.setObjectInfo({ LoraLoaderModelOnly: combo([INSTALLED, 'other_style.safetensors', 'minimax_h3_look.safetensors']) })
@@ -192,7 +192,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
   })
 
   // ---------- identify_lora ----------
-  test('[mcp:identify_lora] finds an installed file on Civitai by its SHA-256 and keeps the answer', async () => {
+  test('[mcp:identify_lora][ipc:loras:identify] finds an installed file on Civitai by its SHA-256 and keeps the answer', async () => {
     fs.writeFileSync(path.join(lorasDir(), 'mystery.safetensors'), CIVITAI_FILE_BYTES)
     fake.setObjectInfo({ LoraLoaderModelOnly: combo(['mystery.safetensors']) })
     const r = await ok('identify_lora', { name: 'mystery.safetensors' })

@@ -230,7 +230,7 @@ describe('MCP edit generation, reframe and cut-out tools', () => {
   })
 
   // ---------- cancel_generation ----------
-  test('[mcp:cancel_generation] stops the generation, cancels its jobs and takes its placeholder off the edit', async () => {
+  test('[mcp:cancel_generation][ipc:editgen:cancel] stops the generation, cancels its jobs and takes its placeholder off the edit', async () => {
     const e = await edit('Cancel')
     fake.holdNextPrompt(1)
     const gen = await ok('generate_in_edit', { editId: e.id, kind: 'extend', clip: e.a, prompt: 'Keeps walking.' })

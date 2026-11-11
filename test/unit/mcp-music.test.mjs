@@ -80,7 +80,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- music_status ----------
-  test('[mcp:music_status] lists what each engine is missing when the ComfyUI has none of the music models', async () => {
+  test('[mcp:music_status][ipc:music:status] lists what each engine is missing when the ComfyUI has none of the music models', async () => {
     const s = await ok('music_status')
     assert.equal(s.ready, false)
     const [minimax, ace] = s.engines
@@ -172,7 +172,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- get_music ----------
-  test('[mcp:get_music] reports a waiting song with its place in the queue', async () => {
+  test('[mcp:get_music][ipc:music:get] reports a waiting song with its place in the queue', async () => {
     fake.holdNextPrompt(1)
     const song = await ok('make_music', { engine: 'ace', caption: 'a waiting song', seconds: 10 })
     const got = await ok('get_music', { songId: song.id })
@@ -208,7 +208,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- list_music ----------
-  test('[mcp:list_music] lists every song newest first with its status, file and engine', async () => {
+  test('[mcp:list_music][ipc:music:list] lists every song newest first with its status, file and engine', async () => {
     const { id } = await finished({ name: 'Newest', caption: 'newest style' })
     const list = JSON.parse((await call('list_music')).content[0].text)
     assert.equal(list.length, new Set(list.map((s) => s.id)).size)
@@ -220,7 +220,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- rename_music ----------
-  test('[mcp:rename_music] renames a song, trims the name and refuses an empty one or an unknown song', async () => {
+  test('[mcp:rename_music][ipc:music:rename] renames a song, trims the name and refuses an empty one or an unknown song', async () => {
     const song = await ok('make_music', { engine: 'ace', caption: 'a song to rename', seconds: 10 })
     assert.equal((await ok('rename_music', { songId: song.id, name: '  Better name  ' })).name, 'Better name')
     assert.equal(readData('music', 'songs.json').find((s) => s.id === song.id).name, 'Better name')
@@ -230,7 +230,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- cancel_music ----------
-  test('[mcp:cancel_music] takes a waiting song out of ComfyUI\'s queue and marks it cancelled', async () => {
+  test('[mcp:cancel_music][ipc:music:cancel] takes a waiting song out of ComfyUI\'s queue and marks it cancelled', async () => {
     fake.holdNextPrompt(1)
     const song = await ok('make_music', { engine: 'ace', caption: 'a song to cancel', seconds: 10 })
     assert.deepEqual(fake.state.pending.map((p) => p[1]), [promptOf(song)])
@@ -253,7 +253,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- delete_music ----------
-  test('[mcp:delete_music] removes a finished song, its file in the music folder and its project, and keeps ComfyUI\'s own copy', async () => {
+  test('[mcp:delete_music][ipc:music:delete] removes a finished song, its file in the music folder and its project, and keeps ComfyUI\'s own copy', async () => {
     const got = await finished({ name: 'Doomed' })
     const comfyCopy = path.join(dir, `${got.id}.flac`)
     assert.deepEqual(await ok('delete_music', { songId: got.id }), { deleted: got.id })
@@ -274,7 +274,7 @@ describe('MCP music tools', () => {
   })
 
   // ---------- read_song ----------
-  test('[mcp:read_song] reads a sound file\'s length, tempo and key', async () => {
+  test('[mcp:read_song][ipc:music:analyse] reads a sound file\'s length, tempo and key', async () => {
     const r = await ok('read_song', { source: clicks })
     assert.equal(r.file, clicks)
     assert.equal(r.name, 'clicks')

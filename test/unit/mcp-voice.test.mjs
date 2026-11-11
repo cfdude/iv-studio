@@ -53,7 +53,7 @@ describe('MCP voice tools on a Mac', () => {
   })
 
   // ---------- voice_status, setup_voices ----------
-  test('[mcp:voice_status] says voices are not set up and, on a Mac, why', async () => {
+  test('[mcp:voice_status][ipc:voices:status] says voices are not set up and, on a Mac, why', async () => {
     const s = await ok('voice_status')
     assert.equal(s.installed, false)
     assert.equal(s.installing, false)
@@ -64,7 +64,7 @@ describe('MCP voice tools on a Mac', () => {
     assert.equal(s.setup.models.length, 2)
   })
 
-  test('[mcp:setup_voices] refuses on a Mac with its own message, before any download', async () => {
+  test('[mcp:setup_voices][ipc:voices:setup] refuses on a Mac with its own message, before any download', async () => {
     await fails('setup_voices', {}, /^Voices on Mac come in a later release\.$/)
     assert.deepEqual(await mcp.refusals(), [], 'the product refused, not the guard: no program was started')
     assert.equal(fs.existsSync(dataFile('voiceengine', 'venv')), false)
@@ -95,7 +95,7 @@ describe('MCP voice tools on a Mac', () => {
     assert.deepEqual((await ok('list_voices')).items.map((v) => v.id), [bundled], 'nothing was saved')
   })
 
-  test('[mcp:create_voice] saves a clone as a mono 24 kHz reference with the words it was given', async () => {
+  test('[mcp:create_voice][ipc:voices:create] saves a clone as a mono 24 kHz reference with the words it was given', async () => {
     const v = await ok('create_voice', { name: '  Tess clone  ', file: wav, kind: 'clone', text: 'Hello there.', description: 'warm', seed: 9, consent: true })
     assert.match(v.id, /^[0-9a-f]{8}$/)
     assert.equal(v.name, 'Tess clone')
@@ -131,7 +131,7 @@ describe('MCP voice tools on a Mac', () => {
   })
 
   // ---------- update_voice ----------
-  test('[mcp:update_voice] renames a voice and changes its seed, words and description and nothing else', async () => {
+  test('[mcp:update_voice][ipc:voices:update] renames a voice and changes its seed, words and description and nothing else', async () => {
     const v = (await ok('list_voices')).items.find((x) => x.name === 'Tess clone')
     const u = await ok('update_voice', { id: v.id, name: 'Tess (calm)', seed: 3, text: 'Hi.', description: 'calm' })
     assert.deepEqual([u.name, u.seed, u.text, u.description], ['Tess (calm)', 3, 'Hi.', 'calm'])
@@ -149,7 +149,7 @@ describe('MCP voice tools on a Mac', () => {
     assert.deepEqual(await mcp.refusals(), [], 'no Python was started')
   })
 
-  test('[mcp:design_voice] returns candidates already drafted for the same description, text and seeds, without the engine', async () => {
+  test('[mcp:design_voice][ipc:voices:design] returns candidates already drafted for the same description, text and seeds, without the engine', async () => {
     const description = 'a calm older woman, soft accent'
     const text = 'Good evening.'
     const drafts = dataFile('voices', '_drafts')
@@ -165,7 +165,7 @@ describe('MCP voice tools on a Mac', () => {
   })
 
   // ---------- speak_line, list_lines, delete_line ----------
-  test('[mcp:speak_line] returns a line already spoken in that voice and seed without the engine, and records it', async () => {
+  test('[mcp:speak_line][ipc:voices:speak] returns a line already spoken in that voice and seed without the engine, and records it', async () => {
     const v = await ok('create_voice', { name: 'Narrator', file: wav, text: 'Reference words.', kind: 'designed', seed: 41 })
     const say = 'The rain stopped.'
     const file = dataFile('voices', 'lines', `${v.id}_${hash(say, 'voxcpm2', 41, v.text)}.wav`)
@@ -193,7 +193,7 @@ describe('MCP voice tools on a Mac', () => {
     await ok('save_character', { id: 'tess', voiceId: bundled })
   })
 
-  test('[mcp:list_lines] lists lines newest first, optionally for one voice', async () => {
+  test('[mcp:list_lines][ipc:voices:lines] lists lines newest first, optionally for one voice', async () => {
     const other = await ok('create_voice', { name: 'Other', file: wav, text: 'Other words.', kind: 'designed', seed: 2 })
     const say = 'Another one.'
     const file = dataFile('voices', 'lines', `${other.id}_${hash(say, 'voxcpm2', 2, other.text)}.wav`)
@@ -207,7 +207,7 @@ describe('MCP voice tools on a Mac', () => {
     assert.deepEqual((await ok('list_lines', { voiceId: 'nope' })).items, [])
   })
 
-  test('[mcp:delete_line] removes the line and its file, but keeps a file another line still uses', async () => {
+  test('[mcp:delete_line][ipc:voices:deleteLine] removes the line and its file, but keeps a file another line still uses', async () => {
     const lines = (await ok('list_lines')).items
     const shared = lines.filter((l) => l.text === 'The rain stopped.')
     assert.equal(shared.length, 2, 'the same words, voice and seed share one file')
