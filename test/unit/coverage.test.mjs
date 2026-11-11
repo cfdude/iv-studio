@@ -70,6 +70,25 @@ describe('coverage is enforced', () => {
     assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }, { id: 'mcp:b' }], scanned: scan(env), gaps: {} }), ['mcp:a has no test and no gaps entry', 'mcp:b has no test and no gaps entry'])
   })
 
+  test('only the exact win32 platform form is live: other platform skips, true and variables are skipped', () => {
+    const none = ['mcp:a has no test and no gaps entry']
+    for (const expr of ['process.platform', "process.platform !== 'win32' && 'x'", "process.platform === 'darwin' && 'x'", 'true', 'someVariable']) {
+      const text = `test('[mcp:a] x', { skip: ${expr} }, () => {})`
+      assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan(text), gaps: {} }), none, expr)
+    }
+  })
+
+  test('an options object holding a brace in a string, template or nested object is still read', () => {
+    const none = ['mcp:a has no test and no gaps entry']
+    for (const text of [
+      "test('[mcp:a] x', { skip: 'needs a } brace' }, () => {})",
+      "test('[mcp:a] x', { skip: `a } ${1} b` }, () => {})",
+      "test('[mcp:a] x', { timeout: { ms: 5 }, skip: true }, () => {})"
+    ]) assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan(text), gaps: {} }), none, text)
+    assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan("test('[mcp:a] x', { skip: false, timeout: { ms: 5 } }, () => {})"), gaps: {} }), [])
+    assert.deepEqual(coverageProblems({ rows: [{ id: 'mcp:a' }], scanned: scan("test('[mcp:a] x', { skip: process.platform === 'win32' && 'a } b' }, () => {})"), gaps: {} }), [])
+  })
+
   // fixtures are built from pieces so this file's own source never holds a literal skip call in a test body
   const SKIP = ['skip', 'todo']
   const call = (obj, m) => `${obj}.${m}()`

@@ -5,33 +5,35 @@ import { ROW_ID } from './surfaces.mjs'
 const CALL = /(?<![.\w$])(test|it|describe)(?:\.(skip|todo|only))?\s*\(\s*/g
 const lineOf = (text, i) => text.slice(0, i).split('\n').length
 
+const skipString = (text, i, q) => {
+  for (i++; i < text.length && text[i] !== q; i++) {
+    if (text[i] === '\\') i++
+    else if (q === '`' && text[i] === '$' && text[i + 1] === '{') i = skipBraces(text, i + 1)
+  }
+  return i
+}
+// Index of the `}` that closes the `{` at `i` (text.length if none), skipping strings, templates and comments.
+const skipBraces = (text, i) => {
+  let d = 0
+  for (; i < text.length; i++) {
+    const c = text[i]
+    if (c === "'" || c === '"' || c === '`') i = skipString(text, i, c)
+    else if (c === '/' && text[i + 1] === '/') i = text.indexOf('\n', i) === -1 ? text.length : text.indexOf('\n', i)
+    else if (c === '/' && text[i + 1] === '*') i = text.indexOf('*/', i) === -1 ? text.length : text.indexOf('*/', i) + 1
+    else if (c === '{') d++
+    else if (c === '}' && --d === 0) return i
+  }
+  return i
+}
+
 // Index just past the `)` that closes the call whose `(` is at `open`; text.length if it never closes (then the whole
 // rest of the file counts as inside, which is the cautious reading). Skips strings, template literals and comments.
 // A regex literal holding a quote or bracket can fool it, which fails toward "skipped", never toward "covered".
 function endOfCall(text, open) {
-  const skipString = (i, q) => {
-    for (i++; i < text.length && text[i] !== q; i++) {
-      if (text[i] === '\\') i++
-      else if (q === '`' && text[i] === '$' && text[i + 1] === '{') i = skipBraces(i + 1)
-    }
-    return i
-  }
-  const skipBraces = (i) => {
-    let d = 0
-    for (; i < text.length; i++) {
-      const c = text[i]
-      if (c === "'" || c === '"' || c === '`') i = skipString(i, c)
-      else if (c === '/' && text[i + 1] === '/') i = text.indexOf('\n', i) === -1 ? text.length : text.indexOf('\n', i)
-      else if (c === '/' && text[i + 1] === '*') i = text.indexOf('*/', i) === -1 ? text.length : text.indexOf('*/', i) + 1
-      else if (c === '{') d++
-      else if (c === '}' && --d === 0) return i
-    }
-    return i
-  }
   let depth = 0
   for (let i = open; i < text.length; i++) {
     const c = text[i]
-    if (c === "'" || c === '"' || c === '`') i = skipString(i, c)
+    if (c === "'" || c === '"' || c === '`') i = skipString(text, i, c)
     else if (c === '/' && text[i + 1] === '/') i = text.indexOf('\n', i) === -1 ? text.length : text.indexOf('\n', i)
     else if (c === '/' && text[i + 1] === '*') i = text.indexOf('*/', i) === -1 ? text.length : text.indexOf('*/', i) + 1
     else if (c === '(') depth++
@@ -49,16 +51,37 @@ function bodySkips(call) {
   return SKIP_IN_BODY(param?.[1] || param?.[2] || param?.[3] || 't').test(body)
 }
 
-// `skip: process.platform === 'win32' && '<reason>'` skips on one platform only: the row is proven everywhere else, so it
-// stays live. Any other expression (an env var, a probe) is read as skipped. Only the identifier process.platform may
-// appear outside a quoted string.
-function platformOnlySkip(options) {
-  const m = /\bskip\s*:\s*([\s\S]*)$/.exec(options)
-  if (!m || /\btodo\s*:/.test(options)) return false
-  const bare = m[1].replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g, '')
-  const ids = bare.match(/[A-Za-z_$][\w$.]*/g) || []
-  return ids.length > 0 && ids.every((id) => id === 'process.platform')
+// The options object after a test name: its top-level `key: value` entries, split with brace matching that skips
+// strings and templates, so a `}` inside a value cannot end it early. {} when there is no options object.
+function readOptions(text, from) {
+  const m = /^\s*,\s*\{/.exec(text.slice(from, from + 200))
+  if (!m) return {}
+  const open = from + m[0].length - 1
+  const close = skipBraces(text, open)
+  const body = text.slice(open + 1, close)
+  const out = {}
+  let depth = 0
+  let start = 0
+  const flush = (end) => {
+    const e = /^\s*([A-Za-z_$][\w$]*)\s*:\s*([\s\S]*?)\s*$/.exec(body.slice(start, end))
+    if (e) out[e[1]] = e[2]
+  }
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i]
+    if (c === "'" || c === '"' || c === '`') i = skipString(body, i, c)
+    else if ('{(['.includes(c)) depth++
+    else if ('})]'.includes(c)) depth--
+    else if (c === ',' && depth === 0) (flush(i), (start = i + 1))
+  }
+  flush(body.length)
+  return out
 }
+
+// Only the exact form `process.platform === 'win32' && '<literal reason>'` is live: it skips on one platform, so the row
+// is proven everywhere else. Every other skip or todo value (true, a reason string, a variable, !==, darwin, an env probe)
+// is read as skipped; `false` is not a skip.
+const PLATFORM_ONLY = /^process\.platform\s*===\s*'win32'\s*&&\s*(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")$/
+const optionsSkip = (options) => ['skip', 'todo'].some((k) => k in options && options[k] !== 'false' && !(k === 'skip' && PLATFORM_ONLY.test(options[k])))
 
 // The tests named in one file's source: [{ kind, name, line, skipped }] and the names that are not literals.
 export function scanTestNames(text, file) {
@@ -86,9 +109,7 @@ export function scanTestNames(text, file) {
       problems.push(`${file}:${line}: the name given to ${kind}( is not a string literal`)
       continue
     }
-    const rest = text.slice(i + name.length + 3, i + name.length + 400)
-    const options = /^\s*,?\s*\{([^}]*)\}\s*,/.exec(rest)?.[1] || ''
-    const optionSkip = /\b(skip|todo)\s*:\s*(?!false\b)[^\s,}]/.test(options) && !platformOnlySkip(options)
+    const optionSkip = optionsSkip(readOptions(text, i + name.length + 2))
     const open = m.index + m[0].indexOf('(')
     const end = endOfCall(text, open)
     const skipped = modifier === 'skip' || modifier === 'todo' || optionSkip
