@@ -9,6 +9,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { SECRET_NAMES } from '../../src/service/secrets.js'
 import { guardState } from './ports.mjs'
 import { withShims } from './shims.mjs'
 
@@ -21,7 +22,7 @@ export function seedSettings(dir, { comfyUrl, extra = {} }) {
   for (const f of Object.values(folders)) fs.mkdirSync(f, { recursive: true })
   fs.writeFileSync(
     path.join(dir, 'settings.json'),
-    JSON.stringify({ comfyUrl, ...folders, outputFolder: '', comfyAutoStart: false, comfyLauncher: '', comfyApiKey: null, civitaiKey: null, runpodKey: null, runpodToken: null, cloudToken: null, ...extra }, null, 2)
+    JSON.stringify({ comfyUrl, ...folders, outputFolder: '', comfyAutoStart: false, comfyLauncher: '', ...Object.fromEntries(SECRET_NAMES.map((k) => [k, null])), ...extra }, null, 2)
   )
 }
 
