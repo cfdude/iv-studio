@@ -10,7 +10,7 @@ import { after, before, describe, test } from 'node:test'
 import { Civitai, CIVITAI_SITES } from '../../src/service/civitai.js'
 import { GUIDE_FILES, loadGuide } from '../../src/service/h3guide.js'
 import { ollamaStatus, setOllamaSource } from '../../src/service/prompter.js'
-import { startFakeCivitai, startFakeGithub, startFakeOllama } from '../fakes/outside.mjs'
+import { CIVITAI_FILE_BYTES, CIVITAI_FILE_SHA256, startFakeCivitai, startFakeGithub, startFakeOllama } from '../fakes/outside.mjs'
 
 describe('fake Civitai', () => {
   const sites = { ...CIVITAI_SITES }
@@ -40,6 +40,24 @@ describe('fake Civitai', () => {
     const civitai = new Civitai({ dataDir: dir, comfy: { req: async () => [] } })
     const m = await civitai.model(101)
     assert.deepEqual(m.versions[0].trainedWords, ['neonstreet'])
+  })
+
+  test('the fake serves a download only with a key, and its bytes match the published checksum', async () => {
+    assert.equal((await fetch(`${fake.url}/api/download/models/2001`)).status, 401)
+    const res = await fetch(`${fake.url}/api/download/models/2001?token=k`)
+    assert.equal(res.status, 200)
+    const bytes = Buffer.from(await res.arrayBuffer())
+    assert.deepEqual(bytes, CIVITAI_FILE_BYTES)
+    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), CIVITAI_FILE_SHA256)
+    assert.equal((await fetch(`${fake.url}/api/download/models/9?token=k`)).status, 404)
+    const model = await (await fetch(`${fake.url}/api/v1/models/101`)).json()
+    assert.equal(model.modelVersions[0].files[0].hashes.SHA256.toLowerCase(), CIVITAI_FILE_SHA256)
+  })
+
+  test('the fake finds a version by file hash, and answers 404 for an unknown hash', async () => {
+    const found = await (await fetch(`${fake.url}/api/v1/model-versions/by-hash/${CIVITAI_FILE_SHA256}`)).json()
+    assert.deepEqual([found.id, found.modelId, found.baseModel, found.model.name], [2001, 101, 'MiniMax H3', 'Fake Neon Street'])
+    assert.equal((await fetch(`${fake.url}/api/v1/model-versions/by-hash/${'0'.repeat(64)}`)).status, 404)
   })
 
   test('with the address left alone the real Civitai is refused by the guard', async () => {

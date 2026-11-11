@@ -2,10 +2,12 @@
 // loopback port, registers it with the test guard, and is reached through the address the code already lets a test
 // change. Nothing here reaches the network. RunPod, Modal and Comfy Cloud stay unfaked.
 //
-//   Civitai   CIVITAI_SITES.safe / .mature in src/service/civitai.js  (a mutable exported object)
+//   Civitai   CIVITAI_SITES.safe / .mature in src/service/civitai.js  (a mutable exported object). The MCP server
+//             is a child process, so startMcp({ civitai: fake.url }) sets it there through test/fakes/civitai-address.mjs.
 //   Ollama    setOllamaSource(() => fake.url) in src/service/prompter.js (the Settings address)
 //   GitHub    GUIDE_FILES[...].url / .sha256 in src/service/h3guide.js (raw.githubusercontent.com content)
 //             and the releases JSON a future update check would read
+import { createHash } from 'node:crypto'
 import http from 'node:http'
 import { registerPort, unregisterPort } from './ports.mjs'
 
@@ -52,7 +54,13 @@ async function serve(handler) {
   }
 }
 
-// ---------- Civitai: search, one model, a file by hash ----------
+// ---------- Civitai: search, one model, a file by hash, a file to download ----------
+// The bytes the fake serves as the LoRA file, and their SHA-256 (what Civitai publishes for the file).
+export const CIVITAI_FILE_BYTES = Buffer.from('fake lora weights for tests')
+export const CIVITAI_FILE_SHA256 = createHash('sha256').update(CIVITAI_FILE_BYTES).digest('hex')
+// a 1x1 JPEG the fake serves for any preview address
+const PREVIEW_BYTES = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/yQALCAABAAEBAREA/8wABgAQEAX/2gAIAQEAAD8A0s8g/9k=', 'base64')
+
 export const CIVITAI_MODEL = {
   id: 101,
   name: 'Fake Neon Street',
@@ -77,7 +85,7 @@ export const CIVITAI_MODEL = {
       trainedWords: ['neonstreet'],
       description: 'First version',
       images: [{ url: 'https://image.civitai.com/fake/preview.jpeg', type: 'image', nsfwLevel: 1, width: 512, height: 512 }],
-      files: [{ id: 3001, name: 'fake_neon_street.safetensors', type: 'Model', sizeKB: 1024, primary: true, downloadUrl: 'https://civitai.com/api/download/models/2001', hashes: { SHA256: 'AB'.repeat(32) }, metadata: { format: 'SafeTensor' } }]
+      files: [{ id: 3001, name: 'fake_neon_street.safetensors', type: 'Model', sizeKB: 1024, primary: true, downloadUrl: 'https://civitai.com/api/download/models/2001', hashes: { SHA256: CIVITAI_FILE_SHA256.toUpperCase() }, metadata: { format: 'SafeTensor' } }]
     }
   ]
 }
@@ -90,7 +98,27 @@ export function startFakeCivitai({ models = [CIVITAI_MODEL] } = {}) {
       const m = models.find((x) => x.id === Number(one[1]))
       return m ? (send(res, 200, m), true) : (send(res, 404, {}), true)
     }
-    if (url.pathname.startsWith('/api/v1/model-versions/by-hash/')) return send(res, 404, {}), true
+    const byHash = /^\/api\/v1\/model-versions\/by-hash\/([0-9a-fA-F]+)$/.exec(url.pathname)
+    if (byHash) {
+      for (const m of models) {
+        const v = m.modelVersions.find((x) => x.files.some((f) => f.hashes?.SHA256?.toLowerCase() === byHash[1].toLowerCase()))
+        if (v) return send(res, 200, { id: v.id, modelId: m.id, name: v.name, baseModel: v.baseModel, trainedWords: v.trainedWords, images: v.images, model: { name: m.name, nsfw: m.nsfw, poi: m.poi, minor: m.minor } }), true
+      }
+      return send(res, 404, {}), true
+    }
+    // a file download: like Civitai, only with the person's key in the query
+    const file = /^\/api\/download\/models\/(\d+)$/.exec(url.pathname)
+    if (file) {
+      if (!url.searchParams.get('token')) return send(res, 401, { error: 'no key' }), true
+      if (!models.some((m) => m.modelVersions.some((v) => v.id === Number(file[1])))) return send(res, 404, {}), true
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': CIVITAI_FILE_BYTES.length })
+      return res.end(CIVITAI_FILE_BYTES), true
+    }
+    // a preview picture (the shape previewUrl() asks for: /<key>/<id>/width=450,optimized=true/<name>)
+    if (/^\/[^/]+\/[^/]+\/(transcode=true,)?width=\d+/.test(url.pathname)) {
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': PREVIEW_BYTES.length })
+      return res.end(PREVIEW_BYTES), true
+    }
     return false
   })
 }

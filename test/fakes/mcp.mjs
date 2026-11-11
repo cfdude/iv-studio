@@ -26,7 +26,9 @@ export function seedSettings(dir, { comfyUrl, extra = {} }) {
 }
 
 // platform: makes the child report this process.platform ('darwin', 'win32', 'linux'), for platform-specific refusals.
-export async function startMcp({ comfyUrl, shims = false, settings = {}, platform = null } = {}) {
+// civitai: a fake Civitai's address (startFakeCivitai().url) for the child to use instead of civitai.com; civitaiKey: the
+// Civitai API key the child sees (the guard removes the real one). Both opt in; see test/fakes/civitai-address.mjs.
+export async function startMcp({ comfyUrl, shims = false, settings = {}, platform = null, civitai = null, civitaiKey = null } = {}) {
   const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-mcp-')))
   const dataDir = path.join(base, 'data')
   const runDir = path.join(base, 'run')
@@ -39,11 +41,13 @@ export async function startMcp({ comfyUrl, shims = false, settings = {}, platfor
     IV_STUDIO_DATA: dataDir,
     IV_TEST_RUN_DIR: runDir,
     IV_TEST_ALLOW_PORTS: [...guardState().ports].join(','),
-    IV_TEST_SHIM_DIRS: [...guardState().shimDirs].join(':')
+    IV_TEST_SHIM_DIRS: [...guardState().shimDirs].join(':'),
+    ...(civitai ? { IV_TEST_CIVITAI: civitai } : {}),
+    ...(civitaiKey ? { IV_TEST_CIVITAI_KEY: civitaiKey } : {})
   }
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', '--import', pathToFileURL(path.join(here, 'guard.mjs')).href, '--import', pathToFileURL(path.join(here, 'resolve.mjs')).href, '--import', pathToFileURL(path.join(here, 'dirname.mjs')).href, ...(platform ? ['--import', `data:text/javascript,Object.defineProperty(process,'platform',{value:'${platform}'})`] : []), path.join(root, 'src/mcp/server.js')],
+    args: ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', '--import', pathToFileURL(path.join(here, 'guard.mjs')).href, '--import', pathToFileURL(path.join(here, 'resolve.mjs')).href, '--import', pathToFileURL(path.join(here, 'dirname.mjs')).href, ...(civitai || civitaiKey ? ['--import', pathToFileURL(path.join(here, 'civitai-address.mjs')).href] : []), ...(platform ? ['--import', `data:text/javascript,Object.defineProperty(process,'platform',{value:'${platform}'})`] : []), path.join(root, 'src/mcp/server.js')],
     env,
     stderr: 'pipe'
   })
