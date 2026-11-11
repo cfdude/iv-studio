@@ -57,4 +57,8 @@ describe('wiring (source checks)', () => {
     const start = main.indexOf("handle('cloud:clearToken'")
     assert.ok(main.slice(start, main.indexOf('\n', start + 40)).includes('tokenClearPatch(name, secretNow())'))
   })
+  test('a refused save names the Keychain remedy on a Mac: main builds its store-missing text with keychainRefusedText', () => {
+    assert.match(main, /const KEY_STORE_MISSING = keychainRefusedText\(process\.platform\)/)
+    assert.doesNotMatch(main, /KEY_STORE_MISSING = keyStoreMissingText/)
+  })
 })

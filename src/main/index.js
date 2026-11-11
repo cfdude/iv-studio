@@ -36,7 +36,7 @@ import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState, MANUAL as UPDATE_MANUAL } from './updater'
 import { findGpu, statsReadout } from '../service/gpu'
 import { ramReadout } from '../service/memory'
-import { keyStoreMissingText, menuTemplateFor, runpodTokenMissingText } from '../shared/platform'
+import { keychainRefusedText, menuTemplateFor, runpodTokenMissingText } from '../shared/platform'
 import { projectSettings, readSecret, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
@@ -494,7 +494,8 @@ function handle(channel, fn) {
   })
 }
 
-const KEY_STORE_MISSING = keyStoreMissingText(process.platform)
+// keychainRefusedText is the Mac wording for a store that won't open; on Windows and Linux it is the missing-store text.
+const KEY_STORE_MISSING = keychainRefusedText(process.platform)
 
 // On Linux without a keyring Electron falls back to a fixed built-in password ('basic_text'), which isn't safe.
 const keysSafe = () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text')
