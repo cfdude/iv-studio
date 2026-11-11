@@ -24,6 +24,7 @@ import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState, MANUAL as UPDATE_MANUAL } from './updater'
 import { findGpu, statsReadout } from '../service/gpu'
+import { ramReadout } from '../service/memory'
 import { keyStoreMissingText, menuTemplateFor, runpodTokenMissingText } from '../shared/platform'
 import { projectSettings, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
 import { MediaTools } from '../service/media'
@@ -1556,16 +1557,23 @@ app.whenReady().then(() => {
     if (readSettings(BASE).target === 'cloud') return null
     // a short wait: the meter asks every few seconds, so a busy ComfyUI just skips a reading
     const st = await studio.comfy.systemStats({ timeout: 4000 }).catch(() => null)
-    return { ram: { total: os.totalmem(), free: os.freemem() }, ...statsReadout(st) }
+    const ram = await ramReadout()
+    return { ram, ...statsReadout(st, ram) }
   })
   // The title bar's Free memory: ComfyUI unloads its models and frees memory (between prompts, so a running render
   // carries on), IV Studio's voice engine stops, and Ollama lets go of a writer model. Returns what changed.
   handle('system:free', async () => {
+    const ramUsed = async () => {
+      const r = await ramReadout()
+      return r.total - r.free
+    }
     const vram = async () => {
       const d = findGpu((await studio.comfy.systemStats({ timeout: 4000 }).catch(() => null))?.devices)
+      // an Apple GPU shares the Mac's memory: the same figure as the meter, not ComfyUI's own free number
+      if (d?.type === 'mps') return ramUsed()
       return d ? d.vram_total - d.vram_free : null
     }
-    const before = { vram: await vram(), ram: os.totalmem() - os.freemem() }
+    const before = { vram: await vram(), ram: await ramUsed() }
     await studio.comfy.freeMemory().catch(() => {})
     if (readSettings(BASE).target !== 'cloud') await voices.release().catch(() => {})
     const ollama = await unloadOllama()
@@ -1579,7 +1587,7 @@ app.whenReady().then(() => {
       still = v != null && last != null && last - v < 100 * 1024 ** 2 && i >= 2 ? still + 1 : 0
       last = v
     }
-    const after = { vram: await vram(), ram: os.totalmem() - os.freemem() }
+    const after = { vram: await vram(), ram: await ramUsed() }
     return { before, after, ollama, busy }
   })
   // @ mentions: the cast (characters) and places a prompt can name, and the places themselves

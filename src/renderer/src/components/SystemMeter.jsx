@@ -28,8 +28,8 @@ export default function SystemMeter({ notify }) {
       const r = await window.ivstudio.system.free()
       const gb = (a, b) => (a != null && b != null ? Math.max(0, (a - b) / 1024 ** 3) : null)
       const v = gb(r.before.vram, r.after.vram)
-      const m = gb(r.before.ram, r.after.ram)
-      notify?.(r.busy ? 'A render is running: ComfyUI frees its memory when it finishes.' : `Freed ${v != null ? `${v.toFixed(1)} GB of GPU memory` : 'GPU memory'}${m != null && m >= 0.1 ? ` and ${m.toFixed(1)} GB of RAM` : ''}.`, 'info')
+      const m = gb(r.before.ram, r.after.ram) // an Apple GPU is the same memory as RAM: say it once
+      notify?.(r.busy ? 'A render is running: ComfyUI frees its memory when it finishes.' : `Freed ${v != null ? `${v.toFixed(1)} GB of GPU memory` : 'GPU memory'}${m != null && m >= 0.1 && st?.gpu?.name !== 'Apple GPU' ? ` and ${m.toFixed(1)} GB of RAM` : ''}.`, 'info')
       window.ivstudio.system.stats().then(setSt, () => {})
     } catch (err) {
       notify?.(err.message)
