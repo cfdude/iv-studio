@@ -13,15 +13,17 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const main = fs.readFileSync(path.join(root, 'src/main/index.js'), 'utf8')
 
 test('the switch hides only with the data folder set too', () => {
-  assert.equal(uiHidden({ IV_STUDIO_UI_HIDDEN: '1', IV_STUDIO_DATA: '/tmp/d' }), true)
+  const page = { IV_STUDIO_UI_HIDDEN: '1', IV_STUDIO_DATA: '/tmp/d', IV_TEST_RUN_DIR: '/tmp/r' }
+  assert.equal(uiHidden(page), true)
+  assert.equal(uiHidden({ ...page, IV_TEST_RUN_DIR: undefined }), false, 'a person who sets the data folder and the switch is not the page tier')
   assert.equal(uiHidden({ IV_STUDIO_UI_HIDDEN: '1' }), false)
   assert.equal(uiHidden({ IV_STUDIO_DATA: '/tmp/d' }), false)
-  assert.equal(uiHidden({ IV_STUDIO_UI_HIDDEN: '0', IV_STUDIO_DATA: '/tmp/d' }), false)
+  assert.equal(uiHidden({ ...page, IV_STUDIO_UI_HIDDEN: '0' }), false)
   assert.equal(uiHidden({}), false)
 })
 
 test('the page tier driver sets the switch in Electron\'s environment', () => {
-  const env = electronEnv({}, { home: '/h', data: '/d', userData: '/u', runDir: '/r' })
+  const env = electronEnv({}, { home: '/h', data: '/d', userData: '/u', runDir: '/r' }) // runDir becomes IV_TEST_RUN_DIR
   assert.equal(env.IV_STUDIO_UI_HIDDEN, '1')
   assert.equal(uiHidden(env), true)
 })
