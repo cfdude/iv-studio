@@ -96,12 +96,18 @@ export function startFakeCivitai({ models = [CIVITAI_MODEL] } = {}) {
 }
 
 // ---------- Ollama: /api/tags, /api/ps, /api/generate, /api/chat ----------
+// answer: the reply text, or fn(requestBody) returning the text (an object is sent as its JSON), for the callers that
+// ask for structured output (a script, a shot list) and need a different answer per request.
 export function startFakeOllama({ models = [{ name: 'fake-vl:8b', size: 5_000_000_000 }], answer = 'a canned prompt from the fake Ollama' } = {}) {
-  return serve((req, res, url) => {
+  const reply = (body) => {
+    const a = typeof answer === 'function' ? answer(body) : answer
+    return typeof a === 'string' ? a : JSON.stringify(a)
+  }
+  return serve((req, res, url, body) => {
     if (url.pathname === '/api/tags') return send(res, 200, { models }), true
     if (url.pathname === '/api/ps') return send(res, 200, { models: [] }), true
-    if (url.pathname === '/api/generate') return send(res, 200, { model: 'fake', response: answer, done: true }), true
-    if (url.pathname === '/api/chat') return send(res, 200, { model: 'fake', message: { role: 'assistant', content: answer }, done: true }), true
+    if (url.pathname === '/api/generate') return send(res, 200, { model: 'fake', response: reply(body), done: true }), true
+    if (url.pathname === '/api/chat') return send(res, 200, { model: 'fake', message: { role: 'assistant', content: reply(body) }, done: true }), true
     return false
   })
 }

@@ -81,6 +81,20 @@ describe('fake Ollama', () => {
   })
 })
 
+describe('fake Ollama with an answer function', () => {
+  test('answers each chat from the request body, as text or as an object sent as JSON', async () => {
+    const fake = await startFakeOllama({ answer: (body) => (body.messages.at(-1).content === 'json please' ? { shots: [1] } : `echo ${body.model}`) })
+    try {
+      const chat = async (content) => (await (await fetch(`${fake.url}/api/chat`, { method: 'POST', body: JSON.stringify({ model: 'm1', messages: [{ role: 'user', content }] }) })).json()).message.content
+      assert.equal(await chat('hello'), 'echo m1')
+      assert.deepEqual(JSON.parse(await chat('json please')), { shots: [1] })
+      assert.equal(fake.requests.at(-1).json.model, 'm1', 'the request body is recorded')
+    } finally {
+      await fake.close()
+    }
+  })
+})
+
 describe('fake GitHub', () => {
   let fake
   const files = {}
