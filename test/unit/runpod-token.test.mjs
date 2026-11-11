@@ -3,7 +3,9 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import path from 'node:path'
 import { describe, test } from 'node:test'
+import { registerProgram } from '../fakes/ports.mjs'
 import { RunPod } from '../../src/service/runpod.js'
 
 const volume = { id: 'vol1', dataCenter: 'US-NC-1' }
@@ -40,10 +42,13 @@ describe('RunPod token', () => {
 })
 
 // Runs the real gate.py with aiohttp stubbed (this machine and CI have no aiohttp); only its token logic is exercised.
-const py = spawnSync('python3', ['--version'])
+// The test guard refuses python3 for everything else. This file alone registers the resolved python3 for `-I`
+// (isolated mode) as the first argument: a deliberate, narrow widening of the allowlist for one harmless local script.
+const onPath = (process.env.PATH || '').split(path.delimiter).map((d) => path.join(d, process.platform === 'win32' ? 'python.exe' : 'python3')).find((f) => fs.existsSync(f))
+if (onPath) registerProgram(onPath, { firstArg: '-I' })
 const runGate = (env, code) =>
   spawnSync(
-    'python3',
+    onPath,
     [
       '-I',
       '-c',
@@ -55,10 +60,7 @@ ${code}`
     ],
     { env: { PATH: process.env.PATH, ...env }, encoding: 'utf8' }
   )
-
-// Under the default suite (npm run test:unit) the test guard refuses python3, so this describe is skipped there. Run this
-// file with plain `node --test test/unit/runpod-token.test.mjs` (no --import) to exercise gate.py.
-const gateSkip = py.status !== 0 && (py.error?.ivGuardRefused ? 'python3 is refused by the test guard; run this file with plain `node --test` to exercise gate.py' : 'python3 not available')
+const gateSkip = onPath ? false : 'python3 not available'
 
 describe('gate.py token', { skip: gateSkip }, () => {
   test('refuses to start with an empty or missing IV_TOKEN', () => {

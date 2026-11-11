@@ -299,7 +299,11 @@ function install() {
       }
       return { ok: true, command, node: real === realpath(process.execPath), name }
     }
-    if (state.programs.has(real)) return { ok: true, command, node: false, name }
+    if (state.programs.has(real)) {
+      const only = state.programFirstArg?.get(real)
+      if (only !== undefined && (shell || argv[0] !== only)) return { ok: false, name: base, why: `only allowed with ${only} as its first argument` }
+      return { ok: true, command, node: false, name }
+    }
     if (inShimDir(abs)) return { ok: true, command, node: false, name }
     return { ok: false, name: base, why: 'not on the test allowlist' }
   }

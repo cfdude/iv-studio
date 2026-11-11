@@ -536,6 +536,22 @@ describe('guard: what the page tier adds', () => {
     assert.equal(spawnSync(path.join(dir, 'launched'), []).error?.ivGuardRefused, true)
   })
 
+  test('a program registered with a first argument starts only with that argument first', { skip: process.platform === 'win32' && 'the test programs are sh scripts' }, () => {
+    const dir = makeTempDir('iv-program-arg-')
+    fs.writeFileSync(path.join(dir, 'tool'), '#!/bin/sh\necho ok\n', { mode: 0o755 })
+    registerProgram(path.join(dir, 'tool'), { firstArg: '-I' })
+    try {
+      assert.equal(spawnSync(path.join(dir, 'tool'), []).error?.ivGuardRefused, true)
+      assert.equal(spawnSync(path.join(dir, 'tool'), ['-c', 'print(1)']).error?.ivGuardRefused, true)
+      assert.equal(spawnSync(path.join(dir, 'tool'), ['x', '-I']).error?.ivGuardRefused, true)
+      const r = spawnSync(path.join(dir, 'tool'), ['-I', '-c', 'print(1)'])
+      assert.equal(r.status, 0)
+      assert.equal(String(r.stdout).trim(), 'ok')
+    } finally {
+      unregisterProgram(path.join(dir, 'tool'))
+    }
+  })
+
   test('a refused network call is also recorded, with its host and port, apart from the refused commands', async () => {
     const before = guardState().netRefusals.length
     await assert.rejects(fetch('http://127.0.0.1:8188/experiment/models'), /127\.0\.0\.1:8188/)

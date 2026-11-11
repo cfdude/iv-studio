@@ -25,13 +25,22 @@ export function unregisterPort(port) {
 }
 
 // A program the test driver itself may start (the Electron binary the page tier launches). An exact real path,
-// never inherited by a child: the app it starts carries its own guard.
-export function registerProgram(file) {
-  guardState().programs.add(realpathSync(file))
+// never inherited by a child: the app it starts carries its own guard. With `firstArg` it starts only when that is
+// its first argument (a test that runs one harmless script, such as `python3 -I`, opens nothing else).
+export function registerProgram(file, { firstArg } = {}) {
+  const s = guardState()
+  const real = realpathSync(file)
+  s.programs.add(real)
+  s.programFirstArg ??= new Map()
+  if (firstArg === undefined) s.programFirstArg.delete(real)
+  else s.programFirstArg.set(real, firstArg)
 }
 
 export function unregisterProgram(file) {
-  guardState().programs.delete(realpathSync(file))
+  const s = guardState()
+  const real = realpathSync(file)
+  s.programs.delete(real)
+  s.programFirstArg?.delete(real)
 }
 
 export function registerShimDir(dir) {
