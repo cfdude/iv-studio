@@ -157,6 +157,11 @@
       "source": "src/service/shinobi.js"
     },
     {
+      "name": "ProgramFiles(x86)",
+      "why": "Windows location, read only, unset on a Mac",
+      "source": "src/service/shinobi.js:46"
+    },
+    {
       "name": "ProgramData",
       "why": "Windows location, read only, unset on a Mac",
       "source": "src/service/comfylauncher.js:58"

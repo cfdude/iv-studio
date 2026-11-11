@@ -10,11 +10,13 @@ import { fileURLToPath } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const policy = JSON.parse(fs.readFileSync(path.join(root, 'test/fakes/env-policy.json'), 'utf8'))
 
-// process.env.NAME, process.env['NAME'] and env.NAME, where NAME starts with an uppercase letter.
+// process.env.NAME, process.env['NAME'], env.NAME and env['ANY QUOTED NAME'], where NAME starts with an uppercase letter.
 const PATTERNS = [
   /\bprocess\.env\.([A-Z][A-Za-z0-9_]*)/g,
   /\bprocess\.env\[\s*['"]([A-Z][A-Za-z0-9_]*)['"]\s*\]/g,
-  /\benv\.([A-Z][A-Za-z0-9_]*)/g
+  /\benv\.([A-Z][A-Za-z0-9_]*)/g,
+  // env['NAME'] with any quoted name, parentheses and spaces included (env['ProgramFiles(x86)'])
+  /\benv\[\s*['"]([A-Z][^'"\n]*)['"]\s*\]/g
 ]
 
 export function scanSource(text) {
@@ -50,6 +52,12 @@ describe('env policy', () => {
   test('a new variable in a source line is reported by name and file', () => {
     assert.deepEqual(unlisted('const x = process.env.NEW_THING', 'src/fixture.js'), ['NEW_THING (src/fixture.js)'])
     assert.deepEqual(unlisted("const x = process.env['NEW_OTHER']", 'src/fixture.js'), ['NEW_OTHER (src/fixture.js)'])
+  })
+
+  test("a quoted name that is not an identifier, such as env['ProgramFiles(x86)'], is found", () => {
+    assert.deepEqual(unlisted("const a = env['NEW_PAREN(x86)']", 'src/fixture.js'), ['NEW_PAREN(x86) (src/fixture.js)'])
+    assert.deepEqual([...scanSource("const a = process.env[\"Odd Name.v2\"]")], ['Odd Name.v2'])
+    assert.ok(policy.keep.some((e) => e.name === 'ProgramFiles(x86)'), 'ProgramFiles(x86) is not under keep')
   })
 
   test('lowercase locals and comments such as env.cfg do not match', () => {
