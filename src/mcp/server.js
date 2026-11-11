@@ -352,8 +352,9 @@ tool('update_comfy', "Update this computer's ComfyUI through ComfyUI-Manager: sa
 tool('undo_comfy_update', "Undo the last update_comfy (or the Setup screen's Update everything): restores the snapshot it saved and restarts ComfyUI. Afterwards it switches back on any pack ComfyUI-Manager's restore switched off (plain folders a snapshot can't track, IV Studio's own pack among them) and restarts again; reenabled lists them. If ComfyUI isn't running, the snapshot is set to restore at its next start (startNeeded: true): start ComfyUI, then call this again to finish.", {}, () => studio.undoComfyUpdate({ folder: readSettings(BASE).comfyFolder || null }))
 tool('list_characters', 'Character presets (LoRA, strength, trigger word).', {}, () => studio.characters())
 tool('list_projects', 'Projects in the IV Studio library, newest first.', {}, () => studio.listProjects())
-tool('plan_render', 'Validate a request and resolve size, frames, duration, seeds and the finished size, without rendering.', { ...request, finish: z.object(finish).partial().optional() }, ({ finish: f, ...r }) => {
+tool('plan_render', 'Validate a request and resolve size, frames, duration, seeds and the finished size, without rendering.', { ...request, finish: z.object(finish).partial().optional() }, async ({ finish: f, ...r }) => {
   const req = applySpeed(r, savedSpeed(readSettings(BASE)))
+  await studio.capabilities().catch(() => null) // so the plan names the enhancer the finish will use
   return studio.planRender(req, applyFinishSpeed(f || {}, req.speed))
 })
 tool('get_speeds', "The speed presets (Quality, Balanced, Fast, Low memory): what each sets for previews and the finish, what it trades, rough times measured on an RTX 4090, and which one is saved in Settings → Your computer (Check my computer picks it from the graphics card). Pass speed to generate_previews, plan_render or finish_candidate to use another.", {}, () => ({ saved: savedSpeed(readSettings(BASE)), speeds: SPEED_IDS.map((id) => ({ id, ...SPEEDS[id] })) }))

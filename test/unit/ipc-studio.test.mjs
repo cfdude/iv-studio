@@ -43,8 +43,9 @@ describe('window channels: Studio', () => {
     const s = sequence()
     const job = await studio.huntShot(s.id, 0, {})
     const queued = fake.prompts.length
+    // this fake ComfyUI has no DLSS 5 node, so a plan with no enhancer named says the built-in upscale, as the finish will run
     const plain = studio.planFinishJob(job.id, {})
-    assert.deepEqual([plain.enhancer, plain.fps, plain.singlePass], ['dlss', 24, false])
+    assert.deepEqual([plain.enhancer, plain.fps, plain.singlePass], ['upscale', 24, false])
     const plan = studio.planFinishJob(job.id, { candidate: 2, megapixels: 1, upscale2x: true, fps: 48 })
     assert.equal(plan.fps, 48)
     assert.equal(plan.frames, plain.frames * 2, 'twice the frames at 48 fps')

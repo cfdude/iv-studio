@@ -90,6 +90,15 @@ describe('Studio.finishCandidate with no enhancer named (the MCP default)', () =
     assert.equal(await picked(BOTH, cuda), 'upscale')
     assert.equal(await picked({ DLSS5_Enhance_Video: {}, ...BOTH }, cuda), 'dlss')
   })
+  // the planners that never run a finish say the same enhancer the finish will use, once ComfyUI has been read
+  test('planFinishJob and plan_render name the machine\'s default, so a plan matches what finish_candidate runs', () => {
+    const stub = (caps) => ({ _caps: caps, comfy: {}, defaultFinishEnhancer: Studio.prototype.defaultFinishEnhancer, getJob: () => ({ kind: 'previews', plan: preview }) })
+    const macCaps = capabilities(BOTH, { system: { os: 'posix' }, devices: [mps] })
+    assert.equal(Studio.prototype.planFinishJob.call(stub(macCaps), 'j', {}).enhancer, 'upscale')
+    assert.equal(Studio.prototype.planFinishJob.call(stub(macCaps), 'j', { enhancer: 'seedvr2' }).enhancer, 'seedvr2', 'a named enhancer is kept')
+    assert.equal(Studio.prototype.planFinishJob.call(stub(null), 'j', {}).enhancer, 'dlss', 'before ComfyUI is read, as it always was')
+    assert.match(fs.readFileSync('src/mcp/server.js', 'utf8'), /tool\('plan_render'[\s\S]{0,600}await studio\.capabilities\(\)/)
+  })
   test('the schema leaves the enhancer to the machine instead of defaulting it to dlss', () => {
     assert.doesNotMatch(fs.readFileSync('src/mcp/server.js', 'utf8'), /enhancer: z\.enum\(\['dlss', 'seedvr2', 'upscale'\]\)\.default\('dlss'\)/)
   })
