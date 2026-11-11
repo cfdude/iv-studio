@@ -126,14 +126,24 @@ export function startFakeCivitai({ models = [CIVITAI_MODEL] } = {}) {
 // ---------- Ollama: /api/tags, /api/ps, /api/generate, /api/chat ----------
 // answer: the reply text, or fn(requestBody) returning the text (an object is sent as its JSON), for the callers that
 // ask for structured output (a script, a shot list) and need a different answer per request.
-export function startFakeOllama({ models = [{ name: 'fake-vl:8b', size: 5_000_000_000 }], answer = 'a canned prompt from the fake Ollama' } = {}) {
+// loaded: the names /api/ps says are in memory; a /api/generate with keep_alive 0 for one of them unloads it.
+// /api/pull streams the lines Ollama does (a status, two download steps, success), or one error line for the name
+// `missing`; the requests list what was asked for.
+export function startFakeOllama({ models = [{ name: 'fake-vl:8b', size: 5_000_000_000 }], answer = 'a canned prompt from the fake Ollama', loaded = [] } = {}) {
+  const inMemory = new Set(loaded)
   const reply = (body) => {
     const a = typeof answer === 'function' ? answer(body) : answer
     return typeof a === 'string' ? a : JSON.stringify(a)
   }
   return serve((req, res, url, body) => {
     if (url.pathname === '/api/tags') return send(res, 200, { models }), true
-    if (url.pathname === '/api/ps') return send(res, 200, { models: [] }), true
+    if (url.pathname === '/api/ps') return send(res, 200, { models: [...inMemory].map((name) => ({ name })) }), true
+    if (url.pathname === '/api/pull') {
+      const lines = body?.model === 'missing' ? [{ error: 'pull model manifest: file does not exist' }] : [{ status: 'pulling manifest' }, { status: 'downloading', total: 1000, completed: 400 }, { status: 'downloading', total: 1000, completed: 1000 }, { status: 'success' }]
+      res.writeHead(200, { 'Content-Type': 'application/x-ndjson' })
+      return res.end(lines.map((l) => JSON.stringify(l)).join('\n') + '\n'), true
+    }
+    if (url.pathname === '/api/generate' && body?.keep_alive === 0) return inMemory.delete(body.model), send(res, 200, { model: body.model, done: true }), true
     if (url.pathname === '/api/generate') return send(res, 200, { model: 'fake', response: reply(body), done: true }), true
     if (url.pathname === '/api/chat') return send(res, 200, { model: 'fake', message: { role: 'assistant', content: reply(body) }, done: true }), true
     return false

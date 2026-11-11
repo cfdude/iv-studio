@@ -128,6 +128,33 @@ describe('window channels: Studio', () => {
     assert.deepEqual(studio.cast.places().map((p) => p.id), [b.id], 'an id that is not there changes nothing')
     assert.ok(!studio.cast.members().some((m) => m.name === 'Bus Stop'), 'it is no longer something a prompt can mention')
   })
+  test('[ipc:queue:cancel] takes a waiting render of IV Studio\'s off the queue and marks its job cancelled, interrupts the one that is running, says a render that is not queued is finished, and tells a render of someone else\'s apart', async () => {
+    fake.releaseHeld?.()
+    fake.holdNextPrompt(1)
+    const running = await studio.huntShot(sequence().id, 0, {})
+    fake.holdNextPrompt(1)
+    const waiting = await studio.huntShot(sequence().id, 0, {})
+    const items = async () => (await studio.renderQueue()).items
+    const mine = (await items()).find((i) => i.promptId === waiting.promptId)
+    assert.equal(mine.ours, true)
+    assert.deepEqual((await studio.cancelQueued(mine.promptId)).result, 'removed from queue')
+    assert.equal(readJob(waiting.id).status, 'cancelled', 'the job says so too')
+    assert.ok(!(await items()).some((i) => i.promptId === waiting.promptId), 'gone from the queue')
+    const gone = (await items()).find((i) => i.promptId === running.promptId)
+    const done = await studio.cancelQueued(gone.promptId)
+    assert.ok(['interrupted', 'removed from queue'].includes(done.result), `the first one stopped: ${done.result}`)
+    // main answers "already finished" for an id the queue no longer lists
+    assert.equal((await items()).find((i) => i.promptId === 'finished-long-ago'), undefined)
+    // a render IV Studio did not start has no job: main refuses it ("That render isn't IV Studio's")
+    fake.holdNextPrompt(1)
+    const foreign = await studio.comfy.submit({ 1: { class_type: 'EmptyLatentImage', inputs: {} } })
+    const theirs = (await items()).find((i) => i.promptId === foreign)
+    assert.equal(theirs.ours, false)
+    assert.equal(theirs.jobId ?? null, null)
+    assert.ok(['removed from queue', 'interrupted'].includes(await studio.cancelQueued(foreign)), 'the service would cancel it; main\'s handler refuses before it gets there')
+    fake.releaseHeld()
+  })
+
   // The window's Manager install and Shinobi face models spawn git, or uv after a download; the guard turns each back.
   // No row id: their rows carry a gaps reason (spawns ...), and this proves the refusal.
   test('guard refuses git and the download for the Manager install, and the face models stop at uv before any download', async () => {
