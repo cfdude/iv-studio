@@ -3,7 +3,7 @@ import SetupProgress, { useSetupProgress } from './SetupProgress'
 import ModalAccount from './ModalAccount'
 import Stage from './Stage'
 import { ask } from './Confirm'
-import { rendersFolderText } from '../../../shared/platform'
+import { keychainRefusedText, rendersFolderText } from '../../../shared/platform'
 import { secretRemedy } from '../../../service/secrets'
 import { BetaJoin, useUsage } from './Privacy'
 
@@ -134,6 +134,7 @@ function CloudModelsStep({ st, busy, run, notify, refresh }) {
           </p>
         ) : (
           <>
+            {st.secretStoreRefused && <p className="small">{keychainRefusedText('darwin')}</p>}
             {st.removable?.includes('hfToken') && (
               <p className="small">
                 The saved Hugging Face token can’t be read.{' '}
@@ -308,6 +309,7 @@ function ComfyCloudSteps({ st, busy, run, notify, refresh }) {
         ) : null}
         {(!cc.hasKey || !cc.ownKey) && (
           <>
+            {st.secretStoreRefused && <p className="small dim">{keychainRefusedText('darwin')}</p>}
             {st.removable?.includes('comfyCloudKey') && (
               <p className="small dim">
                 The saved Comfy Cloud key can’t be used.{' '}

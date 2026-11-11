@@ -1326,7 +1326,9 @@ app.whenReady().then(() => {
       hasToken: have.cloudToken === 'ok',
       hasHfToken: have.hfToken === 'ok',
       // saved keys and sign-ins that can't be opened, which the page offers to remove
-      removable: removableSecrets(have)
+      removable: removableSecrets(have),
+      // a Mac whose Keychain refused access: the page shows how to allow it next to the keys it can't read
+      secretStoreRefused: Object.values(have).includes('refused')
     }
   })
   // Drops a cloud sign-in that can't be opened. Writes only that one field: running pods, the volume and the
@@ -1602,7 +1604,10 @@ app.whenReady().then(() => {
     async download(entries, onEvent) {
       const c = readSettings(BASE).cloud || {}
       if (c.stamp !== cloudStamp()) throw new Error('Your Modal cloud was set up by an older IV Studio. Press Set up again on the Cloud page (your models stay), then try again.')
-      if (c.hfSavedFor !== (readSettings(BASE).hfTokenAt || null)) {
+      // an HF token that can't be opened now (unreadable, or a refused Keychain) is left as Modal has it: pushing
+      // "none" would overwrite the token there and mark it sent, so allowing access later would never send it again
+      const hfState = secretNow().hfToken
+      if (c.hfSavedFor !== (readSettings(BASE).hfTokenAt || null) && (hfState === 'ok' || hfState === 'absent')) {
         await cloud.saveHfToken(hfToken())
         saveCloud({ hfSaved: !!hfToken(), hfSavedFor: readSettings(BASE).hfTokenAt || null })
       }

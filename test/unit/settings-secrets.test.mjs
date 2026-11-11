@@ -139,6 +139,18 @@ describe('index.js wiring', () => {
     assert.match(line, /hasComfyKey: publicSettings\(/)
     assert.doesNotMatch(line, /!!readSettings\(BASE\)\.comfyApiKey/)
   })
+  test('a Hugging Face token that cannot be opened is not pushed to Modal as none', () => {
+    const at = src.indexOf('await cloud.saveHfToken(hfToken())')
+    assert.ok(at > 0)
+    const guard = src.slice(Math.max(0, at - 600), at)
+    assert.match(guard, /const hfState = secretNow\(\)\.hfToken/)
+    assert.match(guard, /hfState === 'ok' \|\| hfState === 'absent'/)
+  })
+  test('cloud:status says when a Mac Keychain refused, and the Cloud page shows how to allow it', () => {
+    assert.match(src, /secretStoreRefused: Object\.values\(have\)\.includes\('refused'\)/)
+    const page = fs.readFileSync('src/renderer/src/components/Cloud.jsx', 'utf8')
+    assert.equal(page.match(/st\.secretStoreRefused && <p className="small(?: dim)?">\{keychainRefusedText\('darwin'\)\}<\/p>/g)?.length, 2)
+  })
   test('publicSettings is the projection', () => {
     assert.match(src, /const publicSettings = \(s\) => projectSettings\(s, safeStorage, process\.platform\)/)
   })
