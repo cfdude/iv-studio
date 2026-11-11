@@ -7,7 +7,13 @@ import path from 'node:path'
 
 const made = new Set()
 process.on('exit', () => {
-  for (const d of made) fs.rmSync(d, { recursive: true, force: true })
+  for (const d of made) {
+    try {
+      fs.rmSync(d, { recursive: true, force: true })
+    } catch {
+      /* a file still open (Windows) must not fail the run at exit */
+    }
+  }
 })
 
 export function tempDir(prefix) {

@@ -26,6 +26,9 @@ describe('trace: what is kept of a live sequence', () => {
     assert.deepEqual(normalize(live), [c('setup:check'), c('data:info')])
     // a poll between two identical calls does not stop them collapsing
     assert.deepEqual(normalize([c('a'), c('queue:list'), c('a')]), [c('a')])
+    // a repeat of a no-argument :list or :status read is dropped wherever it lands; one with arguments is kept
+    assert.deepEqual(normalize([c('cast:list'), c('x'), c('cast:list'), c('setup:status'), c('setup:status')]), [c('cast:list'), c('x'), c('setup:status')])
+    assert.deepEqual(normalize([c('cast:list'), c('cast:list', '[{id:string}]'), c('cast:list', '[{id:string}]')]), [c('cast:list'), c('cast:list', '[{id:string}]')])
   })
 
   test('the same channel with a different argument shape is a different call and is kept', () => {

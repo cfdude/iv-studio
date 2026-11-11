@@ -44,16 +44,17 @@ describe('page-tier driver: the build check', () => {
 
 describe('page-tier driver: what Electron is started with', () => {
   const shell = Object.fromEntries([...policy.remove.map((e) => [e.name, 'real-secret']), ...policy.pin.map((e) => [e.name, '/Users/real/place']), ['ELECTRON_RUN_AS_NODE', '1'], ['NODE_OPTIONS', '--inspect'], ['PATH', '/usr/bin']])
-  const dirs = { home: '/tmp/iv/home', data: '/tmp/iv/data', userData: '/tmp/iv/ud', runDir: '/tmp/iv/run', ports: [4001, 4002] }
+  const root = path.join(path.sep, 'tmp', 'iv')
+  const dirs = { home: path.join(root, 'home'), data: path.join(root, 'data'), userData: path.join(root, 'ud'), runDir: path.join(root, 'run'), ports: [4001, 4002] }
 
   test('every scrubbed key in the shell is gone, and the pinned ones point at temp', () => {
     const env = electronEnv(shell, dirs)
     for (const e of policy.remove) assert.ok(!(e.name in env), `${e.name} should be removed`)
     assert.ok(!('ELECTRON_RUN_AS_NODE' in env))
-    for (const e of policy.pin) assert.ok(env[e.name].startsWith('/tmp/iv'), `${e.name} is ${env[e.name]}`)
-    assert.equal(env.HOME, '/tmp/iv/home')
-    assert.equal(env.IV_STUDIO_DATA, '/tmp/iv/data')
-    assert.equal(env.IV_STUDIO_USER_DATA, '/tmp/iv/ud')
+    for (const e of policy.pin) assert.ok(env[e.name].startsWith(root), `${e.name} is ${env[e.name]}`)
+    assert.equal(env.HOME, dirs.home)
+    assert.equal(env.IV_STUDIO_DATA, dirs.data)
+    assert.equal(env.IV_STUDIO_USER_DATA, dirs.userData)
     assert.equal(env.PATH, '/usr/bin')
     assert.match(env.NODE_OPTIONS, /^--import=file:.*guard\.mjs$/)
     assert.equal(env.IV_TEST_ALLOW_PORTS, '4001,4002')

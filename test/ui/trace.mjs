@@ -14,6 +14,10 @@
 //   * queue:list and system:stats are left out. The always-on title bar polls them (RenderQueue.jsx every 2 s,
 //     SystemMeter.jsx every few seconds) on every page, so how many land inside a row, and in what order against the
 //     row's own calls, is timing. (A row cannot be proved to have called one of them; both are covered as ipc rows.)
+//   * a plain read that takes no argument (a channel ending in :list or :status, called with no arguments) is kept once
+//     per row, at its first call. A page re-reads such a list whenever a prop it watches changes (Create.jsx calls cast:list
+//     again when the characters prop arrives), so whether the second read lands inside a row is timing too. A call
+//     that does carry arguments is never collapsed this way.
 //   * consecutive identical calls (same channel, same argument shape) collapse to one, after the polls are gone.
 // An argument shape never holds a value, and a key that is a generated id is written <id> (test/fakes/guard.mjs).
 // Order is otherwise kept, and a call with a different argument shape is a different call. Calls the window makes
@@ -34,11 +38,19 @@ const KEY = (c) => `${c.channel} ${c.args}`
 // the channels the title bar polls on every page
 export const POLLED = ['queue:list', 'system:stats']
 
-// the rule in the header: polls dropped, then consecutive identical calls collapsed
+// a read with no arguments: only its first call in a row is kept
+const PLAIN_READ = (c) => /:(list|status)$/.test(c.channel) && c.args === '[]'
+
+// the rule in the header: polls dropped, repeat plain reads dropped, then consecutive identical calls collapsed
 export function normalize(calls) {
   const out = []
+  const read = new Set()
   for (const c of calls) {
     if (POLLED.includes(c.channel)) continue
+    if (PLAIN_READ(c)) {
+      if (read.has(c.channel)) continue
+      read.add(c.channel)
+    }
     const last = out.at(-1)
     if (!last || last.channel !== c.channel || last.args !== c.args) out.push({ channel: c.channel, args: c.args })
   }

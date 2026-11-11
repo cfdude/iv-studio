@@ -17,10 +17,6 @@
       "args": "[]"
     },
     {
-      "channel": "edits:list",
-      "args": "[]"
-    },
-    {
       "channel": "edits:create",
       "args": "[string]"
     },
@@ -137,10 +133,6 @@
     {
       "channel": "models:status",
       "args": "[]"
-    },
-    {
-      "channel": "music:status",
-      "args": "[]"
     }
   ],
   "journey:new_character": [
@@ -255,23 +247,7 @@
       "args": "[]"
     },
     {
-      "channel": "voices:status",
-      "args": "[]"
-    },
-    {
-      "channel": "voices:list",
-      "args": "[]"
-    },
-    {
       "channel": "voices:lines",
-      "args": "[]"
-    },
-    {
-      "channel": "voices:list",
-      "args": "[]"
-    },
-    {
-      "channel": "voices:status",
       "args": "[]"
     }
   ],
@@ -367,24 +343,8 @@
       "args": "[string]"
     },
     {
-      "channel": "cloud:status",
-      "args": "[]"
-    },
-    {
       "channel": "cloud:clearToken",
       "args": "[string]"
-    },
-    {
-      "channel": "cloud:status",
-      "args": "[]"
-    },
-    {
-      "channel": "cloud:clearToken",
-      "args": "[string]"
-    },
-    {
-      "channel": "cloud:status",
-      "args": "[]"
     }
   ],
   "page:create": [
@@ -561,14 +521,6 @@
     {
       "channel": "music:get",
       "args": "[string]"
-    },
-    {
-      "channel": "music:toEdit",
-      "args": "[string]"
-    },
-    {
-      "channel": "edits:list",
-      "args": "[]"
     },
     {
       "channel": "music:toEdit",

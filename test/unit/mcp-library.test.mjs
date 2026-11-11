@@ -2,6 +2,8 @@
 // through the real MCP server on source under the test guard, against the fake ComfyUI (design D1, D8). One fake and
 // one server for the file.
 //   node --test test/unit/mcp-library.test.mjs
+// The tests in this file share fixtures (characters, projects, renders) and run in order; several fail when run alone
+// by name, so run the whole file.
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'

@@ -3,11 +3,11 @@
 // Pages are React state, not URLs, so every route is reached by clicks: a sidebar item, the Library link, a Workflows
 // card, a Settings tab, or a record's tile on its list page.
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { ENGINE } from '../../src/service/shinobi.js'
+import { tempDirReal } from '../fakes/tmp.mjs'
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -158,7 +158,7 @@ export function makeFixtures(dir) {
   return { clip: f('clip.mp4'), picture: f('picture.png'), song: f('song.flac') }
 }
 
-export const tempBase = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ui-fixtures-')))
+export const tempBase = () => tempDirReal('iv-ui-fixtures-') // removed when this process ends
 
 // ---------- what the fake ComfyUI lists when the ACE-Step music nodes and models are installed ----------
 

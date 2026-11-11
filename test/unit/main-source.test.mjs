@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { assertCopiesMain, assertHandlerNames, mainHandler } from './main-source.mjs'
+import { assertCopiesMain, assertHandlerNames, assertMainSends, mainHandler } from './main-source.mjs'
 
 const source = "handle('a:b', async (x) => {\n  const out = [] // ) in a comment-free string: ')'\n  return out.map((v) => v + 1)\n})\nhandle('c:d', () => ({ k: KEPT }))"
 
@@ -18,4 +18,9 @@ test('a swap maps main\'s names to the test\'s own before comparing', () => {
 test('the name check fails when main\'s handler stops handing a constant over', () => {
   assertHandlerNames(assert, 'c:d', ['KEPT'], source)
   assert.throws(() => assertHandlerNames(assert, 'c:d', ['GONE'], source), /no longer hands over GONE/)
+})
+
+test('the send check fails when main stops sending the payload the test copies', () => {
+  assertMainSends(assert, "send('c:d', { id })", "x(() => send( 'c:d',\n  { id } ))")
+  assert.throws(() => assertMainSends(assert, "send('c:d', { id, gens })", "send('c:d', { id })"), /no longer contains the code/)
 })

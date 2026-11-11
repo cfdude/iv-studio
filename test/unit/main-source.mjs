@@ -38,3 +38,9 @@ export function assertHandlerNames(assert, channel, names, source) {
   const handler = mainHandler(channel, source)
   for (const n of names) assert.ok(new RegExp(`\\b${n}\\b`).test(handler), `main's handle('${channel}') no longer hands over ${n}`)
 }
+
+// Fails unless main's source still holds this exact piece of code (whitespace ignored): for a payload a test copies from
+// a `send(...)` call, which is not inside any handle(...).
+export function assertMainSends(assert, copied, source = fs.readFileSync(MAIN, 'utf8')) {
+  assert.ok(squash(source).includes(squash(copied)), `main no longer contains the code this test copies:\n${copied}`)
+}

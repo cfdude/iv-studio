@@ -2,6 +2,8 @@
 // a child process, and Civitai's address is a mutable object inside it, so startMcp({ civitai: fake.url }) points it at the
 // fake Civitai through a test-only preload (test/fakes/civitai-address.mjs). Downloads land in the fake ComfyUI's loras folder.
 //   node --test test/unit/mcp-loras.test.mjs
+// The tests in this file share one fake and one server and run in order; a few seed what they need through
+// ensureInstalled(), but run the whole file rather than one test by name.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -45,6 +47,8 @@ describe('MCP LoRA tools on the fake Civitai', () => {
     fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), civitaiMature: on }, null, 2))
   }
   const last = () => civitai.requests.at(-1)
+  // the Neon Street LoRA installed through the tool itself, whether or not the download tests ran before
+  const ensureInstalled = () => ok('download_lora', { modelId: 101, versionId: 2001 })
 
   before(async () => {
     models = MODELS()
@@ -177,6 +181,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
 
   // ---------- list_my_loras ----------
   test('[mcp:list_my_loras][ipc:loras:yours] lists the LoRAs ComfyUI can load, the H3 ones by default, with what Civitai said', async () => {
+    await ensureInstalled()
     fs.writeFileSync(path.join(lorasDir(), 'other_style.safetensors'), 'not for h3')
     fs.writeFileSync(path.join(lorasDir(), 'minimax_h3_look.safetensors'), 'named for h3')
     fake.setObjectInfo({ LoraLoaderModelOnly: combo([INSTALLED, 'other_style.safetensors', 'minimax_h3_look.safetensors']) })
@@ -194,6 +199,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
 
   // ---------- identify_lora ----------
   test('[mcp:identify_lora][ipc:loras:identify] finds an installed file on Civitai by its SHA-256 and keeps the answer', async () => {
+    await ensureInstalled()
     fs.writeFileSync(path.join(lorasDir(), 'mystery.safetensors'), CIVITAI_FILE_BYTES)
     fake.setObjectInfo({ LoraLoaderModelOnly: combo(['mystery.safetensors']) })
     const r = await ok('identify_lora', { name: 'mystery.safetensors' })
@@ -208,6 +214,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
   })
 
   test('[mcp:identify_lora] keeps no Civitai answer for a file Civitai does not know, and refuses a name ComfyUI does not have', async () => {
+    await ensureInstalled()
     fs.writeFileSync(path.join(lorasDir(), 'unknown.safetensors'), 'bytes nobody published')
     fake.setObjectInfo({ LoraLoaderModelOnly: combo(['unknown.safetensors']) })
     const r = await ok('identify_lora', { name: 'unknown.safetensors' })

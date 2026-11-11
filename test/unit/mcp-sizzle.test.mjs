@@ -345,7 +345,7 @@ describe('MCP website sizzle tools', () => {
     await fails('sizzle_to_shinobi', { sizzleId: s.id }, /refused to start/)
     await fails('sizzle_first_cut', { sizzleId: s.id }, /refused to start/)
     const refused = (await mcp.refusals()).slice(before)
-    assert.ok(refused.length >= 2 && refused.every((r) => r.command === 'python'), JSON.stringify(refused))
+    assert.ok(refused.length >= 2 && refused.every((r) => /^python(\.exe)?$/i.test(r.command)), JSON.stringify(refused))
     assert.equal(readSizzle(s.id).shinobi, null, 'no Shinobi project was made')
     fs.rmSync(dataFile('shinobi'), { recursive: true, force: true })
   })

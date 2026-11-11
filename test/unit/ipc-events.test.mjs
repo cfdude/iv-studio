@@ -26,6 +26,7 @@ import { Voices } from '../../src/service/voices.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { startFakeOllama } from '../fakes/outside.mjs'
 import { tempDirReal } from '../fakes/tmp.mjs'
+import { assertMainSends } from './main-source.mjs'
 
 const tmp = () => tempDirReal('iv-event-')
 const ff = (...args) => execFileSync(ffmpegStatic.ffmpegPath, ['-y', '-hide_banner', '-loglevel', 'error', ...args])
@@ -202,7 +203,8 @@ describe('events from the editor\'s generations', () => {
       const edits = new Edits({ dataDir: data, ffmpeg: ffmpegStatic.ffmpegPath, ffprobe: ffmpegStatic.ffprobePath })
       const heard = []
       let gen
-      // what main sends: { id, gens: editgen.view(id) }
+      // what main sends; main starts Electron and cannot be imported, so the drift check reads its source
+      assertMainSends(assert, "send('editgen:changed', { id, gens: editgen.view(id) })")
       gen = new EditGen({ edits, studio: () => studio, localCopy: async (f) => f, onChange: (id) => heard.push({ id, gens: gen.view(id) }) })
       const e = edits.create('Changes')
       const m = await edits.addMedia(clip)
@@ -259,7 +261,8 @@ describe('events from RefMod and Remake', () => {
     const remake = new Remake({ studio, images: new Images({ studio, dataDir: dir }), dataDir: dir, resourcesDir: resources, ffmpeg: ffmpegStatic.ffmpegPath, ffprobe: ffmpegStatic.ffprobePath })
     const s = await remake.prepare({ video, kind: 'swap', section: { start: 0, length: 0 } })
     const seen = []
-    // what main sends: { id, ...update }
+    // what main sends; main starts Electron and cannot be imported, so the drift check reads its source
+    assertMainSends(assert, "onProgress: (u) => send('remake:progress', { id, ...u })")
     await remake.paint(s.id, { who: 'the man', picture: face, name: 'Mia', onProgress: (u) => seen.push({ id: s.id, ...u }) })
     fake.setOutputs(null)
     assert.ok(seen.length >= 2)
