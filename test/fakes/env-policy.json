@@ -1,0 +1,175 @@
+{
+  "comment": "Derived from src/ by test/unit/env-policy.test.mjs (design D8). CLI-read credentials are listed by hand with the CLI documentation as citation.",
+  "remove": [
+    {
+      "name": "COMFY_ORG_API_KEY",
+      "why": "Comfy Cloud credential",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "CIVITAI_API_KEY",
+      "why": "Civitai credential",
+      "source": "src/mcp/server.js"
+    },
+    {
+      "name": "RUNPOD_API_KEY",
+      "why": "RunPod credential"
+    },
+    {
+      "name": "MODAL_TOKEN_ID",
+      "why": "Modal CLI credential",
+      "citation": "https://modal.com/docs/reference/modal.config"
+    },
+    {
+      "name": "MODAL_TOKEN_SECRET",
+      "why": "Modal CLI credential",
+      "citation": "https://modal.com/docs/reference/modal.config"
+    },
+    {
+      "name": "MODAL_PROFILE",
+      "why": "Modal CLI profile choice",
+      "citation": "https://modal.com/docs/reference/modal.config"
+    },
+    {
+      "name": "ANTHROPIC_API_KEY",
+      "why": "Claude CLI credential",
+      "citation": "https://code.claude.com/docs/en/settings"
+    },
+    {
+      "name": "ANTHROPIC_AUTH_TOKEN",
+      "why": "Claude CLI credential",
+      "citation": "https://code.claude.com/docs/en/settings"
+    },
+    {
+      "name": "CLAUDE_CODE_OAUTH_TOKEN",
+      "why": "Claude CLI credential",
+      "citation": "https://code.claude.com/docs/en/authentication"
+    },
+    {
+      "name": "OPENAI_API_KEY",
+      "why": "Codex CLI credential",
+      "citation": "https://github.com/openai/codex"
+    },
+    {
+      "name": "IV_REAL",
+      "why": "opts into the real-backend tier; a default run must not inherit it"
+    },
+    {
+      "name": "OLLAMA_HOST",
+      "why": "points at the person's Ollama",
+      "source": "src/service/prompter.js"
+    },
+    {
+      "name": "IV_STUDIO_COMFY_AUTOSTART",
+      "why": "starts a real ComfyUI",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_UPDATE_FEED",
+      "why": "points at an update server",
+      "source": "src/main/updater.js"
+    },
+    {
+      "name": "ELECTRON_RENDERER_URL",
+      "why": "points the window at a dev server",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_SMOKE",
+      "why": "runs the app's own smoke mode; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_FAKE_SETUP",
+      "why": "a test that wants a fake sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_FAKE_HARDWARE",
+      "why": "a test that wants a fake sets it itself",
+      "source": "src/main/index.js"
+    }
+  ],
+  "pin": [
+    {
+      "name": "HOME",
+      "to": "dir",
+      "why": "home folder"
+    },
+    {
+      "name": "USERPROFILE",
+      "to": "dir",
+      "why": "Windows home folder"
+    },
+    {
+      "name": "APPDATA",
+      "to": "dir",
+      "why": "Windows app data"
+    },
+    {
+      "name": "LOCALAPPDATA",
+      "to": "dir",
+      "why": "Windows local app data"
+    },
+    {
+      "name": "IV_STUDIO_DATA",
+      "to": "dir",
+      "why": "IV Studio data folder",
+      "source": "src/service/paths.js:49"
+    },
+    {
+      "name": "IV_STUDIO_USER_DATA",
+      "to": "dir",
+      "why": "Electron userData",
+      "source": "src/main/index.js:61"
+    },
+    {
+      "name": "CODEX_HOME",
+      "to": "dir",
+      "why": "Codex CLI home",
+      "source": "src/service/harness.js:56"
+    },
+    {
+      "name": "MODAL_CONFIG_PATH",
+      "to": "missing-file",
+      "why": "else the real ~/.modal.toml is read",
+      "source": "src/service/cloud.js:266"
+    }
+  ],
+  "keep": [
+    {
+      "name": "PATH",
+      "why": "shims are prefixed to it"
+    },
+    {
+      "name": "PUBLIC",
+      "why": "Windows location, read only, unset on a Mac",
+      "source": "src/service/comfylauncher.js"
+    },
+    {
+      "name": "SystemRoot",
+      "why": "Windows location, read only, unset on a Mac",
+      "source": "src/service/cloud.js:114"
+    },
+    {
+      "name": "ProgramFiles",
+      "why": "Windows location, read only, unset on a Mac",
+      "source": "src/service/shinobi.js"
+    },
+    {
+      "name": "ProgramData",
+      "why": "Windows location, read only, unset on a Mac",
+      "source": "src/service/comfylauncher.js:58"
+    },
+    {
+      "name": "OneDrive",
+      "why": "Windows location, read only, unset on a Mac",
+      "source": "src/service/comfylauncher.js:59"
+    },
+    {
+      "name": "APPIMAGE",
+      "why": "Linux location, read only, unset on a Mac",
+      "source": "src/main/index.js"
+    }
+  ]
+}
