@@ -25,7 +25,8 @@ export function seedSettings(dir, { comfyUrl, extra = {} }) {
   )
 }
 
-export async function startMcp({ comfyUrl, shims = false, settings = {} } = {}) {
+// platform: makes the child report this process.platform ('darwin', 'win32', 'linux'), for platform-specific refusals.
+export async function startMcp({ comfyUrl, shims = false, settings = {}, platform = null } = {}) {
   const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'iv-mcp-')))
   const dataDir = path.join(base, 'data')
   const runDir = path.join(base, 'run')
@@ -42,7 +43,7 @@ export async function startMcp({ comfyUrl, shims = false, settings = {} } = {}) 
   }
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', '--import', pathToFileURL(path.join(here, 'guard.mjs')).href, '--import', pathToFileURL(path.join(here, 'resolve.mjs')).href, '--import', pathToFileURL(path.join(here, 'dirname.mjs')).href, path.join(root, 'src/mcp/server.js')],
+    args: ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', '--import', pathToFileURL(path.join(here, 'guard.mjs')).href, '--import', pathToFileURL(path.join(here, 'resolve.mjs')).href, '--import', pathToFileURL(path.join(here, 'dirname.mjs')).href, ...(platform ? ['--import', `data:text/javascript,Object.defineProperty(process,'platform',{value:'${platform}'})`] : []), path.join(root, 'src/mcp/server.js')],
     env,
     stderr: 'pipe'
   })
