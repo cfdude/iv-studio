@@ -14,6 +14,7 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import workerThreads from 'node:worker_threads'
 import { guardState, loadInherited, portAllowed, LOOPBACK } from './ports.mjs'
 
 export { guardState }
@@ -121,9 +122,48 @@ function install() {
   }
   const RealWebSocket = globalThis.WebSocket
   if (RealWebSocket) {
+    // A real WebSocket reports a refused connection later, as an error event and a close, never from its constructor, so
+    // a refusal here does the same: the code under test sees what it would see from a server that is not there.
+    class RefusedWebSocket extends EventTarget {
+      static CONNECTING = 0
+      static OPEN = 1
+      static CLOSING = 2
+      static CLOSED = 3
+      constructor(url, refusal) {
+        super()
+        this.url = String(url)
+        this.readyState = 0
+        this.protocol = ''
+        this.extensions = ''
+        this.bufferedAmount = 0
+        this.binaryType = 'blob'
+        for (const type of ['open', 'message', 'error', 'close']) {
+          this[`on${type}`] = null
+          this.addEventListener(type, (event) => this[`on${type}`]?.call(this, event))
+        }
+        setTimeout(() => {
+          this.readyState = 3
+          const error = new Event('error')
+          Object.assign(error, { message: refusal.message, error: refusal })
+          this.dispatchEvent(error)
+          const close = new Event('close')
+          Object.assign(close, { code: 1006, reason: '', wasClean: false })
+          this.dispatchEvent(close)
+        }, 0)
+      }
+      send() {
+        throw new DOMException('WebSocket is not open: readyState 0 (CONNECTING)', 'InvalidStateError')
+      }
+      close() {}
+    }
     globalThis.WebSocket = class GuardedWebSocket extends RealWebSocket {
       constructor(url, ...rest) {
-        checkUrl(url, 'a WebSocket')
+        try {
+          checkUrl(url, 'a WebSocket')
+        } catch (e) {
+          if (e?.ivGuardRefused) return new RefusedWebSocket(url, e)
+          throw e
+        }
         super(url, ...rest)
       }
     }
@@ -389,6 +429,18 @@ function install() {
       }
     }
     return realFork(modulePath, args, { ...options, env: childEnv(options, true) })
+  }
+  // A worker thread is a fresh realm with its own fetch, so it needs the guard too. A file worker gets --import (a worker
+  // started with an execArgv of its own would otherwise drop the inherited one); a string worker (eval: true) runs as a
+  // script, where --import is not applied, so the guard is required first.
+  const RealWorker = workerThreads.Worker
+  workerThreads.Worker = class GuardedWorker extends RealWorker {
+    constructor(file, options = {}) {
+      // with no execArgv of its own the worker inherits the parent's, --import included
+      const execArgv = Array.isArray(options.execArgv) && !options.execArgv.includes(GUARD_URL) ? [...options.execArgv, '--import', GUARD_URL] : options.execArgv
+      const code = options.eval && typeof file === 'string' ? `require(${JSON.stringify(fileURLToPath(GUARD_URL))});\n${file}` : file
+      super(code, execArgv ? { ...options, execArgv } : options)
+    }
   }
   // the named imports in src/ (import { spawn } from 'node:child_process') read these live bindings
   module.syncBuiltinESMExports()

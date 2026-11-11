@@ -56,7 +56,11 @@ ${code}`
     { env: { PATH: process.env.PATH, ...env }, encoding: 'utf8' }
   )
 
-describe('gate.py token', { skip: py.status !== 0 && 'python3 not available' }, () => {
+// Under the default suite (npm run test:unit) the test guard refuses python3, so this describe is skipped there. Run this
+// file with plain `node --test test/unit/runpod-token.test.mjs` (no --import) to exercise gate.py.
+const gateSkip = py.status !== 0 && (py.error?.ivGuardRefused ? 'python3 is refused by the test guard; run this file with plain `node --test` to exercise gate.py' : 'python3 not available')
+
+describe('gate.py token', { skip: gateSkip }, () => {
   test('refuses to start with an empty or missing IV_TOKEN', () => {
     for (const env of [{ IV_TOKEN: '' }, {}]) {
       const r = runGate(env, 'spec.loader.exec_module(g)')

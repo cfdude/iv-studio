@@ -15,6 +15,7 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
+import { Worker } from 'node:worker_threads'
 import tls from 'node:tls'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
@@ -152,8 +153,21 @@ describe('guard: network', () => {
   test('fetch to 127.0.0.1:8188 with no fake on that port fails naming the port', async () => {
     await assert.rejects(fetch('http://127.0.0.1:8188/system_stats'), /8188/)
   })
-  test('a WebSocket to ws://127.0.0.1:8188/ws fails naming host and port', () => {
-    assert.throws(() => new WebSocket('ws://127.0.0.1:8188/ws'), /127\.0\.0\.1:8188/)
+  test('a WebSocket to ws://127.0.0.1:8188/ws fails naming host and port, as an error event and a close, not from the constructor', async () => {
+    const ws = new WebSocket('ws://127.0.0.1:8188/ws')
+    assert.equal(ws.readyState, 0, 'still connecting when the constructor returns')
+    const seen = []
+    ws.onclose = () => seen.push('close')
+    const got = new Promise((resolve) => {
+      let err
+      ws.addEventListener('error', (e) => (seen.push('error'), (err = e)))
+      ws.addEventListener('close', () => resolve(err))
+    })
+    const err = await got
+    assert.match(err.message, /127\.0\.0\.1:8188/)
+    assert.deepEqual(seen, ['error', 'close'])
+    assert.equal(ws.readyState, 3)
+    assert.throws(() => ws.send('x'))
   })
   test('a WebSocket to a registered fake works', async () => {
     const ws = new WebSocket(`ws://127.0.0.1:${server.address().port}/ws`)
@@ -181,6 +195,15 @@ describe('guard: network', () => {
   })
   test('http2.connect to an outside host throws naming the host', () => {
     assert.throws(() => http2.connect('https://example.com'), /example\.com/)
+  })
+  test('a worker thread is guarded too: a string worker and a file worker with its own execArgv both have fetch refused', async (t) => {
+    const ask = (worker) => new Promise((resolve, reject) => (worker.on('message', resolve), worker.on('error', reject)))
+    const probe = "fetch('https://example.com').then(() => post('reached'), (e) => post(e.message))"
+    const evalWorker = new Worker(`const post = (m) => require('node:worker_threads').parentPort.postMessage(m)\n${probe}`, { eval: true })
+    assert.match(await ask(evalWorker), /example\.com/)
+    const file = path.join(makeTempDir('iv-worker-'), 'probe.mjs')
+    fs.writeFileSync(file, `import { parentPort } from 'node:worker_threads'\nconst post = (m) => parentPort.postMessage(m)\n${probe}\n`)
+    assert.match(await ask(new Worker(file, { execArgv: [] })), /example\.com/)
   })
   test('a datagram to an outside host is refused', async () => {
     const sock = dgram.createSocket('udp4')
