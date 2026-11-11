@@ -155,6 +155,7 @@ describe('MCP LoRA tools on the fake Civitai', () => {
   })
 
   test('[mcp:download_lora] a second download of the same version returns the file already there, and search marks it installed', async () => {
+    await ok('download_lora', { modelId: 101, versionId: 2001 }) // there on its own, whether or not the test before it ran
     const before = civitai.requests.filter((q) => q.path.startsWith('/api/download')).length
     const r = await ok('download_lora', { modelId: 101, versionId: 2001 })
     assert.equal(r.lora, INSTALLED)

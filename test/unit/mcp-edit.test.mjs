@@ -140,7 +140,7 @@ describe('MCP edit tools', () => {
     const e = await ok('create_edit')
     await fails('set_edit_settings', { editId: e.id, format: 'imax' }, /format/i)
     await fails('set_edit_settings', { editId: e.id, loudness: 'loud' }, /loudness/i)
-    await fails('set_edit_settings', { editId: e.id, name: '' }, /name/i)
+    await fails('set_edit_settings', { editId: e.id, name: '' }, /String must contain at least 1 character\(s\) at name/)
     await fails('set_edit_settings', { editId: 'nope0000', name: 'x' }, /No edit nope0000/)
   })
 

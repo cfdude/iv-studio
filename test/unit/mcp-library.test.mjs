@@ -115,11 +115,19 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
   })
 
   test('[mcp:delete_character] removes the preset and says so when there is no such character', async () => {
-    const left = await ok('delete_character', { id: 'ana2' })
-    assert.ok(!left.items.some((c) => c.id === 'ana2'))
-    assert.ok(left.items.some((c) => c.id === 'ana'))
-    assert.ok(!readData('characters.json').some((c) => c.id === 'ana2'))
-    await fails('delete_character', { id: 'ana2' }, /No character ana2\./)
+    // its own two characters, so it does not depend on the save tests having run
+    fake.setObjectInfo({ LoraLoaderModelOnly: combo('lora_name', [TESS_LORA, 'MiniMax H3/keep/keep.safetensors', 'MiniMax H3/gone/gone.safetensors']) })
+    try {
+      await ok('save_character', { id: 'keep-me', name: 'Keep Me', lora: 'MiniMax H3/keep/keep.safetensors', trigger: 'kp1' })
+      await ok('save_character', { id: 'drop-me', name: 'Drop Me', lora: 'MiniMax H3/gone/gone.safetensors', trigger: 'dp1' })
+    } finally {
+      fake.setObjectInfo({})
+    }
+    const left = await ok('delete_character', { id: 'drop-me' })
+    assert.ok(!left.items.some((c) => c.id === 'drop-me'))
+    assert.ok(left.items.some((c) => c.id === 'keep-me'))
+    assert.ok(!readData('characters.json').some((c) => c.id === 'drop-me'))
+    await fails('delete_character', { id: 'drop-me' }, /No character drop-me\./)
   })
 
   // ---------- list_ready_characters, install_ready_character ----------
@@ -401,7 +409,7 @@ describe('MCP character, project, render, cast, media and guide tools', () => {
     await fails('prepare_media', { file: files.png, start: 0, end: 1 }, /Pictures have no length to trim\./)
     await fails('prepare_media', { file: files.wav, fitH3: 1 }, /Sounds have no picture to resize\./)
     await fails('prepare_media', { file: files.mp4, start: 1, end: 1 }, /longer than a frame/)
-    await fails('prepare_media', { file: files.png, crop: { x: 0, y: 0, w: 8, h: 8 } }, /w|too small/i)
+    await fails('prepare_media', { file: files.png, crop: { x: 0, y: 0, w: 8, h: 8 } }, /Number must be greater than or equal to 16 at crop\.w/)
     await fails('prepare_media', { file: files.png, fitH3: 9 }, /fitH3|4/)
   })
 
