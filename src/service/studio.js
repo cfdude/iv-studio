@@ -12,6 +12,7 @@ import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
 import { SEEDVR2_DEVICE, seedvr2Refusal } from './gpu.js'
 import { planFinish, planPreviews } from './plan.js'
+import { defaultEnhancer } from '../renderer/src/finish.js'
 import { applyFinishSpeed, applySpeed } from './speed.js'
 import { adaptGraph, capabilities, finishCaps, LIVE_NODE, NO_RIFE, NO_UPSCALER, withLivePreview } from './remote.js'
 import { Cast, resolveMentions } from './cast.js'
@@ -455,6 +456,8 @@ export class Studio {
     if (source.kind !== 'previews') throw new Error('finish_candidate needs a previews job id.')
     if (source.plan?.engine === SEEDANCE) return this.seedanceFinish(source, given)
     const caps = await this.capabilities()
+    // no enhancer named: this machine's own default (an Apple GPU, or any ComfyUI without DLSS 5, gets the upscale)
+    if (!given.enhancer) given.enhancer = defaultEnhancer(caps, this.comfy.hosted)
     // the 'upscale' enhancer has its own limits (Real-ESRGAN, RIFE); the others are the ComfyUI's
     const finish = applyFinishSpeed(given, speed || source.plan.request?.speed || fallbackSpeed, finishCaps(caps, given.enhancer))
     const can = finish.enhancer === 'upscale' ? finishCaps(caps, 'upscale') : caps

@@ -14,6 +14,11 @@ export function enhancerChoices(caps, remote) {
 // The enhancer to use: the wanted one when it is on offer, else the first on offer.
 export const pickEnhancer = (wanted, choices) => (choices.includes(wanted) ? wanted : choices[0])
 
+// The enhancer a finish starts with when nobody named one (an agent's finish_candidate): DLSS 5 where it is on offer,
+// else the built-in upscale. Never DLSS 5 on an Apple GPU, the same rule as the Finish panel and Check my computer
+// (hardware.js: anything but an NVIDIA card finishes with the upscale), so a Mac's default finish is plain.
+export const defaultEnhancer = (caps, remote) => (caps?.gpuKind === 'mps' ? 'upscale' : pickEnhancer('dlss', enhancerChoices(caps, remote)))
+
 // The frame rates the panel offers for an enhancer: RIFE's for upscale, else the ComfyUI's own.
 export const fpsFor = (caps, enhancer) => (enhancer === 'upscale' ? caps?.fpsBuiltIn || [0] : caps?.fps || [0, 30, 50, 60, 120])
 
