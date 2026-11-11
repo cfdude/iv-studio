@@ -155,7 +155,7 @@ export default function Replace({ notify, characters, replaceSeed, go }) {
       {!remake && check && !check.ready && (
         <section className="group replace-missing">
           <div className="group-head">
-            <h2>Needed first</h2>
+            <h2>{check.cloud ? 'Not in the cloud yet' : 'Needed first'}</h2>
           </div>
           <div className="group-body">
             {check.error && <p className="small pink">{check.error}</p>}

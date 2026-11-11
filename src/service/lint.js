@@ -53,6 +53,54 @@ export function withLine(prompt, who, line) {
   return cut < 0 ? `${prompt.trimEnd()} ${said}` : `${prompt.slice(0, cut).trimEnd()} ${said}${prompt.slice(cut)}`
 }
 
+// H3 has no negative prompt: every noun is something to show, so "No photographs appear anywhere" hung the wall with
+// photographs (keys + Sam Wasserman's Imagination Studio found this, twice). IV Studio's own house sentences stay:
+// they were tested in renders, and without "No one speaks" H3 invents lines.
+const HOUSE_NEGATIVES = [
+  /\b(?:no one|nobody) (?:speaks|says anything|talks)\b[^.\n]*[.\n]?/gi,
+  /\bthere is no (?:writing|text|lettering)[^.\n]*[.\n]?/gi,
+  /\b(?:one|a single|as one) (?:continuous|unbroken) (?:shot|take)\b[^.\n]*[.\n]?/gi,
+  /\bit is one continuous take with no cuts\b[^.\n]*[.\n]?/gi,
+  /\bno cut, the same camera\b/gi,
+  /\bthe picture itself never appears as a frame\b/gi,
+  /\bnobody in it: an empty set\b[^.\n]*[.\n]?/gi
+]
+const NEGATIVE = /\b(no|without|never|not|nor|doesn['’]t|don['’]t|isn['’]t|aren['’]t|won['’]t|cannot|can['’]t)\s+((?:any|a|an|the|one|other|more)\s+)?([a-z][a-z-]*(?:\s+(?!and\b|or\b|but\b|as\b|while\b|with\b)[a-z][a-z-]*){0,3})/gi
+// grammar, not a thing to show
+const NEGATIVE_OK = /^(?:longer|matter|sooner|more than|less than|only|just|quite|too|much|later|doubt|wonder|exception|less|more|sure|yet|until|before|after|far|least)\b/i
+const POSITIVE = [
+  [/photo|picture|poster|painting|frame/i, 'bare, plain walls'],
+  [/text|writing|word|letter|logo|sign|caption|subtitle|label/i, 'plain, unmarked surfaces'],
+  [/people|person|crowd|one else|pedestrian|passer|bystander|extras?/i, 'an empty street or room, with only the people you name'],
+  [/music|song/i, 'only the natural sounds of the place'],
+  [/cut/i, 'one continuous take'],
+  [/camera mov|move|moving|motion|shake/i, 'a locked-off, still camera'],
+  [/smil|laugh/i, 'a calm, neutral expression'],
+  [/talk|speak|dialogue|say|sound/i, 'lips closed, in silence'],
+  [/look\w* (?:at|into) (?:the )?(?:camera|lens)|eye contact/i, 'eyes on something in the scene, off to the side'],
+  [/blur|out of focus/i, 'sharp focus throughout'],
+  [/rain/i, 'dry, clear weather'],
+  [/cloud/i, 'a clear sky'],
+  [/hat|glasses|jewel|makeup|tattoo/i, 'the bare head or face, said plainly (short hair, bare face)'],
+  [/car|vehicle|traffic/i, 'an empty road']
+]
+// Phrases like "no photographs", "without a hat", "never looks at the camera", with what to write instead.
+export function negativePhrases(prompt) {
+  let text = String(prompt || '').replace(/<d>[\s\S]*?<\/d>/g, ' ')
+  const s = sections(text)
+  for (const k of ['retention_analysis', 'summary', 'non_diegetic_music']) if (s[k]) text = text.replace(s[k], ' ')
+  for (const re of HOUSE_NEGATIVES) text = text.replace(re, ' ')
+  const out = []
+  for (const m of text.matchAll(NEGATIVE)) {
+    const rest = m[3].trim()
+    if (NEGATIVE_OK.test(rest) || /^(?:one|body) (?:speaks|says|talks)/i.test(rest)) continue
+    const phrase = `${m[1]} ${m[2] || ''}${rest}`.replace(/\s+/g, ' ').trim()
+    if (out.some((x) => x.phrase.toLowerCase() === phrase.toLowerCase())) continue
+    out.push({ phrase, instead: POSITIVE.find(([re]) => re.test(rest))?.[1] || null })
+  }
+  return out
+}
+
 const count = (text, re) => (String(text).match(re) || []).length
 const sentences = (text) => String(text).split(/(?<=[.!?])\s+/)
 
@@ -218,6 +266,11 @@ export function lintPrompt(prompt, { mode = 'text', seconds = 5, media = [], cha
       if (moves.length > 2) add('warning', 'camera-load', `${shot.match(/\[Shot \d+\]/)?.[0] || 'A shot'} asks for ${moves.length} camera moves (${moves.join(', ')}). One move a shot reads cleanly.`)
     }
   }
+
+  // ---- "no X": H3 shows the X
+  const negs = negativePhrases(text)
+  if (negs.length)
+    add('warning', 'negative-wording', `H3 has no negative prompt, so every thing named is something to show: "no photographs" can put photographs on the wall. Say what is there instead: ${negs.slice(0, 4).map((n) => `"${n.phrase}"${n.instead ? ` (try: ${n.instead})` : ''}`).join('; ')}${negs.length > 4 ? `; and ${negs.length - 4} more` : ''}.`)
 
   // ---- @ mentions left unresolved
   if (mentions) for (const m of text.matchAll(/(^|[\s(])@([A-Za-z][\w-]*)/g)) if (!mentions.some((n) => n.toLowerCase() === m[2].toLowerCase())) add('error', 'mention-unknown', `@${m[2]} isn't in your cast or places.`)

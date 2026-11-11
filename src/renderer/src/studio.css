@@ -605,6 +605,12 @@ input.mini {
 .rank-btn {
   margin: 6px 0;
 }
+/* a take that cuts away: use the stretch without the cut (ranking.js) */
+.take-clean {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
 .enhance-row {
   display: flex;
   align-items: center;
@@ -962,7 +968,7 @@ input.mini {
 }
 .hero {
   position: relative;
-  width: calc(100vw - 210px);
+  width: var(--page-w, calc(100vw - 210px));
   height: 250px;
   margin: calc(-1 * var(--pad)) 0 34px calc(-1 * var(--pad));
   overflow: hidden;
@@ -2832,6 +2838,7 @@ body.resizing * {
   color: var(--cream);
 }
 .confirm-message {
+  white-space: pre-line;
   margin: 0;
   color: var(--paper-dim);
   line-height: 1.5;
@@ -4098,7 +4105,8 @@ body.resizing * {
   width: min(1440px, 100%);
   height: min(880px, calc(100vh - 48px));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  /* the side panel holds the render's details as well as its versions: a little wider on wide windows */
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 26vw, 400px);
   background: var(--ink);
   border: 1px solid var(--line-strong);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
@@ -4236,67 +4244,81 @@ body.resizing * {
   font: 700 17px/1.1 var(--display);
 }
 .viewer-versions {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  /* the list takes the panel's free height, so a long set of versions isn't squeezed into a small box */
+  flex: 1 1 auto;
+  min-height: 140px;
 }
 .viewer-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-height: 260px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  padding-right: 4px;
 }
+/* one row per version: its picture at the shot's shape, and its name in full beside it */
 .viewer-thumb {
-  position: relative;
-  flex: none;
-  height: 76px;
-  min-width: 76px;
-  max-width: 136px;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 6px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  color: var(--paper);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.viewer-thumb-pic {
+  width: 112px;
+  aspect-ratio: 16 / 9;
   display: grid;
   place-items: center;
-  padding: 0;
-  border: 2px solid transparent;
-  outline: 1px solid var(--line);
   background: #000;
-  color: var(--paper);
-  cursor: pointer;
   overflow: hidden;
 }
 .viewer-thumb video,
 .viewer-thumb img {
   display: block;
+  width: 100%;
   height: 100%;
-  width: auto;
-  max-width: 132px;
   object-fit: contain;
 }
-.viewer-thumb .mono {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 10px 6px 3px;
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+.viewer-thumb-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.viewer-thumb-label {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--paper);
+  overflow-wrap: anywhere;
 }
 .viewer-thumb-sound {
   display: grid;
   place-items: center;
-  width: 76px;
+  width: 100%;
   height: 100%;
   font-size: 24px;
   color: var(--red);
 }
-.viewer-thumb:hover { outline-color: var(--paper-dim) }
+.viewer-thumb:hover {
+  border-color: var(--paper-dim);
+}
 .viewer-thumb.on {
   border-color: var(--red);
-  outline-color: transparent;
+  background: rgba(239, 68, 68, 0.08);
+  box-shadow: inset 3px 0 0 var(--red);
+}
+.viewer-thumb.on .viewer-thumb-label {
+  color: var(--cream);
 }
 .viewer-actions {
   display: grid;
@@ -4331,6 +4353,9 @@ body.resizing * {
   }
   .viewer-actions { margin-top: 0 }
   .viewer-keys { display: none }
+  /* the panel scrolls as one under the picture: no second scroll box for the versions */
+  .viewer-versions { flex: none; min-height: 0 }
+  .viewer-strip { overflow: visible }
 }
 @media (prefers-reduced-motion: reduce) {
   .viewer-backdrop,
@@ -8091,6 +8116,7 @@ button.nav-update:hover {
   color: var(--cream);
 }
 .switch-toggle {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -10639,7 +10665,8 @@ li:not(.now) > .wel-scan-mark .wel-spin {
 .train-path.on,
 .wel-way.on,
 .train-preset.on,
-.cloud-choice.on {
+.cloud-choice.on,
+.engine-card.on {
   background: var(--ink-2);
   border-color: var(--red);
   color: var(--paper);
@@ -11021,7 +11048,7 @@ button.set-chip:hover {
 /* the writer: one card per engine */
 .set-engines {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   padding-bottom: 18px;
 }
@@ -11387,7 +11414,7 @@ button.set-chip:hover {
 /* ---------- Workflows tools: the animated stage, the title and the main bar centered on it ---------- */
 .stage {
   position: relative;
-  width: calc(100vw - 210px);
+  width: var(--page-w, calc(100vw - 210px));
   min-height: 430px;
   margin: calc(-1 * var(--pad)) 0 34px calc(-1 * var(--pad));
   display: grid;
@@ -11707,8 +11734,9 @@ button.set-chip:hover {
 .flow-choices {
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
 }
+/* three (or two) across while each card has room for its longest word, fewer when the page narrows (the chat open) */
 .flow-choices.flow-three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 .flow-choice-extra {
   color: var(--pink);
@@ -11831,7 +11859,7 @@ button.set-chip:hover {
   background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 6px, transparent 6px 12px), #100c0e;
 }
 .flow-choices.flow-two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 .flow-page .create-steps {
   display: grid;
@@ -12102,6 +12130,415 @@ button.set-chip:hover {
   width: auto;
 }
 
+/* ---------- Comfy account: credits in the title bar and on Settings ---------- */
+.balance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 2px 9px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--cream);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.balance-chip:hover {
+  border-color: var(--pink);
+}
+.balance-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7fd18b;
+}
+.balance-chip.warn .balance-dot {
+  background: var(--pink);
+}
+.balance-chip.busy .balance-dot {
+  animation: free-urge 1.2s ease-in-out infinite;
+}
+.account-balance b {
+  font-size: 15px;
+  color: var(--cream);
+  margin-right: 4px;
+}
+.titlebar > .brand-text {
+  white-space: nowrap;
+}
+/* narrower windows: the chip drops its "Comfy ·" first, then its padding */
+@media (max-width: 1500px) {
+  .balance-pre {
+    display: none;
+  }
+}
+@media (max-width: 1180px) {
+  .balance-chip {
+    padding: 2px 6px;
+    margin-left: 4px;
+  }
+}
+
+/* ---------- Create: the model switch (H3 on this PC, or Seedance 2.5 on Comfy credits) ---------- */
+.engine-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.engine-card {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  color: var(--paper);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.engine-card:hover {
+  border-color: var(--line-strong);
+}
+.engine-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.engine-note {
+  margin: 10px 0 0;
+}
+.sd-price {
+  font-size: 15px;
+  color: var(--cream);
+}
+
+/* ---------- Compare: up to four versions, a grid, and a zoom that looks at the same spot in each ---------- */
+.compare-slots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.compare-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.compare-slot > .mono {
+  color: var(--pink);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.compare-slot.off {
+  opacity: 0.45;
+}
+.compare-slot select {
+  max-width: 340px;
+}
+.compare-slot-x {
+  background: transparent;
+  border: 0;
+  color: var(--paper-dim);
+  font-size: 16px;
+  cursor: pointer;
+}
+.compare-slot-x:hover {
+  color: var(--pink);
+}
+.compare-zoom button {
+  min-width: 42px;
+}
+/* each picture sits in a frame that clips its zoom; the video inside is scaled about the chosen spot */
+.cmp-frame {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  border-radius: 4px;
+  display: grid;
+}
+.compare-side .cmp-frame video,
+.compare-wipe .cmp-frame video,
+.compare-grid .cmp-frame video {
+  width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
+  background: #000;
+  border-radius: 0;
+  transition: transform 0.18s ease-out;
+}
+/* Wipe: one box in the shot's own shape; both pictures fill it exactly, so the zoom's spot is the same in each */
+.compare-wipe {
+  aspect-ratio: var(--ar, 16 / 9);
+  width: min(100%, calc(62vh * var(--ar, 1.7778)));
+  justify-self: center;
+  overflow: hidden;
+}
+.compare-wipe .cmp-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+}
+.compare-wipe .cmp-layer video {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.compare-grid figure {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.compare-grid .cmp-frame video {
+  max-height: 34vh;
+}
+.compare-grid.n3 figure:last-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: calc(50% - 5px);
+}
+.compare-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- a shot's finished versions in one card, and the Finish dialog ---------- */
+.versions-card {
+  margin-top: 14px;
+  padding: 14px 16px 16px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--red);
+  display: grid;
+  gap: 10px;
+}
+.versions-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.versions-head .btn {
+  margin-left: auto;
+}
+.version-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.version-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--paper-dim);
+  background: var(--ink-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.version-chip:hover {
+  color: var(--paper);
+  border-color: var(--line-strong);
+}
+.version-chip.on {
+  color: var(--paper);
+  border-color: var(--red);
+  box-shadow: inset 0 0 0 1px var(--red);
+}
+.version-chip.error {
+  color: var(--pink);
+}
+.version-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: free-urge 1.2s ease-in-out infinite;
+}
+.version-err {
+  font-weight: 700;
+}
+.version-main {
+  display: grid;
+  gap: 8px;
+}
+.version-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.versions-card .final-video {
+  width: 100%;
+  max-height: 58vh;
+  background: #000;
+  border-radius: 4px;
+}
+.version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.finish-modal {
+  position: relative;
+  width: min(980px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+  padding: 0;
+}
+.finish-modal .finish-panel {
+  margin: 0;
+  border: 0;
+}
+.finish-modal-x {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 1;
+  background: transparent;
+  border: 0;
+  color: var(--paper-dim);
+  font-size: 22px;
+  cursor: pointer;
+}
+.finish-modal-x:hover {
+  color: var(--pink);
+}
+/* the Finish dialog: one setting per row (its name on the left, the choice beside it, a line of help under the
+   choice), so labels and buttons line up and no button text wraps */
+.finish-modal .finish-panel {
+  gap: 16px;
+  padding: 24px 28px 22px;
+}
+.finish-modal .finish-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+.finish-modal .finish-grid .row {
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 18px;
+}
+/* level with the middle of the buttons, not of the buttons and their help together */
+.finish-modal .finish-grid .row-label {
+  padding-top: 13px;
+}
+.finish-modal .enhancer-pick {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+.finish-modal .enhancer-pick .dim {
+  max-width: 64ch;
+  line-height: 1.45;
+}
+.finish-modal .segmented button {
+  white-space: nowrap;
+}
+.finish-modal .finish-go {
+  margin-top: 4px;
+}
+
+/* strength sliders for the local upscalers (Finish dialog and the Enhance drawer) */
+.strength-slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.strength-slider input[type='range'] {
+  width: min(320px, 50vw);
+  accent-color: var(--red);
+}
+.strength-value {
+  min-width: 34px;
+  color: var(--cream);
+}
+.enhance-drawer {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--ink-3);
+  border: 1px solid var(--line);
+}
+.lastframe-drawer {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--ink-3);
+  border: 1px solid var(--line);
+}
+.lastframe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.enhance-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.enhance-grid .row {
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 16px;
+}
+.enhance-grid .row-label {
+  padding-top: 10px;
+}
+.enhance-grid .segmented button {
+  white-space: nowrap;
+}
+
+/* ---------- Simple words: the welcome question and the Settings card ---------- */
+.wel-know {
+  margin-top: 22px;
+  display: grid;
+  gap: 12px;
+}
+.wel-know > h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--cream);
+}
+.wel-levels .wel-way {
+  min-height: 0;
+}
+.wel-simple {
+  align-items: flex-start;
+  gap: 12px;
+}
+.wel-simple > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+.set-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.wel-simple .dim {
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 /* ---------- the Modal account (Cloud page and cloud wizard) ---------- */
 .modal-account {
   display: grid;
@@ -12120,14 +12557,6 @@ button.set-chip:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-/* the waiting dot (the Modal sign-in) */
-.version-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--red);
-  animation: free-urge 1.2s ease-in-out infinite;
 }
 
 /* ---------- the cloud setup as it happens (SetupProgress.jsx) ---------- */
@@ -12335,6 +12764,160 @@ button.set-chip:hover {
   background: var(--ink-3);
 }
 
+/* ---------- Library: what each render is, and how it was made ---------- */
+.lib-tile .tile-info {
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+}
+.lib-model {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  padding: 3px 7px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: rgba(0, 0, 0, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.lib-model.seedance {
+  border-color: rgba(125, 211, 252, 0.6);
+  color: #bae6fd;
+}
+.viewer-details {
+  display: grid;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.viewer-details-head {
+  justify-self: start;
+  display: inline-flex;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--paper-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.viewer-details-head:hover {
+  color: var(--paper);
+}
+.viewer-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+.viewer-facts > div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.viewer-facts dt {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.viewer-facts dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--paper);
+  overflow-wrap: anywhere;
+}
+.viewer-prompt {
+  display: grid;
+  gap: 4px;
+}
+.viewer-prompt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.viewer-prompt p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--paper-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+.viewer-prompt p.full {
+  display: block;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.viewer-prompt .link-btn {
+  justify-self: start;
+}
+
+.lib-tile .tile-info,
+.lib-tile .tile-where {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* speed presets (components/Speed.jsx): Settings → Your PC's cards and Create's row */
+.speed-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-bottom: 0;
+}
+.speed-cards .set-engine {
+  gap: 6px;
+  padding-right: 16px;
+}
+.speed-time {
+  margin-top: 4px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--paper-dim);
+}
+.speed-rec {
+  justify-self: start;
+  padding: 2px 7px;
+  border: 1px solid rgba(110, 231, 168, 0.55);
+  background: rgba(110, 231, 168, 0.1);
+  color: #8ff0bd;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.speed-row .segmented {
+  flex-wrap: wrap;
+}
+@container settings (max-width: 620px) {
+  .speed-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.wel-speed { margin: -2px 0 6px; }
+
+/* Compare: wheel zoom at the pointer, drag to look around */
+.compare-stage.zoomed .cmp-frame {
+  cursor: grab;
+}
+.compare-stage.zoomed.panning .cmp-frame,
+.compare-stage.panning .wipe-slider {
+  cursor: grabbing;
+}
+.compare-stage .cmp-frame video {
+  transition: transform 0.08s linear;
+}
+.compare-zoom-now {
+  font-size: 12px;
+  color: var(--cream);
+  min-width: 36px;
+}
+
 /* the page error (ErrorBoundary.jsx): instead of a blank window */
 .page-error {
   max-width: 720px;
@@ -12368,7 +12951,55 @@ button.set-chip:hover {
   white-space: pre-wrap;
 }
 
-/* Check my PC: finding a ComfyUI that isn't at the saved address, where finished videos go, and contrast */
+/* Get ComfyUI for me (GetComfy.jsx), on Setup when this PC has no ComfyUI */
+.get-comfy {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 14px 16px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--red);
+}
+.get-comfy h3 {
+  margin: 0;
+  font: 800 19px/1.1 var(--display);
+  color: var(--cream);
+}
+.get-comfy p {
+  margin: 0;
+  line-height: 1.5;
+}
+.get-comfy-folder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.get-comfy-path {
+  padding: 6px 10px;
+  border: 1px dashed var(--line);
+  font-size: 12px;
+  color: var(--paper);
+}
+.get-comfy-progress {
+  display: grid;
+  gap: 6px;
+}
+.get-comfy-progress-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--cream);
+}
+.get-comfy-btns {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Check my PC: finding a ComfyUI that isn't at the saved address, and where finished videos go */
 .wel-callout.wel-find {
   flex-direction: column;
   align-items: stretch;
@@ -12393,6 +13024,10 @@ button.set-chip:hover {
 }
 .wel-find-addr input {
   max-width: 320px;
+}
+.wel-find .get-comfy {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
 }
 .wel-videos {
   display: flex;
@@ -12426,4 +13061,2811 @@ button.set-chip:hover {
 .wel-a11y > span:last-child {
   display: grid;
   gap: 3px;
+}
+
+/* Settings -> About -> Credits */
+.modal.credits {
+  width: min(860px, 100%);
+  max-height: min(860px, 100%);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+.modal.credits .modal-head .spacer {
+  flex: 1;
+}
+.credits-search {
+  width: 100%;
+}
+.credits-body {
+  overflow: auto;
+  display: grid;
+  gap: 22px;
+  padding-right: 6px;
+}
+.credits-group h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.credits-group > p {
+  margin: 0 0 8px;
+}
+.credits-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0;
+}
+.credits-group li {
+  display: grid;
+  gap: 3px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+}
+.credits-name {
+  font-weight: 600;
+  color: var(--cream);
+}
+.credits-name .link-btn {
+  font-weight: 600;
+  color: var(--cream);
+}
+.credits-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.credits-licence {
+  font-size: 11px;
+}
+.credits-foot {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* Audio -> Sounds */
+.sound-kinds .engine-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sound-kinds .engine-card svg {
+  flex: none;
+  color: var(--red);
+}
+.sound-set {
+  display: grid;
+}
+.sound-set > .track + .track {
+  border-top: 1px dashed var(--line);
+}
+
+/* Create -> Image -> Tools */
+.tool-cards {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.tool-cards .mode-card .mode-icon {
+  color: var(--red);
+}
+.segmented.wrap {
+  flex-wrap: wrap;
+}
+.mask-painter {
+  display: grid;
+  gap: 8px;
+}
+.mask-stage {
+  position: relative;
+  max-width: 100%;
+  width: fit-content;
+  border: 1px solid var(--line);
+  touch-action: none;
+}
+.mask-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  user-select: none;
+}
+.mask-stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+.mask-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.mask-tools label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Edit -> right-click -> Effects */
+.modal.clipfx {
+  width: min(820px, 100%);
+}
+.fx-cards {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+.fx-cards .mode-icon {
+  color: var(--red);
+}
+.fx-form {
+  display: grid;
+  gap: 12px;
+}
+.fx-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fx-slider input {
+  flex: 1;
+}
+.fx-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Workflows -> Effects */
+.effects-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.effects-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  margin: 0 auto 10px;
+  object-fit: contain;
+}
+.effect-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.effect-chip {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--paper);
+  font: inherit;
+  cursor: pointer;
+}
+.effect-chip:hover {
+  border-color: var(--line-strong);
+}
+.effect-chip.on {
+  box-shadow: inset 0 0 0 2px var(--red);
+  border-color: var(--red);
+  color: var(--cream);
+}
+.effects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.effects-run {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  padding: 8px;
+}
+.effects-run video {
+  width: 100%;
+  max-height: 340px;
+  background: #000;
+}
+.effects-run-wait {
+  aspect-ratio: 9 / 16;
+  max-height: 340px;
+  display: grid;
+  place-items: center;
+}
+.effects-run-foot {
+  display: grid;
+  gap: 6px;
+}
+.effects-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Effects dialog: themed sliders, the close button, New angle's camera rig ---------- */
+.modal-head .spacer {
+  flex: 1;
+}
+.fx-slider input[type='range'],
+.camera-rig input[type='range'] {
+  accent-color: var(--red);
+  padding: 0;
+  border: 0;
+}
+.fx-toggle input {
+  accent-color: var(--red);
+}
+.modal.clipfx.wide {
+  width: min(1180px, 100%);
+}
+.fx-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+@media (max-width: 1000px) {
+  .fx-split {
+    grid-template-columns: 1fr;
+  }
+}
+.camera-rig {
+  display: grid;
+  gap: 10px;
+}
+.rig-plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.rig-svg {
+  width: 100%;
+  height: auto;
+  background: rgba(241, 237, 229, 0.03);
+  border: 1px solid var(--line);
+  cursor: crosshair;
+  touch-action: none;
+}
+.rig-svg:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+.rig-zone.in {
+  fill: rgba(241, 237, 229, 0.1);
+}
+.rig-zone.edge {
+  fill: rgba(241, 157, 172, 0.09);
+}
+.rig-orbit {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-dasharray: 3 4;
+}
+.rig-axis,
+.rig-ground {
+  stroke: var(--line);
+}
+.rig-subject {
+  fill: var(--paper);
+}
+.rig-subject-nose,
+.rig-subject-line {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 2;
+}
+.rig-cam rect,
+.rig-cam path:not(.rig-cone) {
+  fill: var(--red);
+}
+.rig-cone {
+  fill: rgba(244, 72, 89, 0.16);
+  stroke: rgba(244, 72, 89, 0.55);
+}
+.rig-cam.ghost rect,
+.rig-cam.ghost path:not(.rig-cone) {
+  fill: rgba(241, 237, 229, 0.45);
+}
+.rig-cam.ghost .rig-cone {
+  fill: rgba(241, 237, 229, 0.05);
+  stroke: rgba(241, 237, 229, 0.25);
+  stroke-dasharray: 3 3;
+}
+.rig-label {
+  font: 10px var(--mono);
+  fill: var(--paper-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.rig-label.strong {
+  fill: var(--paper);
+}
+.rig-words {
+  margin: 0;
+  font: 700 20px / 1.15 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.rig-zone-note {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.rig-zone-note.ok {
+  color: var(--paper-dim);
+}
+.rig-zone-note.pink {
+  color: var(--pink);
+}
+.rig-zone-note.red {
+  color: var(--red);
+}
+.rig-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--paper-dim);
+}
+.rig-dot.edge {
+  background: var(--pink);
+}
+.rig-dot.out {
+  background: var(--red);
+}
+.rig-picture {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.rig-picture img,
+.rig-picture video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+.rig-picture img {
+  cursor: grab;
+  touch-action: none;
+}
+.rig-picture img:active {
+  cursor: grabbing;
+}
+.rig-picture-empty {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  padding: 20px;
+  max-width: 360px;
+}
+.rig-picture-tag {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(16, 12, 14, 0.75);
+  padding: 3px 6px;
+}
+.rig-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.rig-adv-toggle {
+  justify-self: start;
+}
+.rig-adv {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+}
+.rig-adv .fx-toggle {
+  flex-wrap: wrap;
+}
+
+/* ---------- LoRAs for every model family ---------- */
+.lora-families {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 4px 0 6px;
+}
+.lora-fam-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.lora-fam-kind {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.lora-fam-n {
+  margin-left: 6px;
+  font: 11px var(--mono);
+  opacity: 0.7;
+}
+.lora-fam-uses {
+  margin: 0 0 12px;
+}
+.lora-fam-pick {
+  max-width: 150px;
+  padding: 2px 4px;
+  background: var(--ink);
+  color: var(--paper-dim);
+  border: 1px solid var(--line);
+}
+.lora-picker-for {
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-left: auto;
+  margin-right: 16px;
+}
+
+/* ---------- Setup: a status card, then folding cards ---------- */
+.setup {
+  display: grid;
+  gap: 14px;
+}
+.setup-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px 28px;
+  align-items: center;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  border-left: 3px solid var(--line-strong);
+}
+.setup-summary.ok {
+  border-left-color: #6ee7a8;
+}
+.setup-summary.warn {
+  border-left-color: var(--red);
+}
+.setup-summary h2 {
+  margin: 4px 0 4px;
+  font: 800 32px/1 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.setup-summary p {
+  margin: 0;
+}
+.setup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.setup-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  max-width: 560px;
+}
+@media (max-width: 1000px) {
+  .setup-summary {
+    grid-template-columns: 1fr;
+  }
+  .setup-summary-actions {
+    justify-content: flex-start;
+  }
+}
+.setup-view {
+  justify-self: start;
+}
+.setup-section-head {
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.setup-section-head .set-card-title {
+  display: grid;
+  gap: 4px;
+}
+.setup-chevron {
+  font-size: 14px;
+  color: var(--paper-dim);
+  width: 14px;
+}
+.setup-section .set-card-body {
+  padding: 0 22px 18px 22px;
+  display: grid;
+  gap: 12px;
+}
+.setup-section.open::before {
+  transform: scaleY(1);
+}
+.setup-section.open .set-card-n {
+  color: var(--red);
+}
+.setup-rows li {
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 9px 0;
+}
+.setup-rows li:last-child {
+  border-bottom: 0;
+}
+.setup-rows .check-icon {
+  padding-top: 0;
+}
+.setup-row-text {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+}
+.setup-row-detail {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setup-area {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.setup-area:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.setup-area-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.setup-area-head h3 {
+  margin: 0;
+  font: 700 18px/1.1 var(--display);
+  text-transform: uppercase;
+}
+.setup-area-head .btn {
+  margin-left: auto;
+}
+.setup-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.setup-restart {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.restart-ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.btn.danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+.setup-row-link {
+  margin-left: 10px;
+  font-size: 11px;
+}
+
+/* The person's own cloud getting a render's models ready (CloudModels.jsx) */
+.cloud-prep {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  max-width: min(720px, calc(100vw - 48px));
+  padding: 10px 16px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-left: 3px solid var(--red, #e5484d);
+  border-radius: 10px;
+  background: var(--ink, #1b1518);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+.cloud-prep.error {
+  border-left-color: #f0a020;
+}
+.cloud-prep-line {
+  flex: 1 1 280px;
+}
+.cloud-prep-bar {
+  flex: 0 0 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.cloud-prep-bar span {
+  display: block;
+  height: 100%;
+  background: var(--red, #e5484d);
+  transition: width 0.4s;
+}
+/* ---------- 1.1: a failed render in plain words (Failure.jsx), time estimates, Privacy ---------- */
+.failure {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 14px 16px;
+  margin: 10px 0;
+  border: 1px solid rgba(244, 72, 89, 0.55);
+  background: rgba(244, 72, 89, 0.08);
+}
+.failure-title {
+  font: 800 18px/1.1 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.failure-why {
+  margin: 0;
+  max-width: 68ch;
+}
+.failure-fixes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.failure-raw {
+  margin: 0;
+  /* ComfyUI's own words, as it wrote them (the mono class would set them in capitals) */
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 10px 12px;
+  max-width: 100%;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: rgba(0, 0, 0, 0.35);
+  justify-self: stretch;
+}
+.eta-line {
+  margin: 8px 0;
+}
+.privacy-what {
+  margin: 10px 0;
+  max-width: 68ch;
+}
+.privacy-what p {
+  margin: 4px 0;
+}
+.privacy-show {
+  justify-self: start;
+  width: auto;
+}
+.privacy-what ul {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+}
+.privacy-ask {
+  margin-top: 14px;
+  align-items: start;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+}
+.privacy-ask .wel-tour-q {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--cream);
+}
+.beta-join {
+  display: grid;
+  gap: 8px;
+  max-width: 560px;
+}
+.beta-join p {
+  margin: 0;
+}
+.beta-join-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.beta-join-row input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .privacy-ask {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .privacy-ask .wel-tour-q {
+    display: none;
+  }
+}
+/* ---------- 1.1: Start from an example (Starters.jsx) ---------- */
+.starters {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+.starters-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.starters-head strong {
+  font: 800 18px/1 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.starters-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.starter {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-height: 44px;
+  padding: 12px 14px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+}
+.starter:hover,
+.starter:focus-visible {
+  border-color: var(--red);
+}
+.starter.on {
+  border-color: var(--red);
+  background: rgba(244, 72, 89, 0.1);
+}
+.starter-tag {
+  color: var(--pink, var(--red));
+  text-transform: uppercase;
+}
+.starter-name {
+  font: 800 17px/1.1 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.starter-shape {
+  margin-top: 2px;
+}
+.starter-about {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cloud-beta {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 22px;
+}
+.cloud-beta-title {
+  font: 800 18px/1 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.ed-share-hint {
+  margin: 6px 0 0;
+}
+/* ---------- the audio pages' quick-start bars (AudioQuick.jsx) on their banners ---------- */
+.stage-quick {
+  flex-wrap: wrap;
+}
+.stage-quick input {
+  flex: 1 1 260px;
+}
+.stage-quick .btn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 22px;
+  font-size: 13px;
+}
+.stage-quick-pick {
+  flex: 0 1 200px;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  border-right: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--cream);
+  padding: 0 12px;
+}
+.stage-quick-pick option {
+  background: #1a1416;
+}
+.stage-quick-note .link-btn {
+  color: var(--cream);
+  text-decoration: underline;
+}
+@media (max-width: 900px) {
+  .stage-quick-pick {
+    flex-basis: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-strong);
+  }
+  .stage-quick .btn {
+    flex: 1 1 auto;
+  }
+}
+/* ---------- the page banners' motion (Hero.jsx, heroMotion.js): over the picture, faded out towards the title ---------- */
+.hero-motion {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 32%, #000 62%);
+  mask-image: linear-gradient(to right, transparent 32%, #000 62%);
+}
+/* Incognito shuts the eye on every banner, and it stays still */
+.app.incognito .hero-motion {
+  display: none;
+}
+/* the Cloud page's banner bar: where renders go, and the guided setup */
+.stage-cloud {
+  align-items: center;
+}
+.stage-cloud .segmented button {
+  min-height: 40px;
+  padding: 0 18px;
+}
+.stage-cloud-status {
+  flex: 1 1 180px;
+  color: var(--paper);
+  text-align: left;
+  padding: 0 6px;
+}
+/* Incognito shuts the Dashboard's eye on its tall banner too */
+.app.incognito .stage-art-eye .stage-art {
+  background-image: url('./assets/eye-closed.webp') !important;
+}
+
+/* ---------- the person's own agent making a Dashboard idea (AgentRun.jsx, agentrun.js) ---------- */
+.stage-quick .agent-go {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--cream);
+}
+.stage-quick .agent-go:not(:disabled):hover {
+  border-color: var(--red);
+}
+.agent-panel {
+  margin: 0 0 28px;
+  padding: 16px 20px;
+  border: 1px solid var(--line-strong);
+  border-left: 2px solid var(--red);
+  background: var(--ink-2);
+}
+.agent-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.agent-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.agent-idea {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-head .btn {
+  min-height: 36px;
+}
+/* a slow, small breathe (never a flash): 3 s, half to full opacity, still under Reduce motion */
+.agent-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--paper-dim);
+}
+.agent-dot.live {
+  background: var(--red);
+  animation: agent-breathe 3s ease-in-out infinite;
+}
+@keyframes agent-breathe {
+  50% {
+    opacity: 0.5;
+  }
+}
+html.rm .agent-dot.live {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-dot.live {
+    animation: none;
+  }
+}
+.agent-steps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.agent-steps li {
+  color: var(--paper-dim);
+}
+.agent-steps .agent-step-now {
+  color: var(--cream);
+}
+.agent-steps .agent-step-error {
+  color: var(--cream);
+  flex-basis: 100%;
+}
+.agent-steps .agent-step-error .mono {
+  color: var(--red);
+}
+.agent-renders {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.agent-renders li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agent-bar {
+  flex: 0 1 200px;
+  height: 4px;
+  background: var(--line);
+}
+.agent-bar span {
+  display: block;
+  height: 100%;
+  background: var(--red);
+}
+.agent-say {
+  margin: 12px 0 0;
+  max-width: 70ch;
+  white-space: pre-wrap;
+}
+.agent-panel > .btn {
+  margin-top: 12px;
+}
+.agent-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--cream);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Claude Code and Codex on this PC (AgentSetup.jsx): one row each, found or not, Install and Sign in */
+.agent-setup {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.agent-setup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.02);
+}
+.agent-setup-row.ready {
+  border-color: var(--line);
+}
+.agent-setup-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-width: 0;
+}
+.agent-setup-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  color: var(--cream);
+}
+.agent-setup-tick {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--pink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.agent-setup-act .btn {
+  min-height: 36px;
+  white-space: nowrap;
+}
+.agent-setup-line {
+  grid-column: 1 / -1;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.wel-agents-skip {
+  margin: 12px 0 0;
+}
+/* What's new after an update (WhatsNew.jsx): a small button on the Dashboard that opens a pop-up */
+.news-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 26px;
+}
+.news-chip-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  min-width: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--red);
+  background: var(--ink-2);
+  color: var(--paper);
+  cursor: pointer;
+  text-align: left;
+}
+.news-chip-open:hover,
+.news-chip-open:focus-visible {
+  border-color: var(--red);
+  color: var(--cream);
+}
+.news-chip-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+}
+.news-chip-text {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.news-chip-arrow {
+  color: var(--pink);
+}
+.modal.whats-new {
+  width: min(680px, 100%);
+}
+.whats-new-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 2px 6px 2px 20px;
+  max-height: min(58vh, 520px);
+  overflow: auto;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--paper);
+}
+.whats-new-list li::marker {
+  color: var(--red);
+}
+/* The chat with the person's own agent (ChatPanel.jsx): a title-bar button and a panel down the right side */
+.chat-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.chat-open:hover,
+.chat-open:focus-visible,
+.chat-open.on {
+  border-color: var(--red);
+  color: var(--cream);
+}
+.chat-open svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.chat-open-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+}
+.chat-open + .engine-badge {
+  margin-left: 10px;
+}
+/* With room (a window 1350 px and wider) the chat takes its own column and the page narrows beside it, so nothing is
+   covered; on smaller windows, where the page would get too cramped, it slides over the page instead. */
+.app.chat-on {
+  grid-template-columns: 210px minmax(0, 1fr) 380px;
+}
+.chat-panel {
+  grid-column: 3;
+  grid-row: 2;
+  min-height: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--ink);
+  border-left: 1px solid var(--line-strong);
+}
+@media (max-width: 1349px) {
+  .app.chat-on {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+  .chat-panel {
+    position: fixed;
+    top: 40px;
+    right: 0;
+    bottom: 0;
+    width: min(400px, calc(100vw - 230px));
+    box-shadow: -18px 0 40px rgba(0, 0, 0, 0.45);
+  }
+}
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 10px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.chat-head h2 {
+  margin: 0;
+  font: 700 22px / 1 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.chat-head .spacer {
+  flex: 1;
+}
+.chat-head .btn {
+  min-height: 32px;
+}
+.chat-engine button {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.chat-history {
+  margin: 10px 18px 0;
+  width: auto;
+}
+.chat-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+}
+.chat-setup {
+  gap: 4px;
+}
+.chat-empty {
+  display: grid;
+  gap: 14px;
+  margin: auto 0;
+  color: var(--paper);
+}
+.chat-ideas {
+  display: grid;
+  gap: 8px;
+}
+.chat-idea {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--ink-2);
+  color: var(--paper);
+  text-align: left;
+  cursor: pointer;
+}
+.chat-idea:hover,
+.chat-idea:focus-visible {
+  border-color: var(--red);
+  color: var(--cream);
+}
+.chat-you {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 9px 13px;
+  background: var(--ink-3);
+  border: 1px solid var(--line-strong);
+  color: var(--cream);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.chat-agent {
+  max-width: 100%;
+  color: var(--paper);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.chat-problem {
+  padding: 8px 12px;
+  border-left: 2px solid var(--red);
+  color: var(--pink);
+  overflow-wrap: anywhere;
+}
+.chat-step {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  color: var(--paper);
+  opacity: 0.75;
+  font-size: 11.5px;
+}
+.chat-step.err {
+  color: var(--pink);
+  opacity: 1;
+}
+.chat-step-why {
+  flex-basis: 100%;
+  padding-left: 16px;
+  font-family: inherit;
+  overflow-wrap: anywhere;
+}
+.chat-ask {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--red);
+  background: var(--ink-2);
+}
+.chat-ask.answered {
+  border-color: var(--line-strong);
+}
+.chat-ask-title {
+  font: 700 17px / 1.15 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.chat-ask p {
+  margin: 0;
+}
+.chat-ask-args {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+.chat-ask-args div {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+.chat-ask-args dt {
+  color: var(--pink);
+}
+.chat-ask-args dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.chat-ask-btns {
+  display: flex;
+  gap: 8px;
+}
+.chat-ask-btns .btn {
+  min-height: 36px;
+}
+.chat-ask-answer {
+  margin: 0;
+  color: var(--pink);
+}
+.chat-working {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--paper);
+}
+.chat-renders {
+  display: grid;
+  gap: 6px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--line);
+}
+.chat-render {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chat-render .agent-bar {
+  flex: 1;
+}
+.chat-renders .link-btn {
+  justify-self: start;
+}
+.chat-compose {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px 18px 6px;
+  border-top: 1px solid var(--line);
+}
+.chat-compose textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 160px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.chat-send {
+  min-height: 44px;
+}
+.chat-foot {
+  margin: 0;
+  padding: 0 18px 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-open-dot {
+    animation: none;
+  }
+}
+/* The title bar on smaller windows (with the rules above): the test-copy badge drops " · separate data", "/ Studio" goes, then the
+   Chat and Incognito words (both keep their icon, and say what they are in their tooltip), and the status block on
+   the right never shrinks under the window buttons. */
+.titlebar > .test-copy {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.titlebar > .engine-badge {
+  flex-shrink: 0;
+}
+@media (max-width: 1400px) {
+  .titlebar > .brand-text.dim {
+    display: none;
+  }
+  .test-copy-more {
+    display: none;
+  }
+}
+@media (max-width: 1300px) {
+  .chat-open-label,
+  .incognito-label {
+    display: none;
+  }
+  .chat-open {
+    padding: 4px 8px;
+  }
+}
+/* the search on a banner: the magnifier inside the bar, the count of what matches under it, and the page's "+ New"
+   as its own smaller button below (QuickBar search) */
+.stage-search {
+  position: relative;
+}
+.stage-search-icon {
+  flex: none;
+  align-self: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  fill: none;
+  stroke: var(--pink);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.stage-found {
+  margin: 10px 0 0;
+  text-align: center;
+}
+.stage-found .link-btn {
+  font-size: 14px;
+}
+.stage-alt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.stage-alt .btn {
+  min-height: 36px;
+}
+/* the editor's full-screen mode keeps its whole width: the chat slides over it */
+.app.app-focus.chat-on {
+  grid-template-columns: 1fr;
+}
+.app.app-focus .chat-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(400px, 40vw);
+  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.45);
+}
+/* batch 1: the chat's "About ..." line over the message box, and the Ask buttons it comes from (ChatPanel askAgent) */
+.chat-about {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 18px;
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-left: 2px solid var(--red);
+  background: var(--ink-2);
+  min-width: 0;
+}
+.chat-about-what {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cream);
+}
+.run-ask {
+  margin-left: auto;
+}
+.run-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 8px 0 4px;
+}
+.run-pick .rank-btn {
+  margin: 0;
+}
+.viewer-ask {
+  width: 100%;
+}
+/* batch 2: files in the chat (ChatPanel): the paperclip, the chips before sending and on a sent message, the drop glow */
+.chat-attach {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--paper);
+  cursor: pointer;
+}
+.chat-attach:hover:not(:disabled),
+.chat-attach:focus-visible {
+  border-color: var(--red);
+  color: var(--cream);
+}
+.chat-attach:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.chat-attach svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chat-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.chat-files-ready {
+  margin: 0 18px;
+  padding-top: 10px;
+}
+.chat-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 3px 4px 3px 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--ink-2);
+  font-size: 12px;
+  color: var(--paper);
+}
+.chat-you .chat-file {
+  padding-right: 8px;
+}
+.chat-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.chat-panel.dropping {
+  outline: 2px dashed var(--pink);
+  outline-offset: -8px;
+}
+/* the chat's spending limit (spending.js): today's figure under the chat header, a line for each paid step, and the
+   two amounts in Settings → Agents */
+.chat-today {
+  margin: 8px 18px 0;
+  padding: 5px 10px;
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.chat-spent {
+  color: var(--pink);
+  font-size: 11.5px;
+  padding: 2px 0;
+}
+.set-budget {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.set-budget-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.set-budget-label {
+  min-width: 70px;
+}
+.set-budget-row input {
+  width: 110px;
+}
+
+/* batch 3 in the chat: "Undo this change" under an edit the agent changed, an overnight batch's morning report, and
+   the Dashboard's recipes */
+.chat-undo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--paper);
+  opacity: 0.85;
+  font-size: 11.5px;
+}
+.chat-report {
+  border: 1px solid var(--pink);
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+.chat-report-title {
+  color: var(--pink);
+  letter-spacing: 0.08em;
+}
+.chat-report p {
+  margin: 0;
+}
+.chat-report-picks {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.chat-report-picks .btn {
+  text-align: left;
+  white-space: normal;
+}
+.dash-recipes {
+  margin-top: 18px;
+  display: grid;
+  gap: 8px;
+}
+.recipe-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.recipe {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line-strong);
+  max-width: 100%;
+}
+.recipe-go {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 12px;
+  min-height: 44px;
+  background: none;
+  border: 0;
+  color: var(--paper);
+  cursor: pointer;
+  max-width: 340px;
+}
+.recipe-go:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+}
+.recipe-go:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.recipe-name {
+  font-weight: 600;
+}
+.recipe-x {
+  align-self: center;
+  margin-right: 6px;
+}
+.proj-ask {
+  display: inline-flex;
+  margin-top: 10px;
+}
+
+/* ---------- film craft (CraftKit.jsx): Cinematography picker, prompt tools, Lookbook ---------- */
+.craft-picker {
+  width: min(980px, 100%);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  height: min(820px, 100%);
+  overflow: hidden;
+}
+.craft-picker-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.craft-title {
+  margin: 0 0 4px;
+  font: 800 26px / 1 var(--display);
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.craft-picker-bar {
+  display: grid;
+  gap: 10px;
+}
+.craft-search {
+  width: 100%;
+}
+.craft-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.craft-groups button {
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--paper-dim);
+  font: 500 11px / 1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.craft-groups button.on {
+  color: var(--paper);
+  box-shadow: inset 0 0 0 2px var(--red);
+  border-color: transparent;
+}
+.craft-picker-body {
+  overflow: auto;
+  min-height: 0;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding-right: 6px;
+}
+.craft-group h4 {
+  margin: 0 0 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.craft-chips,
+.craft-chosen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.craft-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--paper);
+  font: 500 13px / 1.2 var(--body);
+  cursor: pointer;
+}
+.craft-chip:hover {
+  border-color: var(--paper-dim);
+}
+.craft-chip.on {
+  border-color: transparent;
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+.craft-chip.small {
+  min-height: 28px;
+  padding: 4px 6px 4px 10px;
+  font-size: 12px;
+  cursor: default;
+}
+.craft-chip button {
+  border: 0;
+  background: none;
+  color: var(--paper-dim);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.craft-chip button:hover {
+  color: var(--paper);
+}
+.craft-picker-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.craft-tools,
+.craft-lookbook {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.craft-note {
+  display: flex;
+  gap: 8px;
+}
+.craft-note input {
+  flex: 1;
+  min-width: 0;
+}
+.craft-tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.craft-writer {
+  margin-left: auto;
+}
+.craft-variants {
+  display: grid;
+  gap: 8px;
+}
+.craft-variant {
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+.craft-variant p {
+  margin: 0;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow: auto;
+}
+.craft-variant-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.craft-history summary {
+  cursor: pointer;
+  color: var(--paper-dim);
+}
+.craft-history-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.craft-history-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--paper-dim);
+}
+.craft-look dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 18px;
+  margin: 4px 0 6px;
+}
+.craft-look dd {
+  margin: 2px 0 0;
+}
+/* the storyboard's scene tools: coverage, continuity */
+.wiz-scene-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 2px 0 10px;
+}
+.wiz-scene-tools select {
+  min-height: 32px;
+  max-width: 260px;
+}
+.wiz-continuity {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+}
+.wiz-continuity-row {
+  display: grid;
+  grid-template-columns: 54px 90px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+.wiz-panel-slot {
+  font: 500 10px / 1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+@media (max-width: 760px) {
+  .craft-history-row,
+  .wiz-continuity-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.wiz-craft {
+  margin-top: 18px;
+  display: grid;
+  gap: 6px;
+}
+.wiz-q-small {
+  margin: 0;
+  font: 800 18px / 1.1 var(--display);
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.wiz-craft p {
+  margin: 0;
+}
+.wiz-shotlist {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+.create-craft {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+/* LoRAs → Recommended (recommended.js): tested H3 LoRAs, one card each */
+.rec-shelf {
+  display: grid;
+  gap: 14px;
+}
+.rec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.rec-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+}
+.rec-card.have {
+  border-color: color-mix(in srgb, var(--green, #7fd49a) 45%, var(--line));
+}
+.rec-card header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.rec-card h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.rec-card p {
+  margin: 0;
+}
+.rec-facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.rec-facts div {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 8px;
+}
+.rec-facts dd {
+  margin: 0;
+}
+.rec-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 44px;
+}
+
+/* Characters → a character's Turnaround sheet (turnaround.js) */
+.turnaround {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.turnaround-head {
+  display: grid;
+  gap: 2px;
+}
+.turnaround-need,
+.turnaround-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.turnaround-sheet {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.turnaround-views {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+.turnaround-views img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: var(--ink-2);
+}
+
+/* Library: what's in a file (describe.js) */
+.describe-status {
+  margin: -6px 0 10px;
+}
+.viewer-about {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.viewer-about p {
+  margin: 0;
+}
+.viewer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Create: a reference video's Soft mouth switch (softmouth.js) */
+.soft-mouth {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  cursor: pointer;
+}
+
+/* an overnight batch's dailies, under its report in the chat (dailies.js) */
+.chat-report-dailies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+/* trigger words are typed exactly, so they keep their case */
+.rec-facts dd.mono {
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* a character's settings with a turnaround sheet in them: the settings side scrolls when the window is short */
+.modal.cast-modal {
+  max-height: calc(100vh - 40px);
+}
+.modal.cast-modal .cast-modal-body {
+  max-height: calc(100vh - 44px);
+  overflow-y: auto;
+}
+
+/* ---------- MiniMax H3 terms (H3Terms.jsx): asked once before the first H3 render, above every other layer ---------- */
+.modal-backdrop.h3-terms-backdrop {
+  z-index: 120;
+}
+.modal.confirm.h3-terms {
+  width: min(620px, 100%);
+}
+.h3-terms-rules {
+  display: grid;
+  gap: 5px;
+  /* the rules scroll inside the dialog, so Agree is always on screen, down to the smallest window */
+  max-height: max(140px, calc(100vh - 470px));
+  overflow: auto;
+  font-size: 14px;
+  margin: 2px 0 0;
+  padding: 12px 14px 12px 34px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  line-height: 1.45;
+}
+.h3-terms-rules li::marker {
+  color: var(--pink);
+  font-family: var(--mono);
+}
+.h3-terms-credit {
+  margin: 0;
+  line-height: 1.5;
+}
+.h3-terms-credit strong {
+  color: var(--cream);
+}
+.h3-terms-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+.h3-terms-agree {
+  padding: 10px 12px;
+  border: 1px solid rgba(244, 72, 89, 0.45);
+  color: var(--paper);
+}
+.h3-terms-done {
+  margin: 0;
+  color: #6ee7a8;
+}
+.about-terms-line {
+  margin: 0;
+}
+.wel-terms .wel-tour-q {
+  font-size: 18px;
+}
+
+/* ---------- Chat 1.1.3: bubbles, one rounded composer, tabs, context meter, its own window (ChatPanel.jsx) ---------- */
+.chat-panel {
+  --you-bubble: #8e2a3d;
+  --you-text: #fbefe9;
+  --agent-bubble: #262028;
+  --agent-color: #f19dac;
+}
+.chat-panel.agent-claude {
+  --agent-color: #e8a06a;
+}
+.chat-panel.agent-codex {
+  --agent-color: #5cc3b2;
+}
+.chat-head {
+  gap: 8px;
+  padding: 10px 10px 10px 18px;
+}
+.chat-tabs {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--ink-2);
+}
+.chat-tabs button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--paper-dim);
+  font: 600 12px / 1 var(--body);
+  cursor: pointer;
+}
+.chat-tabs button.on {
+  background: var(--ink-3);
+  color: var(--cream);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.chat-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--paper-dim);
+  cursor: pointer;
+}
+.chat-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chat-icon:hover:not(:disabled),
+.chat-icon:focus-visible {
+  background: var(--ink-3);
+  color: var(--cream);
+}
+.chat-icon.on {
+  color: var(--agent-color);
+}
+.chat-icon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.chat-subhead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 14px 8px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.chat-subhead .spacer {
+  flex: 1;
+}
+.chat-subhead .chat-history {
+  margin: 0;
+  max-width: 150px;
+}
+.chat-new {
+  min-height: 30px;
+}
+.chat-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--agent-color);
+}
+.chat-who-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--agent-color);
+}
+.chat-voice-pick {
+  max-width: 120px;
+  min-height: 28px;
+  padding: 2px 6px;
+}
+/* how full the agent's working memory is */
+.chat-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--paper-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.chat-context-bar {
+  width: 42px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ink-3);
+  overflow: hidden;
+}
+.chat-context-bar span {
+  display: block;
+  height: 100%;
+  background: var(--agent-color);
+}
+.chat-context.warn .chat-context-bar span {
+  background: #e8b04a;
+}
+.chat-context.full .chat-context-bar span {
+  background: var(--red);
+}
+.chat-context.full {
+  color: var(--pink);
+}
+.chat-usage {
+  flex-basis: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+}
+.chat-usage p {
+  margin: 0;
+}
+/* messages as bubbles: yours on the right in IV red, the agent's on the left in its own colour */
+.chat-body {
+  gap: 4px;
+  padding: 14px 14px 10px;
+}
+.chat-row {
+  display: flex;
+  min-width: 0;
+}
+.chat-row.you {
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.chat-row.agent.first {
+  margin-top: 8px;
+}
+.chat-bubble {
+  position: relative;
+  max-width: 86%;
+  min-width: 0;
+  padding: 8px 12px 6px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.chat-bubble.you {
+  background: var(--you-bubble);
+  color: var(--you-text);
+  border-bottom-right-radius: 5px;
+}
+.chat-bubble.agent {
+  background: var(--agent-bubble);
+  color: var(--paper);
+  border-bottom-left-radius: 5px;
+  box-shadow: inset 3px 0 0 var(--agent-color);
+}
+.chat-text {
+  white-space: pre-wrap;
+}
+/* the agent's markdown as formatting (ChatText, chatText.js) */
+.chat-text.md {
+  display: block;
+}
+.chat-text.md strong {
+  font-weight: 700;
+  color: var(--cream, var(--paper));
+}
+.chat-text.md .ct-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88em;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(241, 237, 229, 0.08);
+}
+.chat-text.md .ct-head {
+  margin-top: 6px;
+  font-weight: 700;
+  color: var(--cream, var(--paper));
+}
+.chat-text.md .ct-bullet {
+  display: flex;
+  gap: 8px;
+}
+.chat-text.md .ct-mark {
+  flex: none;
+  min-width: 10px;
+  color: var(--agent-color);
+}
+.chat-text.md .ct-gap {
+  height: 0.7em;
+}
+.chat-text.md .ct-rule {
+  border: 0;
+  border-top: 1px solid rgba(241, 237, 229, 0.16);
+  margin: 8px 0;
+}
+.chat-name {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--agent-color);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.chat-time {
+  float: right;
+  margin: 6px -2px -2px 10px;
+  font-size: 10.5px;
+  opacity: 0.6;
+}
+.chat-bubble .chat-files {
+  margin-bottom: 6px;
+}
+.chat-typing {
+  display: inline-flex;
+  gap: 4px;
+  padding: 12px 14px;
+}
+.chat-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--agent-color);
+  animation: chat-dot 1.2s infinite ease-in-out;
+}
+.chat-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.chat-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes chat-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.chat-step {
+  padding-left: 10px;
+  margin: 1px 0;
+}
+.chat-ask,
+.chat-report,
+.chat-problem {
+  margin-top: 6px;
+  border-radius: 12px;
+}
+.chat-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 6px;
+  color: var(--paper-dim);
+  text-align: center;
+}
+.chat-divider::before,
+.chat-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+/* one rounded box for writing: attach, the words, the mic and a round send */
+.chat-dock-area {
+  display: grid;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--line);
+}
+.chat-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 4px 4px 4px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  background: var(--ink-2);
+}
+.chat-composer:focus-within {
+  border-color: var(--agent-color);
+}
+.chat-composer textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  max-height: 160px;
+  padding: 7px 4px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: none;
+  color: var(--paper);
+  font: 400 14px / 1.45 var(--body);
+}
+.chat-composer .chat-attach {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+}
+.chat-send-round {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  cursor: pointer;
+}
+.chat-send-round svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.chat-send-round:disabled {
+  background: var(--ink-3);
+  color: var(--paper-dim);
+  cursor: default;
+}
+.chat-send-round.stop {
+  background: var(--cream);
+  color: var(--ink);
+}
+.chat-mic:hover:not(:disabled) {
+  color: var(--agent-color);
+}
+.chat-listening {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 6px;
+  min-width: 0;
+}
+.chat-listening-hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chat-rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: chat-rec 1s infinite;
+}
+@keyframes chat-rec {
+  50% {
+    opacity: 0.3;
+  }
+}
+.chat-composer.talking {
+  border-color: var(--red);
+}
+.chat-foot {
+  margin: 0;
+  padding: 0 6px;
+  font-size: 11.5px;
+}
+/* the Activity tab (ActivityLog.jsx) */
+.activity {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.activity-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.activity-problems {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.activity-empty {
+  padding: 18px;
+}
+.activity-days {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 14px 16px 18px;
+}
+.activity-day h3 {
+  position: sticky;
+  top: 0;
+  margin: 0;
+  padding: 10px 0 6px;
+  background: var(--ink);
+  color: var(--paper-dim);
+  font-weight: 400;
+}
+.activity-day ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.activity-item {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ink-2);
+  border-left: 3px solid var(--line-strong);
+  font-size: 13.5px;
+}
+.activity-item.who-chat {
+  border-left-color: var(--agent-color);
+}
+.activity-item.who-outside {
+  border-left-color: #8fa8ff;
+}
+.activity-item.who-idea {
+  border-left-color: #e8b04a;
+}
+.activity-item.bad {
+  border-left-color: var(--red);
+}
+.activity-line {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--paper-dim);
+}
+.activity-who {
+  color: var(--cream);
+}
+.activity-why {
+  color: var(--pink);
+  overflow-wrap: anywhere;
+}
+.activity-spend {
+  color: #e8b04a;
+}
+.activity-acts {
+  display: flex;
+  gap: 14px;
+}
+/* the chat in its own window: the header is the title bar (drag it), clear of the window buttons */
+html.chat-window,
+html.chat-window body {
+  background: var(--ink);
+}
+.chat-window-root {
+  height: 100vh;
+  display: flex;
+}
+.chat-panel.popped {
+  position: static;
+  flex: 1;
+  width: auto;
+  border-left: 0;
+  box-shadow: none;
+}
+.chat-panel.popped .chat-head {
+  min-height: 40px;
+  padding-right: 150px;
+  -webkit-app-region: drag;
+}
+.chat-panel.popped .chat-head button,
+.chat-panel.popped .chat-head select {
+  -webkit-app-region: no-drag;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-typing span,
+  .chat-rec-dot {
+    animation: none;
+  }
+}
+.chat-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--agent-color);
+  cursor: pointer;
+}
+
+/* ---- 1.1.3: Setup's optional tools say what they do (GitHub #21), and Create → Image sets a model up (#22) ---- */
+.setup-toolbar {
+  position: sticky;
+  /* the page scrolls with var(--pad) of top padding; stick at its very top edge, not under the padding */
+  top: calc(-1 * var(--pad, 52px));
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin: 0 -14px;
+  background: rgba(18, 13, 15, 0.94);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+}
+.setup-toolbar .setup-view {
+  justify-self: auto;
+}
+.setup-toolbar-label {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.setup-toolbar-hint {
+  flex: 1 1 220px;
+}
+.setup-area-what {
+  margin: 6px 0 0;
+  max-width: 78ch;
+  color: var(--paper);
+  line-height: 1.5;
+}
+.setup-area-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.setup-area .setup-rows {
+  margin-top: 6px;
+}
+.hf-login {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-strong);
+}
+.hf-login-text {
+  line-height: 1.5;
+}
+.hf-login-pages {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-left: 8px;
+}
+.hf-login-ok {
+  margin: 0;
+}
+.hf-login .ok-dot {
+  color: var(--green, #5fd38d);
+}
+.hf-login .key-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.hf-login .key-form input {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+.family-card.unset {
+  opacity: 0.6;
+  border-style: dashed;
+}
+.family-card.unset:hover:not(:disabled),
+.family-card.unset.open {
+  opacity: 1;
+}
+.family-card.unset.open {
+  border-color: var(--line-strong);
+  border-style: solid;
+  background: rgba(255, 255, 255, 0.03);
+}
+.family-setup {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--red);
+  background: rgba(255, 255, 255, 0.02);
+}
+.family-setup-head h3 {
+  margin: 0 0 4px;
+  font: 700 20px/1.1 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+}
+.family-setup-head p {
+  margin: 0;
+}
+.family-setup-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.family-setup-files li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.family-setup-files li .check-icon {
+  color: var(--paper-dim);
+}
+.family-setup-files li.ok .check-icon {
+  color: var(--green, #5fd38d);
+}
+.family-setup-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.family-setup-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }

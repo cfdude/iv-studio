@@ -15,10 +15,12 @@ run() {
 }
 
 # the parts that need no GPU and no ComfyUI
-for t in cast cutout directing editgen news tours lint productions reel screenplay sizzle-cut staging timeline-tracks private-outputs comfylauncher comfy-busy ranking prompt-guide ollama-address nodepacks model-versions remake comfycloud image-families refmods hardware training-recipe training-runpod sampler-choice sequence-links music-remix modal-account setup-progress effects comfy-address; do
+for t in cast cutout directing editgen news tours lint productions reel screenplay sizzle-cut staging timeline-tracks private-outputs comfylauncher comfy-busy ranking prompt-guide ollama-address nodepacks model-versions remake comfycloud image-families refmods hardware training-recipe training-runpod sampler-choice sequence-links music-remix pricing seedance words modal-account setup-progress library-facts speed effects comfy-install comfy-address mac-update credits comfy-starting freefield lora-families comfy-restart openai-writer filmcraft interchange recommended describe softmouth dailies terms continue-full portable-update chat-extras picture-setup chat-text; do
   run "test-$t" node "test/$t.mjs"
 done
 run test-runpod node test/runpod.mjs python3
+run test-cloudprep node test/cloudprep.mjs python3
+run test-cloudvoice node test/cloudvoice.mjs python3
 
 # test media made with the bundled ffmpeg (Linux build), then an edit export and a Shinobi render with Chrome
 M="$OUT/media"; mkdir -p "$M"
@@ -56,6 +58,44 @@ cat "$OUT/data/mcp-start.sh" 2>/dev/null
 run mcp-appimage env MCP_COMMAND="$MCP_CMD" MCP_ARGS="$MCP_ARGS_JSON" timeout 120 node test/mcp-smoke.mjs
 sleep 2
 if mount | grep -q "IV-Stu"; then results+=("FAIL mcp-appimage-unmounted"); else results+=("ok   mcp-appimage-unmounted"); fi
+
+# the Linux updater (electron-updater's AppImage path, as Windows uses its own), end to end: a copy of the AppImage in a
+# temporary folder finds a 9.9.9 on a local feed (this code built again with that version), downloads and checks it,
+# replaces its own file and opens again. Its own virtual display, so the copy that reopens still has one.
+linux_update_selftest() {
+  local U="$OUT/update" PORT=8766 i ok=1 HTTP XV
+  rm -rf "$U"; mkdir -p "$U/app" "$U/feed" "$U/keep"
+  cp dist/IV-Studio.AppImage "$U/app/IV-Studio.AppImage"; chmod +x "$U/app/IV-Studio.AppImage"
+  cp package.json package-lock.json "$U/keep/"
+  npm version --no-git-tag-version --allow-same-version 9.9.9 >/dev/null
+  npx electron-builder --linux --x64 --publish never -c.directories.output="$U/build" >"$U/build.log" 2>&1
+  local built=$?
+  cp "$U/keep/package.json" "$U/keep/package-lock.json" .
+  [ $built -eq 0 ] || { tail -n 30 "$U/build.log"; return 1; }
+  cp "$U/build/IV-Studio.AppImage" "$U/build/latest-linux.yml" "$U/feed/"
+  cat "$U/feed/latest-linux.yml"
+  python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$U/feed" >"$U/http.log" 2>&1 &
+  HTTP=$!
+  Xvfb :97 -screen 0 1600x1000x24 >/dev/null 2>&1 &
+  XV=$!
+  for i in $(seq 1 30); do curl -sf "http://127.0.0.1:$PORT/latest-linux.yml" >/dev/null && break; sleep 1; done
+  DISPLAY=:97 IV_STUDIO_UPDATE_FEED="http://127.0.0.1:$PORT" IV_STUDIO_UPDATE_SELFTEST=1 IV_STUDIO_USER_DATA="$U/userdata" IV_STUDIO_DATA="$U/data" \
+    "$U/app/IV-Studio.AppImage" --no-sandbox >"$U/app.log" 2>&1 &
+  for i in $(seq 1 120); do
+    if cmp -s "$U/app/IV-Studio.AppImage" "$U/feed/IV-Studio.AppImage" && pgrep -f "$U/app/IV-Studio.AppImage" >/dev/null; then ok=0; break; fi
+    sleep 2
+  done
+  echo "after $i checks"
+  cmp -s "$U/app/IV-Studio.AppImage" "$U/feed/IV-Studio.AppImage" && echo "the AppImage is now the 9.9.9 build" || echo "the AppImage wasn't replaced"
+  pgrep -af "$U/app/IV-Studio.AppImage" || echo "nothing running from it"
+  grep -iE "update|error" "$U/app.log" | tail -n 20
+  pkill -f "$U/app/IV-Studio.AppImage" 2>/dev/null
+  kill "$HTTP" "$XV" 2>/dev/null
+  # the build artifact keeps the logs, not three more AppImages
+  rm -rf "$U/build" "$U/feed" "$U/app"
+  return $ok
+}
+run linux-update-selftest linux_update_selftest
 
 echo
 printf '%s\n' "${results[@]}" | tee "$OUT/summary.txt"

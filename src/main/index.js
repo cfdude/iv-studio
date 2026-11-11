@@ -1,38 +1,55 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, protocol, safeStorage, screen, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, powerSaveBlocker, protocol, safeStorage, screen, shell } from 'electron'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { comfyFolders, dataLocation, incognitoDir, readSettings, resourcesDir, videosFolderOf, writerOf, writeSettings } from '../service/paths'
 import { chooseTarget, copyData, discardCopy, freeBytes, listData, movableEntries, oldCopy, removeOldCopy, verifyCopy, writePointer } from '../service/datafolder'
-import { EXTRA_BIN, harnessStatus } from '../service/harness'
+import { codexWindow, EXTRA_BIN, findHarnesses, harnessStatus } from '../service/harness'
+import { AGENT_NAMES, startAgentRun } from '../service/agentrun'
+import { ACTIVITY_FOLDER, markUndone, pruneActivity, readActivity } from '../service/activity'
+import { AGENT_INFO, openSignIn, runInstall, signedIn } from '../service/agentinstall'
+import { applyChatEvent, applyUsage, spokenText as spoken, ATTACH_EXTENSIONS, attachmentOf, listChats, loadChat, MAX_ATTACH, newChat, pruneChats, saveChat, startChatTurn, undoEditChange, withAttachments } from '../service/agentchat'
 import { pasteMessage, skillMarkdown, readGuide } from '../service/agent'
 import { Cloud, GPUS, MODAL_VERSION } from '../service/cloud'
 import { SetupProgress, about } from '../service/setupprogress'
-import { RunPod, GPUS as RUNPOD_GPUS } from '../service/runpod'
+import { RunPod, GPUS as RUNPOD_GPUS, VOLUME_PER_GB_MONTH } from '../service/runpod'
+import { CloudPrep, cloudCatalog, roomOnVolume } from '../service/cloudprep'
+import { CloudVoiceEngine } from '../service/cloudvoice'
 import { MODEL_GROUPS, recommend, scanHardware } from '../service/hardware'
+import { isSpeed } from '../service/speed'
 import { comboOptions } from '../service/setup'
-import { comfyHome, comfyUp, findComfyElsewhere, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launcherFor, launchersIn, startApp, waitUp } from '../service/comfylauncher'
-import { randomBytes } from 'node:crypto'
+import { managerReq } from '../service/comfyupdate'
+import { comfyHome, comfyProcesses, comfyUp, findComfyElsewhere, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launcherFor, launchersIn, noteLaunch, recentLaunch, sameComfy, startApp, stopComfy, waitDown, waitUp } from '../service/comfylauncher'
+import { ComfyInstaller, checkFolder, latestAsset, pickBuild, suggestFolder } from '../service/comfyinstall'
+import { createHash, randomBytes } from 'node:crypto'
 import { Edits, FORMATS, LOUDNESS } from '../service/edits'
 import { EditGen } from '../service/editgen'
 import { Productions } from '../service/productions'
 import { Reels } from '../service/reel'
 import { Cutouts } from '../service/cutout'
 import { Reframes } from '../service/reframe'
+import { offeredFx, CLIP_FX, FreefieldApps } from '../service/freefield'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState, MANUAL as UPDATE_MANUAL } from './updater'
 import { findGpu, statsReadout } from '../service/gpu'
 import { ramReadout } from '../service/memory'
 import { keyStoreMissingText, menuTemplateFor, runpodTokenMissingText } from '../shared/platform'
-import { projectSettings, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
+import { projectSettings, readSecret, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
-import { ModelInstaller } from '../service/models'
-import { CONTEXT_IR_PRICE, normalizeOllamaUrl, ollamaStatus, pullModel, setOllamaSource, unloadOllama } from '../service/prompter'
+import { ModelInstaller, hfLoginFrom, setSavedHfToken } from '../service/models'
+import { CONTEXT_IR_PRICE, localChat, localWriterModel, normalizeOllamaUrl, ollamaStatus, pullModel, setOllamaSource, unloadOllama } from '../service/prompter'
+import { normalizeApiBase, openaiStatus, parseHeaders, setLlmSource } from '../service/llm'
+import { loadSlate, lookbook, promptVariants, rewritePrompt, writerName } from '../service/filmcraft'
 import { Studio } from '../service/studio'
-import { Ranker } from '../service/ranking'
+import { cleanStretchFile, Ranker } from '../service/ranking'
+import { exportInterchange } from '../service/interchange'
+import { RECOMMENDED, recommendedManifest, recommendedOnDisk } from '../service/recommended'
+import { Turnarounds } from '../service/turnaround'
+import { Describer } from '../service/describe'
+import { SoftMouth } from '../service/softmouth'
 import { Reviewer } from '../service/review'
 import { Previs } from '../service/previs'
 import { findFizgig, LOCAL_TRAIN, RUNPOD_TRAIN_GPUS, SCENES, TALKS, TRAIN_DEFAULTS, TRAIN_GPUS, Trainings } from '../service/training'
@@ -41,15 +58,25 @@ import { CharacterCatalog } from '../service/characters'
 import { Replace, RESOLUTIONS, MAX_CHARACTERS, DEFAULT_TONE, OPENJUTSU } from '../service/replace'
 import { CREDIT as REMAKE_CREDIT, Remake } from '../service/remake'
 import { lintPrompt } from '../service/lint'
+import { ABUSE_EMAIL, acceptance, H3_LICENSE_URL, H3_RULES, H3_TERMS_DECLINED, H3_TERMS_NEEDED, H3_TERMS_VERSION, REPORT_URL, setH3Gate, termsAccepted } from '../service/terms'
 import { Reader } from '../service/reader'
 import { Rebuilds } from '../service/rebuild'
 import { Voices } from '../service/voices'
 import { ACE_KEYS, monoDecoder, Music, MUSIC_DEFAULTS, MUSIC_ENGINES, REMIX } from '../service/music'
+import { SOUND_ENGINE, SOUND_KINDS, SOUND_LIMITS, Sounds } from '../service/sounds'
 import { Images } from '../service/images'
 import { RefMods } from '../service/refmods'
-import { Civitai, CIVITAI_SITES, LORA_SORTS, LORA_TAGS } from '../service/civitai'
+import { Civitai, CIVITAI_SITES, LORA_FAMILIES, LORA_SORTS, LORA_TAGS } from '../service/civitai'
 import { Comfy } from '../service/comfy'
+import { afterPrompt, getBalance } from '../service/comfyaccount'
+import { budgetOf, readLedger, spentToday, startSpendDesk, todayLabel } from '../service/spending'
+import { listRecipes, removeRecipe } from '../service/recipes'
+import { Batches, batchReport, batchState } from '../service/batches'
+import { makeDailies } from '../service/dailies'
+import { infoFor, priceGraph } from '../service/pricing'
 import { checkKey as checkComfyCloudKey, COMFY_CLOUD, summarise as summariseComfyCloud } from '../service/comfycloud'
+import { Usage } from '../service/usage'
+import { estimate, estimateLine, samples, shapeOfPlan } from '../service/timing'
 
 // An app opened from Finder gets a short PATH (/usr/bin:/bin:/usr/sbin:/sbin), so the tools IV Studio runs (Claude
 // Code, Codex, Ollama, git) and what they need (node) would not be found; add the usual install folders.
@@ -94,6 +121,22 @@ function serveFile(req) {
 const BG = '#100c0e'
 // A copy started with its own user data (testing beside the installed app) says so everywhere.
 const TEST_COPY = !!process.env.IV_STUDIO_USER_DATA
+// Where Claude Code and Codex are looked for, and where Install puts them: this account's home, or in a test copy a
+// throwaway one (IV_STUDIO_TEST_HOME). extra is what the installer and the agents get to point them there.
+function agentHome() {
+  const home = TEST_COPY && process.env.IV_STUDIO_TEST_HOME
+  if (!home) return { home: os.homedir(), env: process.env, extra: {} }
+  const extra = { USERPROFILE: home, HOME: home, LOCALAPPDATA: path.join(home, 'AppData', 'Local'), APPDATA: path.join(home, 'AppData', 'Roaming'), CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: path.join(home, '.claude') }
+  return { home, env: { ...process.env, ...extra, PATH: '' }, extra }
+}
+const agentsFound = () => {
+  const { env, home } = agentHome()
+  return findHarnesses(env, home)
+}
+const agentsStatus = () => {
+  const { env, home } = agentHome()
+  return harnessStatus(env, home)
+}
 // Settings and keys live in BASE. Everything made lives in DATA: BASE itself, or BASE\incognito while
 // Incognito is on (see incognitoDir). The switch takes a restart, so one run never mixes the two.
 // A moved data folder that isn't there (its drive unplugged) is asked about first thing (below); until then
@@ -112,21 +155,111 @@ const TEXT_SIZES = { normal: 1, large: 1.15, larger: 1.3 }
 let refitZoom = () => {}
 let stopWatch = null
 let installer = null
+let recInstaller = null // the Recommended LoRAs shelf (recommended.js), into this PC's ComfyUI
+let turnarounds = null // turnaround sheets (turnaround.js)
+let describer = null // Library search by what's in a file (describe.js)
+let softMouth = null // a reference video's mouths blurred (softmouth.js)
 let trainings = null
 let replace = null
 let remake = null
 let catalog = null
 let voices = null
 let music = null
+let sounds = null
 let images = null
 let civitai = null
 let runpodWake = null // starts a RunPod pod when the last one idled off (set up with the cloud handlers)
+let cloudPrepFor = null // (provider, comfy) => the CloudPrep for the person's own cloud (set up with the cloud handlers)
+let cloudVoice = null // () => the voice engine on the person's own cloud while rendering there, else null (cloud handlers)
 const pending = new Set() // job ids the window is waiting on
+// Opt-in usage counting (src/service/usage.js): a render is counted when the window's watch sees it start and
+// finish. Jobs that were already over when they were first seen (an old shot opened again) are never counted.
+let usage = null
+const OVER = ['success', 'error', 'cancelled']
+const countedStarts = new Set()
+const usageKind = (kind) => (String(kind).startsWith('picture') ? 'image' : String(kind).includes('sequence') ? 'sequence' : kind)
+function noteJob(before, job) {
+  if (!usage || !job?.id || OVER.includes(before)) return
+  if (!countedStarts.has(job.id)) {
+    countedStarts.add(job.id)
+    if (Date.now() - Date.parse(job.createdAt) < 10 * 60 * 1000) usage.count('render_started', usageKind(job.kind))
+  }
+  if (job.status === 'success') {
+    usage.count('render_finished', usageKind(job.kind))
+    usage.flush()
+  }
+}
 let ranker = null // ranks finished previews (ranking.js), set up with the services it reads
 let reviewer = null // reviews a take against its brief (review.js)
 
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
+  // the chat popped out into its own window (openChatWindow) hears everything too; it only listens for the chat's
+  if (chatWin && !chatWin.isDestroyed()) chatWin.webContents.send(channel, payload)
+}
+
+// ---------- the chat in its own window ----------
+// The same renderer, opened at #chat, shows only the chat (ChatWindow.jsx). The chat itself lives here in the main
+// process, so both windows show the same conversation. The main window keeps telling this process what page and
+// selection it's on (chat:setContext), which a message from the popped-out window is sent with.
+let chatWin = null
+let chatContext = null
+// set by Put back in the app: once the chat's window has really closed, the main window opens its panel
+let dockAfterClose = false
+function openChatWindow() {
+  if (chatWin && !chatWin.isDestroyed()) {
+    chatWin.show()
+    chatWin.focus()
+    return
+  }
+  const b = readSettings(BASE).chatWindow || {}
+  chatWin = new BrowserWindow({
+    width: b.width || 460,
+    height: b.height || 780,
+    ...(Number.isFinite(b.x) && Number.isFinite(b.y) ? { x: b.x, y: b.y } : {}),
+    minWidth: 360,
+    minHeight: 480,
+    show: false,
+    backgroundColor: BG,
+    title: 'IV Studio · Chat',
+    icon: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'icon.png'),
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 14, y: 13 } } : { titleBarOverlay: { color: BG, symbolColor: '#f1ede5', height: 40 } }),
+    webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
+  })
+  // put it back exactly where it was: setBounds mirrors the getBounds saved on close (the constructor's size reads
+  // the frame differently on Windows, so the window crept a little each time), and only on a screen that's still there
+  if (Number.isFinite(b.x) && Number.isFinite(b.y) && b.width && b.height) {
+    const area = screen.getDisplayMatching(b).workArea
+    const visible = b.x < area.x + area.width - 80 && b.x + b.width > area.x + 80 && b.y >= area.y - 10 && b.y < area.y + area.height - 80
+    if (visible) chatWin.setBounds(b)
+  }
+  chatWin.webContents.on('will-navigate', (e, url) => {
+    if (url !== chatWin.webContents.getURL()) e.preventDefault()
+  })
+  chatWin.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https:\/\//.test(url)) shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  chatWin.once('ready-to-show', () => chatWin?.show())
+  chatWin.on('close', () => {
+    try {
+      writeSettings({ chatWindow: chatWin.getBounds() }, BASE)
+    } catch {}
+  })
+  chatWin.on('closed', () => {
+    chatWin = null
+    send('chat:popped', false)
+    if (dockAfterClose && win && !win.isDestroyed()) {
+      win.webContents.send('chat:docked', true)
+      win.show()
+      win.focus()
+    }
+    dockAfterClose = false
+  })
+  if (process.env.ELECTRON_RENDERER_URL) chatWin.loadURL(`${process.env.ELECTRON_RENDERER_URL}#chat`)
+  else chatWin.loadFile(path.join(__dirname, '../renderer/index.html'), { hash: 'chat' })
+  send('chat:popped', true)
 }
 
 // Secrets at rest (the Comfy.org key, the cloud token) are encrypted with Windows' per-user key.
@@ -139,6 +272,15 @@ const unseal = (enc) => {
     return null
   }
 }
+// the OpenAI-compatible prompt writer (llm.js): its address and model, with the key and headers unsealed here
+const llmOf = (s) => {
+  let headers = {}
+  try {
+    headers = parseHeaders(unseal(s.openaiHeaders) || '')
+  } catch {}
+  return { provider: s.promptEngine === 'openai' ? 'openai' : 'ollama', url: s.openaiUrl, model: s.openaiModel, vision: !!s.openaiVision, key: unseal(s.openaiKey) || '', headers }
+}
+setLlmSource(() => llmOf(readSettings(BASE)))
 
 // Comfy Cloud takes the person's Comfy API key: its own, else the Comfy.org key saved for the paid prompt writer
 // (both come from platform.comfy.org).
@@ -159,18 +301,31 @@ function makeStudio() {
       : { comfyUrl: s.comfyUrl }
   studio = new Studio({ dataDir: DATA, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')), models: s.models, ...cloud })
   if (onRunPod) studio.comfy.waker = () => runpodWake?.()
+  // the person's own cloud: model lists without a GPU, and a render's models and LoRAs put there first (cloudprep.js)
+  if (s.target === 'cloud' && (onRunPod || ((s.cloudProvider || 'modal') === 'modal' && s.cloud?.url))) {
+    const comfy = studio.comfy
+    let prep = null
+    const get = () => (prep ||= cloudPrepFor?.(onRunPod ? 'runpod' : 'modal', comfy) || null)
+    comfy.prep = { objectInfo: (cls) => (get() ? get().objectInfo(cls) : comfy.realObjectInfo(cls)), prepare: (g) => get()?.prepare(g) }
+  }
   studio.comfy.folders = comfyFolders(s, INCOGNITO)
   if (trainings) trainings.studio = studio
   if (replace) replace.studio = studio
   if (remake) remake.studio = studio
   if (catalog) catalog.studio = studio
   if (music) music.studio = studio
+  if (sounds) sounds.studio = studio
   if (images) images.studio = studio
   // LoRAs live on this PC's ComfyUI, also when renders go to the cloud
   if (civitai) civitai.comfy = new Comfy(s.comfyUrl)
   // nothing of IV Studio's own holds the GPU while ComfyUI renders (see Studio.makeRoom)
-  studio.beforeRender = () => voices?.release()
+  studio.beforeRender = () => (describer?.pause(), voices?.release())
+  // Seedance and other partner nodes: the person's Comfy.org key, read when a render needs it (never sent to the window)
+  studio.partnerKey = () => unseal(readSettings(BASE).comfyApiKey)
+  // soft mouth on video references (softmouth.js), with Shinobi's Python and the face models
+  studio.softMouth = (file) => (softMouth ? softMouth.make(file) : Promise.reject(new Error('Soft mouth isn’t ready yet.')))
   if (!installer?.running) installer = new ModelInstaller({ comfy: studio.comfy, manifest: studio.manifest, onUpdate: (u) => send('models:update', u) })
+  if (!recInstaller?.running) recInstaller = new ModelInstaller({ comfy: new Comfy(s.comfyUrl), manifest: recommendedManifest(), onUpdate: (u) => send('recommended:update', u) })
   stopWatch = studio.watch((msg) => {
     if (msg.type === 'progress' || msg.type === 'executing' || msg.type === 'execution_success' || msg.type === 'execution_error') pump()
     // a live preview step: to the window, keyed by the prompt (the shot page and the queue match it to their job)
@@ -186,7 +341,12 @@ async function pump() {
   try {
     for (const id of [...pending]) {
       try {
+        let before = null
+        try {
+          before = studio.getJob(id).status
+        } catch {}
         const job = await studio.refreshJob(id)
+        noteJob(before, job)
         send('jobs:update', job)
         if (['success', 'error', 'cancelled'].includes(job.status)) pending.delete(id)
         // a SeedVR2 finish starts its enhance step (Studio.refreshJob): watch that too
@@ -407,20 +567,146 @@ app.whenReady().then(() => {
   handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, dataDir: DATA, dataSource: LOCATION.missing ? 'default' : LOCATION.source, portable: PORTABLE, mcp: mcpCommand(), testCopy: TEST_COPY, incognito: INCOGNITO, links }))
   // The window never sees the Comfy.org or Civitai key, only whether one is saved.
   // A saved key the system can't open counts as not saved (and is listed as unreadable); see service/secrets.js.
-  const publicSettings = (s) => projectSettings(s, safeStorage, process.platform)
+  // The Hugging Face token and the OpenAI-compatible writer's key and headers go through the same readSecret rule
+  // (an unreadable or refused one counts as not saved) and their sealed values never leave.
+  const guardedHas = (s, name) => {
+    let available = false
+    try {
+      available = !!safeStorage.isEncryptionAvailable()
+    } catch {}
+    return available && readSecret(safeStorage, s[name]).state === 'ok'
+  }
+  const publicSettings = (s) => {
+    const { hfToken, openaiKey, openaiHeaders, ...rest } = s
+    return { ...projectSettings(rest, safeStorage, process.platform), hasHfToken: guardedHas(s, 'hfToken'), hasOpenaiKey: guardedHas(s, 'openaiKey'), hasOpenaiHeaders: guardedHas(s, 'openaiHeaders') }
+  }
   const secretNow = () => secretStates(readSettings(BASE), safeStorage, process.platform)
   const comfyKey = () => unseal(readSettings(BASE).comfyApiKey)
+  // Anonymous usage counting and the cloud beta signup (usage.js): both off until the person says yes. A test copy
+  // only ever sends to an address given to it (IV_STUDIO_USAGE_URL, IV_STUDIO_BETA_URL), never the real one.
+  usage = new Usage({
+    dataDir: BASE,
+    version: app.getVersion(),
+    platform: process.platform,
+    settings: () => ({ ...readSettings(BASE), incognito: INCOGNITO }),
+    save: (patch) => writeSettings(patch, BASE),
+    links: TEST_COPY ? { usageUrl: process.env.IV_STUDIO_USAGE_URL, betaUrl: process.env.IV_STUDIO_BETA_URL } : links
+  })
+  handle('usage:status', () => usage.status())
+  handle('usage:set', (on) => usage.setChoice(!!on))
+  handle('usage:preview', () => usage.preview())
+  handle('usage:joinBeta', (email) => usage.joinBeta(email))
+  usage.count('app_opened')
+  setTimeout(() => usage.flush(), 20000)
+  setInterval(() => usage.flush(), 6 * 60 * 60 * 1000)
+  // How long a hunt or a finish will take here, from this machine's own finished renders (timing.js).
+  let timed = { at: 0, dir: null, history: [] }
+  handle('timing:estimate', (want) => {
+    const s = readSettings(BASE)
+    const where = s.target === 'cloud' ? 'cloud' : 'local'
+    const plan = shapeOfPlan({ ...(want || {}), where })
+    if (!plan) return null
+    const dir = path.join(DATA, 'jobs')
+    if (Date.now() - timed.at > 30000 || timed.dir !== dir) {
+      let jobs = []
+      try {
+        jobs = fs
+          .readdirSync(dir)
+          .filter((f) => f.endsWith('.json'))
+          .map((f) => ({ f, t: fs.statSync(path.join(dir, f)).mtimeMs }))
+          .sort((a, b) => b.t - a.t)
+          .slice(0, 200)
+          .map(({ f }) => {
+            try {
+              return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
+            } catch {
+              return null
+            }
+          })
+      } catch {}
+      timed = { at: Date.now(), dir, history: samples(jobs) }
+    }
+    const provider = s.cloudProvider || 'modal'
+    const perHour = where !== 'cloud' ? null : provider === 'runpod' ? RUNPOD_GPUS.find((g) => g.id === s.runpod?.gpu)?.perHour ?? null : provider === 'modal' ? GPUS.find((g) => g.id === s.cloud?.gpu)?.perHour ?? null : null
+    const e = estimate(plan, timed.history, { perHour })
+    return e ? { ...e, where, line: estimateLine(e, { where }) } : null
+  })
   handle('settings:get', () => publicSettings(readSettings(BASE)))
   handle('settings:setComfyKey', (key) => {
     const k = String(key || '').trim()
     if (k && !keysSafe()) throw new Error(KEY_STORE_MISSING)
-    return publicSettings(writeSettings({ comfyApiKey: seal(k) }, BASE))
+    const saved = publicSettings(writeSettings({ comfyApiKey: seal(k) }, BASE))
+    refreshAccount()
+    return saved
+  })
+  // Settings → Prompt writer → OpenAI-compatible: { key?, headers? } ('' removes one). Headers are "Name: value" lines.
+  handle('settings:setOpenaiSecrets', ({ key, headers } = {}) => {
+    const patch = {}
+    if (key !== undefined) {
+      const k = String(key || '').trim()
+      if (k && !keysSafe()) throw new Error(KEY_STORE_MISSING)
+      patch.openaiKey = seal(k)
+    }
+    if (headers !== undefined) {
+      const h = String(headers || '').trim()
+      parseHeaders(h)
+      if (h && !keysSafe()) throw new Error(KEY_STORE_MISSING)
+      patch.openaiHeaders = seal(h)
+    }
+    return publicSettings(writeSettings(patch, BASE))
   })
   handle('settings:setCivitaiKey', (key) => {
     const k = String(key || '').trim()
     if (k && !keysSafe()) throw new Error(KEY_STORE_MISSING)
     return publicSettings(writeSettings({ civitaiKey: seal(k) }, BASE))
   })
+  // ---------- Comfy.org account (credits for partner nodes) ----------
+  // account: { hasKey, balance, error, checking }. The balance is read on open, on a click and after each paid run.
+  let account = { hasKey: !!readSettings(BASE).comfyApiKey, balance: null, error: null, checking: false }
+  // IV_STUDIO_COMFY_API points a test copy at a stand-in for api.comfy.org (test only).
+  const accountApi = { base: process.env.IV_STUDIO_COMFY_API || undefined }
+  const pushAccount = () => send('account:state', account)
+  const refreshAccount = async () => {
+    const key = comfyKey()
+    if (!key) return (account = { hasKey: false, balance: null, error: null, checking: false }), pushAccount(), account
+    account = { ...account, hasKey: true, checking: true }
+    pushAccount()
+    try {
+      account = { hasKey: true, balance: await getBalance(key, accountApi), error: null, checking: false }
+    } catch (e) {
+      account = { ...account, hasKey: true, error: e.message, errorCode: e.code, checking: false }
+    }
+    pushAccount()
+    return account
+  }
+  Comfy.onPaid = ({ comfy, promptId }) => afterPrompt(comfy, promptId, () => refreshAccount())
+  handle('account:state', () => account)
+  handle('account:refresh', () => refreshAccount())
+  // A key is checked against Comfy.org before it's kept: a refused key isn't saved; with no answer it's kept.
+  handle('account:setKey', async (key) => {
+    const k = String(key || '').trim()
+    if (!k) throw new Error('Paste your Comfy.org API key first.')
+    if (!keysSafe()) throw new Error(KEY_STORE_MISSING)
+    let balance = null
+    try {
+      balance = await getBalance(k, accountApi)
+    } catch (e) {
+      if (e.code === 'bad_key') throw e
+    }
+    writeSettings({ comfyApiKey: seal(k) }, BASE)
+    account = { hasKey: true, balance, error: balance ? null : 'Saved, but Comfy.org could not be reached to check it.', checking: false }
+    pushAccount()
+    return account
+  })
+  handle('account:clearKey', () => {
+    writeSettings({ comfyApiKey: null }, BASE)
+    account = { hasKey: false, balance: null, error: null, checking: false }
+    pushAccount()
+    return account
+  })
+  // What a graph would cost on the person's Comfy.org credits (for the confirm before a paid run).
+  handle('account:price', async (graph) => priceGraph(graph, await infoFor(studio.comfy, graph)))
+  setTimeout(() => readSettings(BASE).comfyApiKey && refreshAccount(), 3000)
   // ---------- edits (the timeline editor) ----------
   const unpacked = (p) => p.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
   const edits = new Edits({
@@ -439,6 +725,34 @@ app.whenReady().then(() => {
     const r = await cutouts.make(opts)
     return { ...r, media: await edits.addMedia(r.file, { type: 'cutout', from: opts.file, what: r.what }) }
   })
+  // Clip effects and Workflows → Effects: Freefield's apps (freefield.js) on this PC's ComfyUI. A clip's own stretch
+  // (start, length in its file) is cut out first, so the effect sees only what the timeline shows.
+  const clipfx = new FreefieldApps({ resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')), dataDir: DATA, studio: () => studio })
+  handle('clipfx:meta', (fx) => (fx ? clipfx.meta(fx) : offeredFx().map((k) => clipfx.meta(k))))
+  handle('clipfx:status', (fx) => (fx ? clipfx.status(fx) : clipfx.statusAll()))
+  handle('clipfx:runs', () => clipfx.runs())
+  handle('clipfx:deleteRun', (id) => clipfx.deleteRun(id))
+  // a clip's own stretch (the edit's in point and length) as its own file, made once
+  const clipStretch = async (file, start, length) => {
+    if (!length || /\.(png|jpe?g|webp|bmp)$/i.test(file)) return file
+    const dir = path.join(DATA, 'clipfx', '_sources')
+    fs.mkdirSync(dir, { recursive: true })
+    const src = path.join(dir, `${path.basename(file).replace(/\.[^.]+$/, '')}_${Math.round((start || 0) * 1000)}_${Math.round(length * 1000)}.mp4`)
+    if (!fs.existsSync(src)) await edits.run(['-y', '-hide_banner', '-loglevel', 'error', '-ss', String(start || 0), '-i', file, '-t', String(length), '-c:v', 'libx264', '-crf', '14', '-preset', 'fast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', src])
+    return src
+  }
+  handle('clipfx:preview', async ({ fx = 'reshoot', file, start = null, length = null, values = {}, camera = null, size = null }) => {
+    await voices.release()
+    return clipfx.previewAngle({ fx, file: await clipStretch(file, start, length), values, camera, size, onProgress: (j) => send('clipfx:progress', { fx, preview: true, status: j.status, progress: j.progress }) })
+  })
+  handle('clipfx:live', (opts) => clipfx.liveAngle(opts))
+  handle('clipfx:run', async ({ fx, file, last = null, start = null, length = null, values = {}, camera = null, size = null, name }) => {
+    await voices.release()
+    const src = await clipStretch(file, start, length)
+    const r = await clipfx.run({ fx, file: src, last, values, camera, size, name, onProgress: (j) => send('clipfx:progress', { fx, status: j.status, progress: j.progress }) })
+    const main = r.files.find((f) => f.kind === 'video') || r.files[0]
+    return { ...r, media: main ? await edits.addMedia(main.file, { type: 'clipfx', fx, from: file, label: r.title }) : null }
+  })
   // Reframe: a shot or picture in a new frame shape, with what lies beyond its edges drawn (H3 / Qwen outpaint).
   const reframes = new Reframes({ dataDir: DATA, studio: () => studio, edits, images: () => images })
   handle('reframes:make', async (opts) => {
@@ -449,7 +763,7 @@ app.whenReady().then(() => {
   // Crop and trim references before they go to H3 (Create's media editor).
   const mediaTools = new MediaTools({ dataDir: DATA, ffmpeg: edits.ffmpeg, ffprobe: edits.ffprobe })
   // ---------- Audio: voices (IV Studio's own engine speaks: VoxCPM2 and Whisper in its data folder) ----------
-  voices = new Voices({ dataDir: DATA, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')), ffmpeg: edits.ffmpeg, onLog: (line) => send('voices:log', line), comfy: () => (readSettings(BASE).target === 'cloud' ? null : studio.comfy) })
+  voices = new Voices({ dataDir: DATA, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')), ffmpeg: edits.ffmpeg, onLog: (line) => send('voices:log', line), comfy: () => (readSettings(BASE).target === 'cloud' ? null : studio.comfy), cloud: () => cloudVoice?.() || null })
   handle('voices:status', () => voices.status())
   handle('voices:setup', () => voices.setup())
   handle('voices:list', async () => (await catalog?.attachVoices().catch(() => {}), voices.list()))
@@ -487,11 +801,13 @@ app.whenReady().then(() => {
   handle('music:rename', (id, name) => music.rename(id, name))
   handle('music:cancel', (id) => music.cancel(id))
   handle('music:delete', (id) => music.delete(id))
-  // A file onto the end of a track of an edit (A1 for sound, V1 for video); no edit id makes a new edit.
+  // A file onto the end of a track of an edit (A1 for music and lines, A2 for sound effects, V1 for video); no edit
+  // id makes a new edit.
   const putOnEdit = async (file, name, editId, type) => {
     const e = editId ? edits.get(editId) : edits.create(name)
     const m = await edits.addMedia(file, { type, label: name })
-    const track = m.kind === 'audio' ? 'A1' : 'V1'
+    // sound effects on A2, under a song on A1
+    const track = m.kind === 'audio' ? (type === 'sound' ? 'A2' : 'A1') : 'V1'
     const start = Math.max(0, ...e.clips.filter((c) => c.track === track).map((c) => c.start + (c.out - c.in)))
     const clip = { id: `c${m.id}`, track, media: m.id, start, in: 0, out: m.duration || 4, fadeIn: 0, fadeOut: 0, volume: 1, muted: false }
     return edits.save(e.id, { media: { ...e.media, [m.id]: m }, clips: [...e.clips, clip] })
@@ -500,6 +816,25 @@ app.whenReady().then(() => {
     const song = await music.get(id)
     if (!song.file) throw new Error('That song has not finished yet.')
     return putOnEdit(song.file, song.name, editId, 'music')
+  })
+  // ---------- Audio: sounds (Stable Audio 3 on this PC's ComfyUI) ----------
+  sounds = new Sounds({ studio, dataDir: DATA, probe: (f) => edits.probe(f) })
+  handle('sounds:meta', () => ({ kinds: SOUND_KINDS, limits: SOUND_LIMITS, engine: SOUND_ENGINE }))
+  handle('sounds:status', () => sounds.status())
+  handle('sounds:write', (opts) => sounds.write(opts))
+  handle('sounds:create', async (opts) => {
+    await voices.release()
+    return sounds.create(opts)
+  })
+  handle('sounds:list', () => sounds.list())
+  handle('sounds:rename', (id, name) => sounds.rename(id, name))
+  handle('sounds:cancel', (id) => sounds.cancel(id))
+  handle('sounds:delete', (id) => sounds.delete(id))
+  handle('sounds:toEdit', async (id, take = 0, editId = null) => {
+    const s = await sounds.get(id)
+    const f = s.files?.[take]
+    if (!f) throw new Error('That sound has not finished yet.')
+    return putOnEdit(f.file, s.files.length > 1 ? `${s.name} (take ${take + 1})` : s.name, editId, 'sound')
   })
   // ---------- Create -> Image: pictures from the person's own image models ----------
   images = new Images({ studio, dataDir: DATA })
@@ -513,9 +848,16 @@ app.whenReady().then(() => {
   handle('images:cancel', (id) => images.cancel(id))
   handle('images:delete', (id) => images.delete(id))
   handle('images:toEdit', async (file, name, editId = null) => putOnEdit(file, name, editId, 'iv'))
+  handle('images:toolsStatus', () => images.toolsStatus())
+  handle('images:tool', async (opts) => {
+    await voices.release()
+    return images.tool(opts)
+  })
+  handle('images:saveMask', (dataUrl) => images.saveMask(dataUrl))
+  handle('images:lastFrame', (opts) => images.lastFrame(opts))
   // ---------- LoRAs: Civitai's H3 LoRAs and the ones on this PC ----------
   civitai = new Civitai({ dataDir: DATA, comfy: new Comfy(readSettings(BASE).comfyUrl), key: () => unseal(readSettings(BASE).civitaiKey), mature: () => !!readSettings(BASE).civitaiMature, onProgress: (u) => send('loras:progress', u) })
-  handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: publicSettings(readSettings(BASE)).hasCivitaiKey }))
+  handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, families: LORA_FAMILIES, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: publicSettings(readSettings(BASE)).hasCivitaiKey }))
   handle('loras:search', (opts) => civitai.search(opts))
   handle('loras:model', (id) => civitai.model(id))
   handle('loras:download', (opts) => civitai.download(opts))
@@ -523,21 +865,58 @@ app.whenReady().then(() => {
   handle('loras:yours', () => civitai.yours())
   handle('loras:identify', (name) => civitai.identify(name))
   handle('loras:prefs', (name, patch) => civitai.setPrefs(name, patch))
+  // the Recommended shelf: tested H3 LoRAs, pinned, downloaded by the same installer as Setup's models
+  handle('loras:recommended', async () => {
+    const names = await new Comfy(readSettings(BASE).comfyUrl).objectInfo('LoraLoaderModelOnly').then((i) => i.LoraLoaderModelOnly?.input?.required?.lora_name?.[0] || [], () => [])
+    return { list: RECOMMENDED, onDisk: recommendedOnDisk(names), state: recInstaller.status() }
+  })
+  handle('loras:recommendedDownload', (id) => recInstaller.enqueue([id]))
+  handle('loras:recommendedCancel', (id) => recInstaller.cancel(id))
+  // turnaround sheets: five views of a character from one picture
+  turnarounds = new Turnarounds({ dataDir: DATA, studio: () => studio })
+  handle('turnaround:status', () => turnarounds.status())
+  handle('turnaround:list', (characterId) => turnarounds.list(characterId))
+  handle('turnaround:make', (opts) => turnarounds.make(opts))
+  handle('turnaround:delete', (id) => turnarounds.remove(id))
   // ---------- Library: everything made in IV Studio, in one place ----------
-  handle('library:all', () => {
+  // every Library item; each video and picture carries its description (describe.js) when it has one
+  const libraryItems = () => {
     const items = studio.library().map((i) => ({ ...i, type: 'video' }))
     for (const e of edits.list()) {
       for (const x of edits.get(e.id).exports || []) if (x.file && fs.existsSync(x.file)) items.push({ key: `export:${x.file}`, type: 'video', group: 'Edit exports', label: `${e.name} · ${x.format || ''} ${x.fps || ''} fps`.trim(), at: x.at, file: { path: x.file }, set: `edit:${e.id}`, setName: e.name, variant: `${x.format || 'Export'} · ${x.fps || ''} fps`, rank: 0, editId: e.id })
     }
     for (const s of music.all()) if (s.file && fs.existsSync(s.file)) items.push({ key: `music:${s.id}`, type: 'music', group: 'Music', label: s.name, detail: `${s.engine === 'minimax' ? 'MiniMax Music 3' : 'ACE-Step 1.5'}${s.instrumental ? ' · instrumental' : ''}`, duration: s.duration, at: s.finishedAt || s.createdAt, file: { path: s.file }, set: `music:${s.id}`, setName: s.name, variant: 'Song', rank: 0 })
-    for (const r of images.all()) (r.files || []).forEach((f, i) => fs.existsSync(f) && items.push({ key: `image:${r.id}:${i}`, type: 'image', group: 'Images', label: r.name, detail: `${r.familyLabel} · ${r.mode === 'edit' ? 'edit' : 'generate'}`, at: r.finishedAt || r.createdAt, file: { path: f }, set: `image:${r.id}`, setName: r.name, variant: `Picture ${i + 1}`, rank: i, imageId: r.id }))
+    for (const r of clipfx.runs()) if (r.status === 'success') (r.files || []).forEach((f, i) => f.kind === 'video' && fs.existsSync(f.file) && items.push({ key: `clipfx:${r.id}:${i}`, type: 'video', group: 'Effects', label: r.title, detail: `${r.label} · ${f.label}`, at: r.finishedAt || r.createdAt, file: { path: f.file }, set: `clipfx:${r.id}`, setName: r.title, variant: f.label, rank: i }))
+    for (const s of sounds.all()) (s.files || []).forEach((f, i) => fs.existsSync(f.file) && items.push({ key: `sound:${s.id}:${i}`, type: 'music', group: 'Sounds', label: s.name, detail: `Stable Audio 3 · ${SOUND_KINDS.find((k) => k.id === s.kind)?.label || 'Sound'}`, duration: f.duration, at: s.finishedAt || s.createdAt, file: { path: f.file }, set: `sound:${s.id}`, setName: s.name, variant: s.files.length > 1 ? `Take ${i + 1}` : 'Sound', rank: i }))
+    for (const r of images.all()) (r.files || []).forEach((f, i) => fs.existsSync(f) && items.push({ key: `image:${r.id}:${i}`, type: 'image', group: 'Images', label: r.name, detail: r.mode === 'frame' ? 'Last frame of a video' : `${r.familyLabel} · ${r.mode === 'edit' ? 'edit' : 'generate'}`, at: r.finishedAt || r.createdAt, file: { path: f }, set: `image:${r.id}`, setName: r.name, variant: `Picture ${i + 1}`, rank: i, imageId: r.id }))
     for (const l of voices.lines()) if (fs.existsSync(l.file)) items.push({ key: `line:${l.id}`, type: 'voice', group: 'Voice lines', label: l.text, detail: l.voice, duration: l.duration, at: l.createdAt, file: { path: l.file }, set: `line:${l.id}`, setName: l.text, variant: `Seed ${l.seed}`, rank: 0 })
     return items.sort((a, b) => String(b.at).localeCompare(String(a.at)))
+  }
+  handle('library:all', () => libraryItems().map((i) => (i.file?.path && describer ? { ...i, about: describer.about(i.file.path) } : i)))
+  // Library search by what's in a file: the local writer describes new videos and pictures while nothing renders
+  describer = new Describer({
+    dataDir: DATA,
+    ffmpeg: edits.ffmpeg,
+    files: () => libraryItems().filter((i) => i.file?.path && fs.existsSync(i.file.path)).map((i) => ({ path: i.file.path, type: i.type })),
+    idle: async () => {
+      if (studio.comfy.remote) return true // renders run in the cloud; this PC's GPU is free
+      const q = await studio.comfy.queue().catch(() => null)
+      return !q || (!q.queue_running?.length && !q.queue_pending?.length)
+    },
+    enabled: () => readSettings(BASE).describeLibrary !== false,
+    writer: () => localWriterModel(readSettings(BASE).ollamaModel || undefined),
+    chat: localChat,
+    onChange: (st) => send('library:describe', st)
   })
+  describer.start()
+  handle('library:describeStatus', () => describer.status())
   handle('library:toEdit', async (item, editId = null) => putOnEdit(await localCopy(item.file), item.label.slice(0, 60), editId, item.type === 'video' ? 'iv' : item.type))
   // ---------- characters: design, clips, training on Modal, pick ----------
   // ---------- Shinobi: the agent-driven editor (OpenKatana engine), and face likeness ----------
   const shinobi = new Shinobi({ dataDir: DATA, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')), ffmpegDir: path.dirname(edits.ffmpeg), onLog: (line) => send('shinobi:log', line) })
+  softMouth = new SoftMouth({ dataDir: DATA, ffmpeg: edits.ffmpeg, shinobi: () => shinobi, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')) })
+  handle('softmouth:ready', () => softMouth.ready())
+  handle('softmouth:make', (file) => softMouth.make(file))
   const briefFile = (id) => path.join(shinobi.projectDir(id), 'iv-brief.md')
   handle('shinobi:status', () => shinobi.status())
   handle('shinobi:install', () => shinobi.install())
@@ -716,6 +1095,8 @@ app.whenReady().then(() => {
 
   handle('media:probe', (file) => mediaTools.probe(file))
   handle('media:prepare', (opts) => mediaTools.prepare(opts))
+  // a finished version on this PC as it is; a cloud render downloaded once (Continue from this)
+  handle('media:localCopy', (file) => studio.localCopy(file, path.join(DATA, 'cache', 'versions')))
   handle('edits:meta', () => ({ tracks: DEFAULT_TRACKS, formats: FORMATS, loudness: LOUDNESS }))
   handle('edits:list', () => edits.list())
   handle('edits:get', (id) => edits.get(id))
@@ -749,7 +1130,13 @@ app.whenReady().then(() => {
       send('edits:changed', { id, updatedAt: e.updatedAt })
     })
   })
-  fs.watch(BASE, (_, name) => name === 'settings.json' && later('settings', () => (studio.models = readSettings(BASE).models || {})))
+  fs.watch(BASE, (_, name) => {
+    if (name === 'settings.json') later('settings', () => (studio.models = readSettings(BASE).models || {}))
+    // a recipe the chat's agent saved (recipes.js): the Dashboard's buttons change at once
+    if (name === 'recipes.json') later('recipes', () => send('recipes:changed', listRecipes(BASE)))
+  })
+  handle('recipes:list', () => listRecipes(BASE))
+  handle('recipes:remove', (id) => (removeRecipe(BASE, String(id || '')), listRecipes(BASE)))
   handle('edits:delete', (id) => edits.remove(id))
   handle('edits:pickFiles', async () => {
     const r = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'Media', extensions: ['mp4', 'mov', 'webm', 'mkv', 'm4v', 'wav', 'mp3', 'm4a', 'flac', 'ogg', 'png', 'jpg', 'jpeg', 'webp'] }] })
@@ -759,6 +1146,8 @@ app.whenReady().then(() => {
   handle('edits:addOutput', async (item) => edits.addMedia(await localCopy(item.file), { type: 'iv', label: item.label }))
   handle('edits:export', (id) => edits.export(id, path.join(videosDir(), 'Edits'), (p) => send('edits:progress', { id, progress: p })))
   handle('edits:cancelExport', (id) => edits.cancelExport(id))
+  // the timeline for Premiere, Resolve and Final Cut: XML, FCPXML and an EDL, with the media copied beside them, zipped
+  handle('edits:interchange', (id, opts = {}) => exportInterchange(edits.get(id), path.join(videosDir(), 'Edits'), { zip: opts.zip !== false }))
   handle('edits:filmstrip', (file, duration) => edits.filmstrip(file, duration))
   handle('edits:peaks', (file) => edits.peaks(file))
   // New footage from inside an edit (extend, fill/bridge, retake): placeholders on the timeline until each lands.
@@ -836,6 +1225,31 @@ app.whenReady().then(() => {
     return productions.drawAngles(id, locationId, opts)
   })
   // The editor's full-screen workspace: the window itself goes full screen too.
+  // Film craft (filmcraft.js, after Sam Wasserman's Slate): the cinematography setups and coverage plans, and the
+  // prompt tools, variants and lookbook with the person's own writer.
+  const slate = () => loadSlate(resourcesDir(path.join(app.getAppPath(), 'resources')))
+  const writerNow = () => writerOf(readSettings(BASE))
+  const busyGpu = () => studio.gpuBusy().catch(() => false)
+  handle('craft:slate', () => ({ setups: slate().setups, plans: slate().plans, writer: writerName(writerNow()) }))
+  handle('craft:rewrite', async ({ prompt, tool, note, context } = {}) => rewritePrompt(writerNow(), { prompt, tool, note, context, cpu: await busyGpu() }))
+  handle('craft:variants', async ({ prompt, context } = {}) => promptVariants(writerNow(), { prompt, context, cpu: await busyGpu() }))
+  handle('craft:lookbook', async (source) => lookbook(writerNow(), { source, cpu: await busyGpu() }))
+  handle('productions:coverage', (id, sceneId, planId) => productions.setCoverage(id, sceneId, planId ? slate().plans.find((p) => p.id === planId) || null : null))
+  handle('productions:rework', (id, sceneId, shotId, opts) => productions.reworkShot(id, sceneId, shotId, opts))
+  handle('productions:variants', (id, sceneId, shotId) => productions.shotVariants(id, sceneId, shotId))
+  handle('productions:setPrompt', (id, sceneId, shotId, prompt, why) => productions.setShotPrompt(id, sceneId, shotId, prompt, why))
+  handle('productions:restorePrompt', (id, sceneId, shotId, index) => productions.restoreShotPrompt(id, sceneId, shotId, index))
+  handle('productions:continuity', (id, sceneId) => productions.checkContinuity(id, sceneId))
+  // the shot list as Markdown or CSV, saved where the person picks
+  handle('productions:shotList', async (id, format = 'md') => {
+    const p = productions.get(id)
+    const ext = format === 'csv' ? 'csv' : 'md'
+    const safe = String(p.name || 'film').replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim() || 'film'
+    const r = await dialog.showSaveDialog(win, { title: 'Save the shot list', defaultPath: path.join(app.getPath('documents'), `${safe} - shot list.${ext}`), filters: [ext === 'csv' ? { name: 'CSV (spreadsheets)', extensions: ['csv'] } : { name: 'Markdown', extensions: ['md'] }] })
+    if (r.canceled || !r.filePath) return null
+    fs.writeFileSync(r.filePath, (ext === 'csv' ? '\ufeff' : '') + productions.shotList(id, format))
+    return r.filePath
+  })
   handle('window:fullScreen', (on) => {
     win.setFullScreen(!!on)
     return win.isFullScreen()
@@ -921,6 +1335,7 @@ app.whenReady().then(() => {
       // the last (or current) setup's progress, for a window that opens or reloads mid-setup
       setup: setupNow?.snapshot() || null,
       hasToken: have.cloudToken === 'ok',
+      hasHfToken: guardedHas(s, 'hfToken'),
       // saved keys and sign-ins that can't be opened, which the page offers to remove
       removable: removableSecrets(have)
     }
@@ -1005,9 +1420,9 @@ app.whenReady().then(() => {
           // IV_STUDIO_FAKE_SETUP (test copies only): replays a setup's output quickly, so the progress view can be
           // checked without touching a Modal account
           if (process.env.IV_STUDIO_FAKE_SETUP) return fakeSetup(t, process.env.IV_STUDIO_FAKE_SETUP)
-          const { url, token } = await cloud.deploy({ gpu, idleSeconds })
+          const { url, token } = await cloud.deploy({ gpu, idleSeconds, hf: hfToken() })
           writeSettings({ cloudToken: seal(token) }, BASE)
-          saveCloud({ url, gpu, idleSeconds, workspace: await cloud.workspace(), deployedAt: new Date().toISOString() })
+          saveCloud({ url, gpu, idleSeconds, workspace: await cloud.workspace(), deployedAt: new Date().toISOString(), stamp: cloudStamp(), hfSaved: !!hfToken() })
           t.start('models', 'Checking which models your storage already has')
           await cloud.fetchModels()
           saveCloud({ modelsAt: new Date().toISOString() })
@@ -1055,7 +1470,7 @@ app.whenReady().then(() => {
     try {
       const res = resourcesDir(path.join(app.getAppPath(), 'resources'))
       const m = JSON.parse(fs.readFileSync(path.join(res, 'models.json'), 'utf8')).models.filter((x) => !x.optional)
-      const extra = JSON.parse(fs.readFileSync(path.join(res, 'cloud', 'cloud.json'), 'utf8')).extraModels || []
+      const extra = (JSON.parse(fs.readFileSync(path.join(res, 'cloud', 'cloud.json'), 'utf8')).extraModels || []).filter((x) => x.required)
       return [...m, ...extra].map((x) => ({ id: x.id, label: x.label, size: x.size || 0 }))
     } catch {
       return []
@@ -1115,9 +1530,9 @@ app.whenReady().then(() => {
       let url = current ? r.url : (await runpod.pods())[0]?.url
       if (!url) {
         send('cloud:log', 'Starting a cloud GPU on RunPod…')
-        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300 })
+        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken() })
         url = pod.url
-        saveRunpod({ url, podId: pod.id, podGpu: pod.gpu })
+        saveRunpod({ url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })
       } else saveRunpod({ url })
       await runpod.waitReady(url)
       return url
@@ -1128,6 +1543,252 @@ app.whenReady().then(() => {
     if (url && (await runpod.health(url))?.stage === 'ready') return null
     return wakeRunpod()
   }
+  // ---------- the person's own cloud: models on first use, LoRA uploads, the Hugging Face token (cloudprep.js) ----------
+  const cloudRes = resourcesDir(path.join(app.getAppPath(), 'resources'))
+  const readRes = (f) => JSON.parse(fs.readFileSync(path.join(cloudRes, f), 'utf8'))
+  const cloudCatalogList = cloudCatalog(readRes('models.json'), readRes(path.join('cloud', 'cloud.json')))
+  // what the cloud image is built from: cloud.json and the node packs (runpod_boot.py's stamp works the same way)
+  const cloudStamp = () =>
+    createHash('sha256')
+      .update(fs.readFileSync(path.join(cloudRes, 'cloud', 'cloud.json')))
+      .update(JSON.stringify(readRes('models.json').node_packs.filter((p) => !p.windowsOnly && p.cloud !== false)))
+      .digest('hex')
+      .slice(0, 16)
+  const hfToken = () => unseal(readSettings(BASE).hfToken)
+  // The window answers "download these models into your cloud storage?" (cloud:ask, then cloud:answer). No window: no.
+  const asks = new Map()
+  const askWindow = (details) =>
+    new Promise((resolve) => {
+      if (!win || win.isDestroyed()) return resolve(false)
+      const id = randomBytes(6).toString('hex')
+      asks.set(id, resolve)
+      send('cloud:ask', { id, ...details })
+    })
+  handle('cloud:answer', ({ id, ok }) => {
+    asks.get(id)?.(!!ok)
+    asks.delete(id)
+    return true
+  })
+  // This PC's LoRAs and RefMods: its ComfyUI's model folders, and the data folder's models/ (a PC without ComfyUI)
+  const localFolders = async (kind) => {
+    const own = [path.join(DATA, 'models', kind)]
+    try {
+      const list = await fetch(`${readSettings(BASE).comfyUrl}/experiment/models`, { signal: AbortSignal.timeout(5000) }).then((r) => r.json())
+      return [...(list.find((f) => f.name === kind)?.folders || []), ...own]
+    } catch {
+      return own
+    }
+  }
+  const localFile = async (kind, name) => {
+    const rel = kind === 'refmods' ? `${name}.safetensors` : name
+    for (const d of await localFolders(kind)) {
+      const f = path.join(d, ...rel.split('/'))
+      if (fs.existsSync(f)) return f
+    }
+    return null
+  }
+  const listModels = (dir, ext = /\.(safetensors|gguf|sft|pth|pt|ckpt|bin)$/i) => {
+    const out = []
+    const walk = (d, rel) => {
+      for (const e of fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }) : []) {
+        if (e.isDirectory()) walk(path.join(d, e.name), rel ? `${rel}/${e.name}` : e.name)
+        else if (ext.test(e.name)) out.push(rel ? `${rel}/${e.name}` : e.name)
+      }
+    }
+    walk(dir, '')
+    return out
+  }
+  const localNames = async () => {
+    const [loraDirs, refDirs] = await Promise.all([localFolders('loras'), localFolders('refmods')])
+    return {
+      loras: [...new Set(loraDirs.flatMap((d) => listModels(d)))],
+      refmods: [...new Set(refDirs.flatMap((d) => listModels(d, /\.safetensors$/i).map((f) => f.replace(/\.safetensors$/i, ''))))]
+    }
+  }
+  // Modal: the download runs on a CPU function. A running GPU container doesn't see files added after it started,
+  // so an idle one is stopped once the volume changed (the next request starts a fresh one).
+  const modalProvider = (prep) => ({
+    name: 'modal',
+    list: () => cloud.listFiles(),
+    async download(entries, onEvent) {
+      const c = readSettings(BASE).cloud || {}
+      if (c.stamp !== cloudStamp()) throw new Error('Your Modal cloud was set up by an older IV Studio. Press Set up again on the Cloud page (your models stay), then try again.')
+      if (c.hfSavedFor !== (readSettings(BASE).hfTokenAt || null)) {
+        await cloud.saveHfToken(hfToken())
+        saveCloud({ hfSaved: !!hfToken(), hfSavedFor: readSettings(BASE).hfTokenAt || null })
+      }
+      await cloud.fetchModels(
+        entries.map((e) => e.id),
+        {
+          onLine: (line) => {
+            const m = line.match(/^progress (\S+) (\d+)% of (\d+)/)
+            if (m) onEvent({ id: m[1], label: entries.find((e) => e.id === m[1])?.label, percent: Number(m[2]), total: Number(m[3]), index: entries.findIndex((e) => e.id === m[1]) + 1, count: entries.length })
+          }
+        }
+      )
+    },
+    upload: (file, remote) => cloud.uploadModel(file, remote),
+    async changed() {
+      const running = await cloud.containers().catch(() => [])
+      if (!running.length) return
+      // a render running there finishes first; ComfyUI is asked through the gate (the container is up)
+      const comfy = prep().comfy || studio?.comfy
+      for (let i = 0; i < 180; i++) {
+        const q = await comfy?.queue().catch(() => null)
+        if (!q || (!q.queue_running?.length && !q.queue_pending?.length)) break
+        send('cloud:prep', { state: 'waiting', detail: 'Waiting for the render in the cloud to finish, so the GPU can restart with the new files' })
+        await new Promise((r) => setTimeout(r, 10000))
+      }
+      await cloud.stopGpu()
+    }
+  })
+  // RunPod: downloads and uploads go through the running pod's gate, onto the network volume, which ComfyUI sees at
+  // once. A pod from an older IV Studio is replaced first: it doesn't have the routes or the new model folders.
+  const freshPod = async () => {
+    const r = readSettings(BASE).runpod || {}
+    if (r.podStamp !== cloudStamp() && r.url) {
+      send('cloud:log', 'Restarting the cloud GPU with this version of IV Studio…')
+      await runpod.stopAll()
+      saveRunpod({ url: null, podId: null })
+    }
+    const url = await wakeRunpod()
+    if (studio?.comfy?.prep && studio.comfy.token) studio.comfy.url = url
+    return url
+  }
+  const runpodProvider = (prep) => ({
+    name: 'runpod',
+    list: async () => runpod.files(await freshPod(), runpodToken()),
+    async download(entries, onEvent) {
+      const url = await freshPod()
+      await runpod.fetchModels(url, runpodToken(), entries.map((e) => e.id), { hf: hfToken(), onProgress: (f) => f.current && onEvent(f.current) })
+    },
+    upload: async (file, remote) => runpod.uploadModel(await freshPod(), runpodToken(), file, remote),
+    async room(bytes) {
+      const r = readSettings(BASE).runpod || {}
+      const vol = r.volumeId ? await runpod.volume(r.volumeId) : null
+      if (!vol?.size) return null
+      return roomOnVolume({ sizeGb: vol.size, usedBytes: prep().usedBytes(), bytes, perGbMonth: VOLUME_PER_GB_MONTH })
+    },
+    grow: (toGb) => runpod.growVolume(readSettings(BASE).runpod.volumeId, toGb)
+  })
+  const preps = {}
+  cloudPrepFor = (which, comfy) => {
+    if (preps[which]) {
+      if (comfy) preps[which].comfy = comfy
+      return preps[which]
+    }
+    let self = null
+    self = new CloudPrep({
+      dataDir: DATA,
+      provider: which === 'runpod' ? runpodProvider(() => self) : modalProvider(() => self),
+      catalog: cloudCatalogList,
+      stamp: cloudStamp(),
+      ask: askWindow,
+      localFile,
+      localNames,
+      hfToken,
+      fetchInfo: () => (self.comfy || studio.comfy).realObjectInfo(),
+      onEvent: (e) => send('cloud:prep', e)
+    })
+    self.comfy = comfy
+    return (preps[which] = self)
+  }
+  // ---------- voices on the person's own cloud (cloudvoice.js, resources/cloud/voicehost.py) ----------
+  const VOICE_BYTES = 12e9 // the voice engine's Python (about 5 GB) and its models (6.6 GB)
+  const voiceReady = (which) => {
+    const s = readSettings(BASE)
+    // Modal's environment is part of the image: an image built before voices came in has none
+    return which === 'runpod' ? !!s.runpod?.voiceAt : !!(s.cloud?.voiceAt && s.cloud?.stamp === cloudStamp())
+  }
+  async function setUpCloudVoices(which) {
+    const log = (line) => send('voices:log', line)
+    if (which === 'modal') {
+      const c = readSettings(BASE).cloud || {}
+      if (c.stamp !== cloudStamp()) throw new Error('Your Modal cloud was set up by an older IV Studio. Press Set up again on the Cloud page (your models stay), then set up voices.')
+      log('Downloading the voice models into your Modal storage (about 6.6 GB, once, on a CPU)…')
+      await cloud.fetchVoice()
+      // a GPU container that's up doesn't see files added after it started
+      await cloudPrepFor('modal', null).provider.changed?.()
+      saveCloud({ voiceAt: new Date().toISOString() })
+      log('Voices are ready in the cloud.')
+      return
+    }
+    // RunPod: onto the network volume, by the running pod; the volume grows first only with the person's OK
+    const prep = cloudPrepFor('runpod', null)
+    const grow = await prep.provider.room(VOICE_BYTES).catch(() => null)
+    if (grow) {
+      const ok = await askWindow({ downloads: [{ id: 'voice', label: 'The voice engine (VoxCPM2, Whisper and their Python)', size: VOICE_BYTES }], bytes: VOICE_BYTES, grow, provider: 'runpod' })
+      if (!ok) throw new Error('Voices weren’t set up: your RunPod volume needs more room for them.')
+      await prep.provider.grow(grow.toGb)
+    }
+    log('Starting a cloud GPU to set up voices on your RunPod volume…')
+    const url = await freshPod()
+    const c = new Comfy(url, 'iv-studio-voices', runpodToken())
+    let st = await c.req('/iv/voice/setup', { method: 'POST', json: {}, timeout: 60000 })
+    let said = ''
+    while (!st.installed) {
+      if (st.setup?.state === 'error') throw new Error(`Setting up voices stopped: ${st.setup.error}`)
+      const line = st.setup?.detail ? `Voices: ${st.setup.detail}${st.setup.steps ? ` (${st.setup.step} of ${st.setup.steps})` : ''}…` : ''
+      if (line && line !== said) log((said = line))
+      await new Promise((r) => setTimeout(r, 5000))
+      st = await c.req('/iv/voice', { timeout: 60000 }).catch(() => st)
+    }
+    prep.record({ 'voice/engine': VOICE_BYTES })
+    saveRunpod({ voiceAt: new Date().toISOString() })
+    log('Voices are ready in the cloud.')
+  }
+  const cloudVoices = {}
+  cloudVoice = () => {
+    const s = readSettings(BASE)
+    const which = s.target === 'cloud' ? s.cloudProvider || 'modal' : null
+    if (which !== 'modal' && which !== 'runpod') return null
+    return (cloudVoices[which] ||= new CloudVoiceEngine({ provider: which, comfy: () => studio.comfy, ready: () => voiceReady(which), setUp: () => setUpCloudVoices(which) }))
+  }
+  // IV_STUDIO_FAKE_CLOUD_PREP (test copies only): a few seconds after the window opens, a stand-in cloud asks to
+  // download Qwen Image 2.1 (growing a RunPod volume) and plays the download, so the question and the progress card
+  // can be checked without a cloud account. Nothing is downloaded and no account is touched.
+  if (TEST_COPY && process.env.IV_STUDIO_FAKE_CLOUD_PREP) {
+    setTimeout(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+      const fake = new CloudPrep({
+        dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'iv-fake-prep-')),
+        provider: {
+          name: 'runpod',
+          room: async (bytes) => roomOnVolume({ sizeGb: 100, usedBytes: 62e9, bytes, perGbMonth: VOLUME_PER_GB_MONTH }),
+          grow: async () => {},
+          async download(entries, onEvent) {
+            for (const [i, e] of entries.entries()) for (let p = 0; p <= 100; p += 10) (onEvent({ id: e.id, label: e.label, percent: p, index: i + 1, count: entries.length }), await wait(250))
+          },
+          upload: async () => wait(800)
+        },
+        catalog: cloudCatalogList,
+        stamp: 'fake',
+        ask: askWindow,
+        localFile: async () => path.join(cloudRes, 'cloud', 'cloud.json'),
+        hfToken: () => null,
+        fetchInfo: async () => ({}),
+        onEvent: (e) => send('cloud:prep', e)
+      })
+      const graph = { 1: { class_type: 'UNETLoader', inputs: { unet_name: 'Qwen/qwen_image_2.1_int8_convrot.safetensors' } }, 2: { class_type: 'CLIPLoader', inputs: { clip_name: 'qwen3vl_8b_int8_convrot.safetensors' } }, 3: { class_type: 'VAELoader', inputs: { vae_name: 'qwen_image_2.1_vae_bf16.safetensors' } }, 4: { class_type: 'LoraLoaderModelOnly', inputs: { lora_name: 'Styles/Test.safetensors' } } }
+      const r = await fake.prepare(graph).then((x) => `done: ${JSON.stringify(x)}`, (e) => `stopped: ${e.code || ''} ${e.message}`)
+      console.log(`[fake cloud prep] ${r}`)
+      send('cloud:log', `[fake cloud prep] ${r}`)
+    }, Number(process.env.IV_STUDIO_FAKE_CLOUD_PREP) || 6000)
+  }
+  // The Hugging Face token: only for gated model files (Flux.2 Klein 9B, Flux 3 Klein). Checked with Hugging Face
+  // before it's kept; on Modal it's saved in the workspace with the next download.
+  handle('cloud:hfToken', async (token) => {
+    const k = String(token || '').trim()
+    if (!k) return (writeSettings({ hfToken: null, hfTokenAt: new Date().toISOString() }, BASE), setSavedHfToken(null), { hasToken: false })
+    if (!keysSafe()) throw new Error(KEY_STORE_MISSING)
+    const res = await fetch('https://huggingface.co/api/whoami-v2', { headers: { Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(20000) }).catch(() => null)
+    if (!res) throw new Error('Couldn’t reach Hugging Face to check the token.')
+    if (!res.ok) throw new Error('Hugging Face refused that token. Make a Read token at huggingface.co → Settings → Access Tokens.')
+    const who = await res.json().catch(() => ({}))
+    writeSettings({ hfToken: seal(k), hfTokenAt: new Date().toISOString() }, BASE)
+    setSavedHfToken(k)
+    return { hasToken: true, name: who?.name || null }
+  })
   // Each character's LoRA and the RefMods it uses, found through this PC's ComfyUI model folders.
   async function characterFiles() {
     const local = await fetch(`${readSettings(BASE).comfyUrl}/experiment/models`).then((r) => r.json())
@@ -1178,6 +1839,11 @@ app.whenReady().then(() => {
       }
       t.done('characters', done.length ? `${done.length} file${done.length === 1 ? '' : 's'} uploaded` : 'No character files to upload')
       saveRunpod({ charactersAt: new Date().toISOString() })
+      // the pod is up: keep its model lists, so pages can show what works without starting a GPU later
+      try {
+        const info = await new Comfy(url, 'iv-studio-setup', runpodToken()).realObjectInfo()
+        cloudPrepFor('runpod', null).remember(info)
+      } catch {}
       send('cloud:log', `Ready. ${done.length} character file${done.length === 1 ? '' : 's'} uploaded. The GPU shuts itself off after ${Math.round(idleSeconds / 60)} idle minutes.`)
       return readSettings(BASE).runpod
     }))
@@ -1232,7 +1898,15 @@ app.whenReady().then(() => {
       }
     }
   })
-  handle('prompts:status', async () => ({ ...(await ollamaStatus()), engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: publicSettings(readSettings(BASE)).hasComfyKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: harnessStatus() }))
+  // openai: the OpenAI-compatible server's answer ({ ok, url, models, error } plus the chosen model), only when it's the writer
+  handle('prompts:openai', async () => {
+    const s = readSettings(BASE)
+    return { ...(await openaiStatus({ ...llmOf(s), provider: 'openai' })), model: s.openaiModel || '', vision: !!s.openaiVision }
+  })
+  handle('prompts:status', async () => ({
+    ...(await ollamaStatus()),
+    openai: readSettings(BASE).promptEngine === 'openai' ? { ...(await openaiStatus({ ...llmOf(readSettings(BASE)), provider: 'openai' })), model: readSettings(BASE).openaiModel || '', vision: !!readSettings(BASE).openaiVision } : null,
+    engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, hasComfyKey: publicSettings(readSettings(BASE)).hasComfyKey, contextIrPrice: CONTEXT_IR_PRICE, harnesses: agentsStatus() }))
   handle('prompts:write', (request) => {
     const s = readSettings(BASE)
     const w = writerOf(request?.engine ? { ...s, promptEngine: request.engine } : s)
@@ -1244,7 +1918,17 @@ app.whenReady().then(() => {
   })
   handle('prompts:pull', (model) => pullModel(model, (ev) => send('prompts:pull', { model, ...ev })))
   handle('settings:set', (patch) => {
-    const { comfyApiKey, cloudToken, civitaiKey, cloud, target, cloudProvider, runpod, runpodKey, runpodToken, comfyCloudKey: _ck, comfycloud, ...safe } = patch || {}
+    const { comfyApiKey, cloudToken, civitaiKey, cloud, target, cloudProvider, runpod, runpodKey, runpodToken, comfyCloudKey: _ck, comfycloud, hfToken: _hf, hfTokenAt: _hfAt, openaiKey: _ok, openaiHeaders: _oh, ...safe } = patch || {}
+    if ('openaiUrl' in safe) {
+      try {
+        safe.openaiUrl = normalizeApiBase(safe.openaiUrl)
+      } catch {
+        throw new Error('That isn’t an address. Use host:port or a full address, like localhost:8080 or http://192.168.1.20:8000/v1.')
+      }
+    }
+    if ('openaiModel' in safe) safe.openaiModel = String(safe.openaiModel || '').trim()
+    if ('openaiVision' in safe) safe.openaiVision = !!safe.openaiVision
+    if ('promptEngine' in safe && !['local', 'claude', 'codex', 'contextir', 'openai'].includes(safe.promptEngine)) delete safe.promptEngine
     if ('ollamaUrl' in safe) {
       try {
         safe.ollamaUrl = normalizeOllamaUrl(safe.ollamaUrl)
@@ -1261,7 +1945,12 @@ app.whenReady().then(() => {
     studio.comfy.folders = comfyFolders(readSettings(BASE), INCOGNITO)
     return s
   })
-  handle('setup:check', () => studio.checkSetup())
+  handle('setup:check', async () => {
+    const r = await studio.checkSetup()
+    // IV_STUDIO_PRETEND_NO_COMFY (test copies only): as if no ComfyUI answered anywhere on this PC
+    if (TEST_COPY && process.env.IV_STUDIO_PRETEND_NO_COMFY) for (const i of r.items || []) if (i.id === 'comfyui') delete i.address
+    return r
+  })
   // Create → Advanced: the samplers and schedulers this ComfyUI offers
   handle('h3:samplers', async () => {
     const [k, b] = await Promise.all([studio.comfy.objectInfo('KSamplerSelect'), studio.comfy.objectInfo('BasicScheduler')])
@@ -1290,7 +1979,7 @@ app.whenReady().then(() => {
     // IV Studio would start keeps its ComfyUI in (a shortcut's target, the Desktop app's install folder)
     const home = (f) => comfyHome(f, { readLink: (p) => shell.readShortcutLink(p) })
     const comfyFolder = modelsFolder || s.comfyFolder || home(launcherFor(s)) || launchers.map((l) => home(l.path)).find(Boolean) || ''
-    const harness = harnessStatus()
+    const harness = agentsStatus()
     const ids = new Set(MODEL_GROUPS.flatMap((g) => g.ids))
     const installs = {
       comfyRunning: !!running,
@@ -1314,10 +2003,15 @@ app.whenReady().then(() => {
     return { scan, rec: recommend(scan), promptEngine: s.promptEngine, onboarded: s.onboarded }
   })
   // what the wizard chose: the shot defaults and the writer, and that it's been done (so it doesn't open again)
-  handle('hardware:apply', ({ shotPrefs, promptEngine, hardware, highContrast } = {}) => {
+  // plainWords / aiLevel: the welcome's "how much do you know" question (Simple words, words.js)
+  handle('hardware:apply', ({ shotPrefs, promptEngine, hardware, plainWords, highContrast, aiLevel } = {}) => {
     const patch = { onboarded: new Date().toISOString() }
+    if (typeof plainWords === 'boolean') patch.plainWords = plainWords
     if (typeof highContrast === 'boolean') patch.highContrast = highContrast
+    if (['new', 'some', 'lots'].includes(aiLevel)) patch.aiLevel = aiLevel
     if (shotPrefs) patch.shotPrefs = shotPrefs
+    // the speed preset (speed.js) the wizard picked; Settings → Your PC can change it afterwards
+    if (shotPrefs?.speed && isSpeed(shotPrefs.speed)) patch.speed = shotPrefs.speed
     if (hardware) patch.hardware = hardware
     if (promptEngine && ['local', 'claude', 'codex'].includes(promptEngine)) patch.promptEngine = promptEngine
     return publicSettings(writeSettings(patch, BASE))
@@ -1337,9 +2031,19 @@ app.whenReady().then(() => {
       if (await comfyUp(s.comfyUrl)) return { seconds: 0, already: true }
       const file = launcherOf(s)
       if (!file) throw new Error('No ComfyUI launcher found. Pick one in Settings → ComfyUI.')
-      send('comfy:state', { state: 'starting', detail: path.basename(file) })
+      // already starting (IV Studio reopened while it booted, another window, or started by hand): wait for that one
+      const marker = path.join(BASE, 'comfy-launch.json')
+      const running = recentLaunch(marker) ? null : sameComfy(await comfyProcesses(), { home: comfyHome(file, { readLink: (p) => shell.readShortcutLink(p) }), url: s.comfyUrl, launcher: file })
+      const joining = !!(recentLaunch(marker) || running)
+      send('comfy:state', { state: 'starting', detail: joining ? 'ComfyUI is already starting' : path.basename(file) })
       try {
-        const up = process.platform === 'darwin' && /\.app$/i.test(file) ? await startApp(file, { url: s.comfyUrl }) : (launchComfy(file, { logFile: path.join(DATA, 'comfyui.log') }), await waitUp(s.comfyUrl))
+        let up
+        if (joining) up = await waitUp(s.comfyUrl)
+        else {
+          noteLaunch(marker, file)
+          up = process.platform === 'darwin' && /\.app$/i.test(file) ? await startApp(file, { url: s.comfyUrl }) : (launchComfy(file, { logFile: path.join(DATA, 'comfyui.log') }), await waitUp(s.comfyUrl))
+        }
+        up = { ...up, joined: joining }
         send('comfy:state', { state: 'up', detail: `ComfyUI started in ${up.seconds} s.` })
         return up
       } catch (err) {
@@ -1365,7 +2069,104 @@ app.whenReady().then(() => {
     return r.filePaths[0]
   })
   // The main ComfyUI folder: IV Studio starts it with the best launcher in it (or the one picked from it).
-  // Settings → Folders → Finished videos (and Check my PC): where exports and cloud renders brought home go
+  handle('comfy:chooseFolder', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Your ComfyUI folder', properties: ['openDirectory'] })
+    if (r.canceled || !r.filePaths[0]) return null
+    const dir = r.filePaths[0]
+    if (!isComfyFolder(dir)) throw new Error(process.platform === 'win32' ? 'That folder doesn’t look like ComfyUI. Pick the folder that holds ComfyUI (its main.py, or run_nvidia_gpu.bat and the ComfyUI folder), or ComfyUI.exe’s folder.' : 'That folder doesn’t look like ComfyUI. Pick the folder that holds its main.py.')
+    writeSettings({ comfyFolder: dir, comfyLauncher: '' }, BASE)
+    return dir
+  })
+  handle('comfy:start', () => startComfy())
+  // Restart: ComfyUI-Manager's own restart when it's there (ComfyUI keeps its window and flags), else IV Studio
+  // stops this ComfyUI (and the console of its .bat) and starts it again with the person's launcher. A ComfyUI
+  // that is rendering or has work waiting isn't restarted unless force: the window asks first.
+  let comfyRestarting = null
+  const restartComfy = ({ force = false } = {}) =>
+    (comfyRestarting ||= (async () => {
+      const s = readSettings(BASE)
+      if (!isLocalUrl(s.comfyUrl) || s.target === 'cloud') throw new Error('ComfyUI isn’t on this computer (Settings → ComfyUI), so IV Studio can’t restart it.')
+      const t0 = Date.now()
+      if (!(await comfyUp(s.comfyUrl))) return { ...(await startComfy()), restarted: false }
+      if (!force) {
+        const q = await fetch(`${s.comfyUrl}/queue`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json()).catch(() => null)
+        const busy = (q?.queue_running?.length || 0) + (q?.queue_pending?.length || 0)
+        if (busy) {
+          const err = new Error(`ComfyUI is working on ${busy} job${busy === 1 ? '' : 's'}. Restarting stops ${busy === 1 ? 'it' : 'them'}.`)
+          err.code = 'busy'
+          throw err
+        }
+      }
+      send('comfy:state', { state: 'restarting', detail: 'Restarting ComfyUI' })
+      try {
+        let via = null
+        const comfy = { url: s.comfyUrl, headers: (h = {}) => h }
+        for (const route of ['/manager/reboot', '/v2/manager/reboot']) {
+          try {
+            await managerReq(comfy, route, { method: 'POST', json: {}, timeout: 8000 })
+            via = 'manager'
+          } catch (err) {
+            if (err.code === 'missing') continue
+            if (err.code === 'down' || /did not answer/.test(err.message)) via = 'manager' // the restart drops the connection
+          }
+          break
+        }
+        if (via === 'manager' && !(await waitDown(s.comfyUrl, { timeoutMs: 20000 }))) via = null
+        if (via !== 'manager') {
+          const file = launcherOf(s)
+          if (!file) throw new Error('No ComfyUI launcher found to start it again. Pick one in Settings → ComfyUI.')
+          const proc = sameComfy(await comfyProcesses(), { home: comfyHome(file, { readLink: (p) => shell.readShortcutLink(p) }), url: s.comfyUrl, launcher: file })
+          if (!proc) throw new Error('IV Studio can’t tell which program is this ComfyUI, so it can’t restart it. Close ComfyUI’s window, then press Start ComfyUI.')
+          await stopComfy(proc)
+          if (!(await waitDown(s.comfyUrl, { timeoutMs: 30000 }))) throw new Error('ComfyUI didn’t stop. Close its window, then press Start ComfyUI.')
+          via = 'launcher'
+          fs.rmSync(path.join(BASE, 'comfy-launch.json'), { force: true }) // a fresh start, not a join
+          await startComfy()
+        } else await waitUp(s.comfyUrl)
+        const seconds = Math.round((Date.now() - t0) / 1000)
+        send('comfy:state', { state: 'up', detail: `ComfyUI restarted in ${seconds} s.` })
+        return { restarted: true, via, seconds }
+      } catch (err) {
+        send('comfy:state', { state: 'failed', detail: err.message })
+        throw err
+      }
+    })().finally(() => (comfyRestarting = null)))
+  handle('comfy:restart', async (opts) => {
+    try {
+      return await restartComfy(opts || {})
+    } catch (err) {
+      if (err.code === 'busy') return { busy: true, message: err.message } // the window asks, then sends force
+      throw err
+    }
+  })
+
+  // ---------- Get ComfyUI for me (comfyinstall.js): the official portable build, for a PC with no ComfyUI ----------
+  // The window hears comfy:install ({ phase: download | check | unpack | start | done | error, got, total, rate,
+  // left, files, error }). It keeps going if the window is closed or reloaded; cloud and other ComfyUIs are untouched.
+  const comfyInstaller = new ComfyInstaller({ onProgress: (s) => send('comfy:install', s) })
+  const installPlan = async () => {
+    const scan = await scanHardware({ electronGpu: await app.getGPUInfo('complete').catch(() => null) })
+    const build = pickBuild(scan)
+    let asset = null
+    if (build.ok) asset = await latestAsset(build.asset).catch((err) => ({ error: err.message }))
+    return { build, asset, scan }
+  }
+  handle('comfy:installPlan', async () => {
+    const s = readSettings(BASE)
+    const { build, asset, scan } = await installPlan()
+    const folder = suggestFolder(scan.drives || [])
+    return {
+      build,
+      asset,
+      folder,
+      free: folder ? freeBytes(folder) : null,
+      state: comfyInstaller.state,
+      // a ComfyUI IV Studio can already start: the button isn't offered then
+      // IV_STUDIO_PRETEND_NO_COMFY (test copies only): show the button on a PC that has a ComfyUI
+      found: TEST_COPY && process.env.IV_STUDIO_PRETEND_NO_COMFY ? false : findLaunchers().length > 0 || !!(s.comfyFolder && fs.existsSync(s.comfyFolder)) || !!s.comfyLauncher
+    }
+  })
+  // Settings → Folders → Finished videos (and the welcome wizard): where exports and cloud renders brought home go
   const videosState = () => {
     const s = readSettings(BASE)
     const dir = videosDir()
@@ -1388,15 +2189,32 @@ app.whenReady().then(() => {
     return videosState()
   })
   handle('folders:resetVideos', async () => (writeSettings({ videosFolder: '' }, BASE), videosState()))
-  handle('comfy:chooseFolder', async () => {
-    const r = await dialog.showOpenDialog(win, { title: 'Your ComfyUI folder', properties: ['openDirectory'] })
-    if (r.canceled || !r.filePaths[0]) return null
-    const dir = r.filePaths[0]
-    if (!isComfyFolder(dir)) throw new Error(process.platform === 'win32' ? 'That folder doesn’t look like ComfyUI. Pick the folder that holds ComfyUI (its main.py, or run_nvidia_gpu.bat and the ComfyUI folder), or ComfyUI.exe’s folder.' : 'That folder doesn’t look like ComfyUI. Pick the folder that holds its main.py.')
-    writeSettings({ comfyFolder: dir, comfyLauncher: '' }, BASE)
-    return dir
+  handle('comfy:chooseInstallFolder', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Where to put ComfyUI', properties: ['openDirectory', 'createDirectory'] })
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
-  handle('comfy:start', () => startComfy())
+  handle('comfy:installCheck', async ({ folder, size } = {}) => checkFolder(folder, { size, freeOf: freeBytes }))
+  handle('comfy:install', async ({ folder } = {}) => {
+    const { build, asset } = await installPlan()
+    if (!build.ok) throw new Error(build.reason)
+    if (!asset || asset.error) throw new Error(asset?.error || 'Couldn’t find ComfyUI’s download.')
+    const problem = checkFolder(folder, { size: asset.size, freeOf: freeBytes })
+    if (problem) throw new Error(problem)
+    const dir = await comfyInstaller.install({ folder, asset })
+    // IV Studio starts it the way it starts any ComfyUI: with the folder's run_nvidia_gpu.bat
+    writeSettings({ comfyFolder: dir, comfyLauncher: '' }, BASE)
+    // IV_STUDIO_COMFY_INSTALL_NOSTART (test copies only): stop before starting it (a second ComfyUI on this PC's port)
+    if (TEST_COPY && process.env.IV_STUDIO_COMFY_INSTALL_NOSTART) return (send('comfy:install', { ...comfyInstaller.state, phase: 'done', done: true, started: false, startError: 'Not started (test copy).' }), { dir, version: asset.version })
+    send('comfy:install', { ...comfyInstaller.state, phase: 'start', done: false })
+    try {
+      await startComfy()
+      send('comfy:install', { ...comfyInstaller.state, phase: 'done', done: true, started: true })
+    } catch (err) {
+      send('comfy:install', { ...comfyInstaller.state, phase: 'done', done: true, started: false, startError: err.message })
+    }
+    return { dir, version: asset.version }
+  })
+  handle('comfy:installCancel', () => comfyInstaller.cancel())
 
   // ---------- the data folder (Settings → Data folder; datafolder.js) ----------
   // Moves IV Studio's own data (not ComfyUI's models or renders, which live in ComfyUI) to another folder:
@@ -1484,10 +2302,514 @@ app.whenReady().then(() => {
     fs.writeFileSync(skillFile, skillText())
     return skillFile
   })
+  // Installing Claude Code or Codex for the person (agentinstall.js): the maker's own installer, one at a time, its
+  // lines shown as it goes (agents:setupChanged); then a window to sign in. A test copy can stand in an installer
+  // (IV_STUDIO_TEST_INSTALL, a .cmd taking the agent's name) and keeps "signed in" as a marker in its test home.
+  let agentInstall = null // { engine, status: 'running' | 'done' | 'failed', lines, error, run }
+  const installView = () => (agentInstall ? { engine: agentInstall.engine, status: agentInstall.status, lines: agentInstall.lines.slice(-6), error: agentInstall.error } : null)
+  const testHome = () => TEST_COPY && !!process.env.IV_STUDIO_TEST_HOME
+  const testSigned = (engine) => path.join(agentHome().home, `.iv-test-signed-in-${engine}`)
+  const isSignedIn = (engine, exe) => (testHome() ? Promise.resolve(!!exe && fs.existsSync(testSigned(engine))) : signedIn(engine, exe, { env: agentHome().extra }))
+  const agentSetup = async () => {
+    const found = agentsFound()
+    const one = async (engine) => ({ ...AGENT_INFO[engine], installed: !!found[engine], signedIn: found[engine] ? await isSignedIn(engine, found[engine]) : false })
+    const [claude, codex] = await Promise.all([one('claude'), one('codex')])
+    return { platform: process.platform, claude, codex, install: installView() }
+  }
+  const pushSetup = () => agentSetup().then((s) => send('agents:setupChanged', s), () => {})
+  handle('agents:setup', () => agentSetup())
+  handle('agents:install', (engine) => {
+    if (!AGENT_INFO[engine]) throw new Error('IV Studio can install Claude Code or Codex.')
+    if (agentInstall?.status === 'running') throw new Error(`${AGENT_INFO[agentInstall.engine].name} is still installing.`)
+    const stand = TEST_COPY && process.env.IV_STUDIO_TEST_INSTALL
+    const state = { engine, status: 'running', lines: [], error: null, run: null }
+    agentInstall = state
+    state.run = runInstall(engine, {
+      env: agentHome().extra,
+      override: stand ? { command: stand, args: [engine] } : null,
+      onLine: (line) => {
+        state.lines.push(line)
+        if (state.lines.length > 50) state.lines.shift()
+        if (agentInstall === state) send('agents:setupChanged', { install: installView() })
+      }
+    })
+    pushSetup()
+    state.run.promise.then((r) => {
+      const there = !!agentsFound()[engine]
+      state.status = r.ok && there ? 'done' : 'failed'
+      state.error = r.ok && !there ? `The installer finished, but IV Studio can't find ${AGENT_INFO[engine].name} yet. Restart IV Studio, or install it from ${AGENT_INFO[engine].site}` : r.error
+      if (agentInstall === state) pushSetup()
+    })
+    return true
+  })
+  handle('agents:stopInstall', () => {
+    if (agentInstall?.status === 'running') agentInstall.run.stop()
+    return true
+  })
+  handle('agents:signIn', (engine) => {
+    if (!AGENT_INFO[engine]) throw new Error('IV Studio can sign in to Claude Code or Codex.')
+    const exe = agentsFound()[engine]
+    if (!exe) throw new Error(`${AGENT_INFO[engine].name} isn't installed yet.`)
+    if (testHome()) fs.writeFileSync(testSigned(engine), 'test')
+    else openSignIn(engine, exe, { env: agentHome().extra })
+    return true
+  })
+  // The Dashboard's "Let Claude Code make it": the person's own agent makes their idea inside IV Studio (agentrun.js).
+  // The writer chosen in Settings when it's Claude Code or Codex, else whichever is installed, Claude Code first. A test
+  // copy can stand in a recorded agent (IV_STUDIO_TEST_AGENT, a .cmd or program printing an agent's stream).
+  let agentRun = null
+  let agentRenders = []
+  let agentPoll = null
+  const agentPick = () => {
+    const found = TEST_COPY && process.env.IV_STUDIO_TEST_AGENT ? { claude: process.env.IV_STUDIO_TEST_AGENT, codex: null } : agentsFound()
+    const s = readSettings(BASE)
+    const pick = ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : null
+    return { pick, exe: pick ? found[pick] : null, installed: { claude: !!found.claude, codex: !!found.codex } }
+  }
+  const agentView = () => (agentRun ? { ...agentRun.state(), renders: agentRenders } : null)
+  const agentStatus = () => {
+    const { pick, installed } = agentPick()
+    return { pick, name: pick ? AGENT_NAMES[pick] : null, installed, cloud: readSettings(BASE).target === 'cloud', run: agentView() }
+  }
+  // the takes the run started, as the panel shows them: name, status and progress
+  const refreshAgentRenders = async () => {
+    if (!agentRun) return
+    const out = []
+    for (const id of agentRun.jobs()) {
+      try {
+        const j = await studio.refreshJob(id)
+        out.push({ id, name: j.name, kind: j.kind, status: j.status, progress: j.progress ? Math.round((100 * j.progress.value) / Math.max(1, j.progress.max)) : null, projectId: j.projectId || null })
+      } catch {
+        out.push({ id, status: 'unknown' })
+      }
+    }
+    agentRenders = out
+    send('agentRun:changed', agentView())
+    const running = agentRun.state().status === 'running' || out.some((r) => ['queued', 'running'].includes(r.status))
+    if (!running) clearInterval(agentPoll), (agentPoll = null)
+  }
+  handle('agentRun:status', agentStatus)
+  handle('agentRun:start', (idea) => {
+    const text = String(idea || '').trim().slice(0, 2000)
+    if (!text) throw new Error('Type what you want to make first.')
+    if (agentRun && agentRun.state().status === 'running') throw new Error(`${agentRun.state().name} is still working on the last idea. Stop it first.`)
+    if (chatTurn) throw new Error(`${chat.name} is answering in the chat. Wait for it, or stop it there.`)
+    if (readSettings(BASE).target === 'cloud') throw new Error('IV Studio is set to render on the cloud. Your agent only renders on this computer (free): switch Cloud to This computer, or press Make it.')
+    const { pick, exe } = agentPick()
+    if (!pick) throw new Error('Neither Claude Code nor Codex is installed on this computer.')
+    const mcp = mcpCommand()
+    const extraEnv = {}
+    for (const k of ['IV_STUDIO_DATA', 'IV_STUDIO_USER_DATA']) if (process.env[k]) extraEnv[k] = process.env[k]
+    agentRenders = []
+    const s = readSettings(BASE)
+    agentRun = startAgentRun({
+      engine: pick,
+      exe,
+      idea: text,
+      mcp,
+      model: pick === 'claude' ? s.claudeModel || '' : s.codexModel || '',
+      extraEnv,
+      onChange: (state) => {
+        send('agentRun:changed', { ...state, renders: agentRenders })
+        if (state.jobs.length && !agentPoll) agentPoll = setInterval(refreshAgentRenders, 3000)
+        if (state.endedAt) refreshAgentRenders()
+      }
+    })
+    return agentView()
+  })
+  handle('agentRun:stop', async () => {
+    if (!agentRun) return null
+    agentRun.stop()
+    for (const id of agentRun.jobs()) await studio.cancelJob(id).catch(() => {})
+    await refreshAgentRenders()
+    return agentView()
+  })
+  // close the panel of a finished run
+  handle('agentRun:dismiss', () => {
+    if (agentRun && agentRun.state().status !== 'running') (agentRun = null), (agentRenders = [])
+    send('agentRun:changed', agentView())
+    return null
+  })
+  // The chat panel (agentchat.js): the person's own Claude Code or Codex with every IV Studio tool, asking first for
+  // anything that deletes, costs money, installs or changes Settings. One open chat; one message at a time; chats
+  // saved under the data folder's chats. A test copy can stand in an agent (IV_STUDIO_TEST_CHAT).
+  const chatsRoot = path.join(DATA, 'chats')
+  let chat = null
+  let chatTurn = null
+  let chatRenders = []
+  let chatPoll = null
+  const chatFound = () => (TEST_COPY && process.env.IV_STUDIO_TEST_CHAT ? { claude: process.env.IV_STUDIO_TEST_CHAT, codex: null } : agentsFound())
+  const chatPreferred = (found) => {
+    const s = readSettings(BASE)
+    return ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : null
+  }
+  // The spending limit (spending.js): the chat's MCP server asks this desk before a paid step, and borrows the
+  // Comfy.org key from it, with a token that only lives as long as one chat turn.
+  let spendDesk = null
+  const deskFor = () =>
+    (spendDesk ||= startSpendDesk({
+      dataDir: BASE,
+      settings: () => readSettings(BASE),
+      key: () => comfyKey() || null,
+      // a test copy can stand in a balance (IV_STUDIO_TEST_BALANCE); it has no Comfy.org key of its own
+      balance: async () => (TEST_COPY && process.env.IV_STUDIO_TEST_BALANCE ? Number(process.env.IV_STUDIO_TEST_BALANCE) : comfyKey() ? (await getBalance(comfyKey())).credits : null),
+      onSpend: (turn, entry, { spent, budget }) => {
+        const c = turn.chat
+        if (!c) return
+        c.entries.push({ kind: 'spent', credits: entry.credits, usd: entry.usd, auto: entry.auto, today: todayLabel(budget, spent) })
+        if (chat === c) pushChat()
+      }
+    }))
+  const spendToday = () => {
+    const budget = budgetOf(readSettings(BASE))
+    return { ...budget, spent: spentToday(readLedger(BASE)), label: todayLabel(budget, spentToday(readLedger(BASE))) }
+  }
+  const chatView = () => (chat ? { ...chat, busy: !!chatTurn, renders: chatRenders, spending: spendToday() } : null)
+  const pushChat = () => send('chat:changed', chatView())
+  const chatJobs = () => [...new Set([...(chat?.jobs || []), ...(chatTurn?.jobs() || [])])].slice(-4)
+  const refreshChatRenders = async () => {
+    const out = []
+    for (const id of chatJobs()) {
+      try {
+        const j = await studio.refreshJob(id)
+        out.push({ id, name: j.name, kind: j.kind, status: j.status, progress: j.progress ? Math.round((100 * j.progress.value) / Math.max(1, j.progress.max)) : null, projectId: j.projectId || null })
+      } catch {
+        out.push({ id, status: 'unknown' })
+      }
+    }
+    chatRenders = out
+    pushChat()
+    if (!chatTurn && !out.some((r) => ['queued', 'running'].includes(r.status))) clearInterval(chatPoll), (chatPoll = null)
+  }
+  const watchChatRenders = () => {
+    if (!chatPoll) chatPoll = setInterval(refreshChatRenders, 3000)
+  }
+  const chatId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  const chatEngine = (engine) => {
+    const found = chatFound()
+    const e = engine || chatPreferred(found)
+    if (!e || !AGENT_NAMES[e]) throw new Error('Install Claude Code or Codex first: the chat uses your own.')
+    if (!found[e]) throw new Error(`${AGENT_NAMES[e]} isn't installed on this computer.`)
+    return e
+  }
+  handle('chat:status', () => {
+    const found = chatFound()
+    return { installed: { claude: !!found.claude, codex: !!found.codex }, preferred: chatPreferred(found), chat: chatView(), chats: listChats(chatsRoot).slice(0, 10) }
+  })
+  handle('chat:new', (engine) => {
+    if (chatTurn) throw new Error(`${chat.name} is still answering. Stop it first.`)
+    chat = newChat({ id: chatId(), engine: chatEngine(engine) })
+    chatRenders = []
+    pushChat()
+    return chatView()
+  })
+  handle('chat:open', (id) => {
+    if (chatTurn) throw new Error(`${chat.name} is still answering. Stop it first.`)
+    const c = loadChat(chatsRoot, String(id || ''))
+    if (!c) throw new Error('That chat is gone.')
+    chat = c
+    chatRenders = []
+    pushChat()
+    refreshChatRenders()
+    return chatView()
+  })
+  handle('chat:send', async ({ text, context, engine, files = [] } = {}) => {
+    const attached = (Array.isArray(files) ? files : []).filter((p) => typeof p === 'string' && fs.existsSync(p)).map(attachmentOf).filter((a) => a.kind).slice(0, MAX_ATTACH)
+    const message = String(text || '').trim().slice(0, 8000) || (attached.length ? 'Here are some files.' : '')
+    if (!message) throw new Error('Type a message first.')
+    // the spend desk's address, before anything else (the only wait here)
+    let deskUrl = null
+    try {
+      deskUrl = await deskFor().url
+    } catch {
+      /* no desk: paid steps still ask, with the price, as before */
+    }
+    if (chatTurn) throw new Error(`${chat.name} is still answering. Stop it first, or wait.`)
+    if (agentRun && agentRun.state().status === 'running') throw new Error(`${agentRun.state().name} is making the Dashboard idea. Wait for it, or stop it there.`)
+    if (!chat) chat = newChat({ id: chatId(), engine: chatEngine(engine) })
+    const exe = chatFound()[chat.engine]
+    if (!exe) throw new Error(`${chat.name} isn't installed on this computer.`)
+    const current = chat
+    // Codex doesn't report its window: its models cache does (harness.js codexWindow)
+    if (current.engine === 'codex') {
+      const cw = codexWindow(readSettings(BASE).codexModel || '')
+      if (cw) applyUsage(current, { window: cw.window, model: cw.model })
+    }
+    current.turnCalls = 0
+    current.entries.push({ kind: 'you', text: message, at: new Date().toISOString(), ...(attached.length ? { files: attached.map((a) => ({ name: a.name, kind: a.kind, path: a.path })) } : {}) })
+    if (!current.title) current.title = message.slice(0, 80)
+    saveChat(chatsRoot, current)
+    const s = readSettings(BASE)
+    const extraEnv = {}
+    for (const k of ['IV_STUDIO_DATA', 'IV_STUDIO_USER_DATA']) if (process.env[k]) extraEnv[k] = process.env[k]
+    // this turn's own pass to the spend desk; dropped when the turn ends
+    const deskToken = deskUrl ? spendDesk.issue({ chat: current }) : null
+    if (deskToken) Object.assign(extraEnv, { IV_STUDIO_AGENT_APP: deskUrl, IV_STUDIO_AGENT_TOKEN: deskToken })
+    // an overnight batch started in this turn reports back to this chat
+    extraEnv.IV_STUDIO_CHAT_ID = current.id
+    // who the activity log says took each step (activity.js)
+    extraEnv.IV_STUDIO_AGENT_NAME = `${AGENT_NAMES[current.engine]} in the chat`
+    setTimeout(watchBatches, 5000)
+    // what the agent should know without asking: the page and what's picked on it (the window's), plus what's
+    // rendering or waiting and the newest failure (here)
+    const fullContext = context && typeof context === 'object' ? { ...context } : chatContext ? { ...chatContext } : {}
+    try {
+      const q = await Promise.race([studio.renderQueue(), new Promise((_, no) => setTimeout(() => no(new Error('slow')), 3000))])
+      fullContext.renders = (q.items || []).slice(0, 6).map((i) => ({ state: i.state, name: i.name, kind: i.kind, ours: i.ours, percent: i.progress?.max ? Math.round((100 * i.progress.value) / i.progress.max) : null }))
+    } catch {
+      /* ComfyUI busy or down: the agent can still ask */
+    }
+    try {
+      fullContext.problem = studio.recentProblem()
+    } catch {}
+    const turn = startChatTurn({
+      engine: current.engine,
+      exe,
+      dir: path.join(chatsRoot, current.id),
+      session: current.session,
+      message: withAttachments(message, attached),
+      context: fullContext,
+      mcp: mcpCommand(),
+      model: current.engine === 'claude' ? s.claudeModel || '' : s.codexModel || '',
+      extraEnv,
+      onEvent: (e) => {
+        // show_in_app: the window goes there and lights it up (App.jsx)
+        if (e.type === 'show') send('chat:show', e.show)
+        applyChatEvent(current, e)
+        if (chat === current) pushChat()
+        if (turn && turn.jobs().length) watchChatRenders()
+      }
+    })
+    chatTurn = turn
+    pushChat()
+    turn.promise.then((r) => {
+      if (deskToken) spendDesk?.revoke(deskToken)
+      current.jobs = [...new Set([...current.jobs, ...r.jobs])]
+      if (r.session) current.session = r.session
+      const last = current.entries[current.entries.length - 1]
+      if (!r.ok && r.error && !(last?.kind === 'problem' && last.text === r.error)) current.entries.push({ kind: 'problem', text: r.error })
+      current.updatedAt = new Date().toISOString()
+      if (chatTurn === turn) chatTurn = null
+      try {
+        saveChat(chatsRoot, current)
+        pruneChats(chatsRoot)
+      } catch {
+        /* a full drive shouldn't take the chat down */
+      }
+      if (current.jobs.length) watchChatRenders()
+      refreshChatRenders()
+    })
+    return chatView()
+  })
+  handle('chat:spending', () => spendToday())
+  // Overnight batches (batches.js): while any runs, the PC stays awake; each shot's takes are ranked as it finishes,
+  // and when all are done the report goes into the chat that started it (and a notification, if the window is away)
+  const batchStore = new Batches({ dir: path.join(DATA, 'batches') })
+  let batchTimer = null
+  let awake = null
+  let batchBusy = false
+  const jobOrNull = async (id) => {
+    try {
+      return await studio.refreshJob(id)
+    } catch {
+      try {
+        return studio.getJob(id, { refresh: false })
+      } catch {
+        return null
+      }
+    }
+  }
+  const buildDailies = (b, jobs) => makeDailies({ batch: b, jobs, outDir: path.join(videosDir(), 'Dailies'), ffmpeg: edits.ffmpeg, font: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'fonts', 'BarlowCondensed-SemiBold.ttf'), localCopy: (o, dir) => studio.localCopy(o, dir), probe: (f) => edits.probe(f) })
+  const reportBatch = (b, report) => {
+    const entry = { kind: 'report', title: report.title, text: report.text, picks: report.picks, dailies: report.dailies || null, batchId: b.id, at: new Date().toISOString() }
+    const target = chat && chat.id === b.chatId ? chat : b.chatId ? loadChat(chatsRoot, b.chatId) : null
+    if (target) {
+      target.entries.push(entry)
+      target.updatedAt = entry.at
+      saveChat(chatsRoot, target)
+      if (target === chat) pushChat()
+    }
+    if (Notification.isSupported() && !win?.isFocused()) new Notification({ title: 'Your overnight batch is done', body: report.text.slice(0, 180) }).show()
+  }
+  async function watchBatches() {
+    if (batchBusy) return
+    batchBusy = true
+    try {
+      const running = batchStore.running()
+      // the PC stays up while anything is queued (the screen may still turn off)
+      if (running.length && awake === null) awake = powerSaveBlocker.start('prevent-app-suspension')
+      if (!running.length && awake !== null) (powerSaveBlocker.stop(awake), (awake = null))
+      for (const b of running) {
+        const jobs = {}
+        for (const j of b.jobs) jobs[j.jobId] = await jobOrNull(j.jobId)
+        const st = batchState(b, jobs)
+        if (!st.done) continue
+        // rank what finished (the window's own pump may have done some already)
+        for (const j of b.jobs) {
+          const job = jobs[j.jobId]
+          if (job?.status === 'success' && !job.ranking && ranker) {
+            await ranker.rank(j.jobId).catch(() => null)
+            jobs[j.jobId] = await jobOrNull(j.jobId)
+          }
+        }
+        const report = batchReport(b, jobs)
+        // the dailies: a reel of every take with a title card each, and notes on what to look at first (dailies.js)
+        report.dailies = await buildDailies(b, jobs).catch(() => null)
+        batchStore.save({ ...b, status: 'reported', reportedAt: new Date().toISOString(), summary: report.text, dailies: report.dailies })
+        reportBatch(b, report)
+      }
+      if (!batchStore.running().length && awake !== null) (powerSaveBlocker.stop(awake), (awake = null))
+    } catch {
+      /* a bad batch file shouldn't stop the others: try again next time */
+    } finally {
+      batchBusy = false
+      clearTimeout(batchTimer)
+      batchTimer = setTimeout(watchBatches, batchStore.running().length ? 30000 : 5 * 60000)
+    }
+  }
+  setTimeout(watchBatches, 8000)
+  handle('batches:list', () => batchStore.list().slice(0, 20))
+  // the dailies again (or for a batch from before they existed): the reel and the notes, then open the folder
+  handle('batches:dailies', async (id) => {
+    const b = batchStore.get(id)
+    const jobs = {}
+    for (const j of b.jobs) jobs[j.jobId] = await jobOrNull(j.jobId)
+    const d = await buildDailies(b, jobs)
+    batchStore.save({ ...batchStore.get(id), dailies: d })
+    return d
+  })
+  handle('files:open', async (file) => {
+    if (!file || !fs.existsSync(file)) throw new Error('That file is gone.')
+    const err = await shell.openPath(file)
+    if (err) throw new Error(err)
+    return true
+  })
+  // "Undo this change" on an edit the agent changed: the edit goes back as it was (an open edit reloads, and the
+  // editor's own Ctrl+Z can still step back over it)
+  handle('chat:undo', (undoId) => {
+    if (!chat) throw new Error('No chat open.')
+    const entry = chat.entries.find((x) => x.kind === 'undo' && x.id === undoId)
+    if (!entry) throw new Error('No such change in this chat.')
+    const r = undoEditChange(path.join(chatsRoot, chat.id), undoId, (editId, fields) => edits.save(editId, fields))
+    entry.done = true
+    saveChat(chatsRoot, chat)
+    pushChat()
+    return r
+  })
+  handle('chat:answer', ({ id, allow } = {}) => !!chatTurn?.answer(String(id || ''), !!allow))
+  handle('chat:popout', () => (openChatWindow(), true))
+  // back into the app: the popped-out window closes and the main window opens its panel
+  // back into the app: the chat's window closes, and then the main window opens its panel (on 'closed', so the main
+  // window no longer counts the chat as popped out)
+  handle('chat:dock', () => {
+    if (chatWin && !chatWin.isDestroyed()) {
+      dockAfterClose = true
+      chatWin.close()
+    } else if (win && !win.isDestroyed()) win.webContents.send('chat:docked', true)
+    return true
+  })
+  handle('chat:popped', () => !!(chatWin && !chatWin.isDestroyed()))
+  // a question from a button in the main window ("Ask Claude Code to fix it") while the chat is in its own window
+  handle('chat:forwardAsk', (detail) => {
+    if (!chatWin || chatWin.isDestroyed()) return false
+    chatWin.webContents.send('chat:ask', detail)
+    chatWin.show()
+    chatWin.focus()
+    return true
+  })
+  handle('chat:pin', (on) => {
+    if (chatWin && !chatWin.isDestroyed()) chatWin.setAlwaysOnTop(!!on)
+    return !!on
+  })
+  handle('chat:setContext', (ctx) => {
+    chatContext = ctx && typeof ctx === 'object' ? ctx : null
+    return true
+  })
+  // a link in the popped-out chat (a shot, an edit, a film): the main window goes there and comes to the front
+  handle('chat:openInApp', (where) => {
+    if (win && !win.isDestroyed()) win.webContents.send('app:open', where), win.show(), win.focus()
+    return true
+  })
+  // ---------- talking to the chat (ChatPanel's mic): IV Studio's own Whisper, and its voices to read replies ----------
+  // bytes: what the window recorded (webm/opus). The words come back; the window sends them as the message.
+  handle('chat:hear', async (bytes) => {
+    const st = voices.status()
+    if (!st.installed) throw Object.assign(new Error('Talking to the chat needs IV Studio’s voices set up once: Audio → Voices → Set up voices (about 12 GB, free).'), { code: 'voices' })
+    const buf = Buffer.from(bytes || [])
+    if (buf.length < 2000) throw new Error('That was too short to hear. Hold the mic a little longer.')
+    if (buf.length > 40 * 1024 * 1024) throw new Error('That recording is too long for one message.')
+    const file = path.join(os.tmpdir(), `ivs-hear-${Date.now().toString(36)}.webm`)
+    fs.writeFileSync(file, buf)
+    try {
+      const text = await voices.transcribe(file)
+      return { text: text.replace(/\s+/g, ' ').trim() }
+    } finally {
+      fs.rmSync(file, { force: true })
+    }
+  })
+  // A reply read aloud in one of the person's voices, not kept in Lines. Waits for no render: when ComfyUI is busy on
+  // this PC the window is told, so the voice engine doesn't load next to a render on the same graphics card.
+  handle('chat:say', async ({ text, voiceId } = {}) => {
+    const st = voices.status()
+    if (!st.installed) throw Object.assign(new Error('Reading replies aloud needs IV Studio’s voices set up once: Audio → Voices → Set up voices.'), { code: 'voices' })
+    const local = readSettings(BASE).target !== 'cloud'
+    if (local) {
+      const q = await studio.comfy.queue().catch(() => null)
+      if (q && (q.queue_running.length || q.queue_pending.length)) return { skipped: 'A render is using the graphics card, so this reply isn’t read aloud.' }
+    }
+    const list = voices.list()
+    const v = list.find((x) => x.id === voiceId) || list[0]
+    if (!v) throw new Error('Make or add a voice first (Audio → Voices), then pick it for reading replies.')
+    return voices.speak({ voiceId: v.id, text: spoken(text), keep: false })
+  })
+  // ---------- the agents' activity log (activity.js): written by the MCP server, read here ----------
+  try {
+    pruneActivity(DATA)
+  } catch {}
+  handle('activity:list', (opts = {}) => readActivity(DATA, { days: Math.min(30, Number(opts.days) || 7), who: opts.who || null, problems: !!opts.problems, limit: 400 }))
+  handle('activity:undo', (undoId) => {
+    const r = undoEditChange(path.join(DATA, ACTIVITY_FOLDER), String(undoId || ''), (editId, fields) => edits.save(editId, fields))
+    markUndone(DATA, String(undoId))
+    send('activity:changed', { at: Date.now() })
+    return r
+  })
+  let activityWatch = null
+  let activityTick = null
+  const watchActivity = () => {
+    try {
+      fs.mkdirSync(path.join(DATA, ACTIVITY_FOLDER), { recursive: true })
+      activityWatch = fs.watch(path.join(DATA, ACTIVITY_FOLDER), () => {
+        clearTimeout(activityTick)
+        activityTick = setTimeout(() => send('activity:changed', { at: Date.now() }), 300)
+      })
+    } catch {
+      /* no live updates: the tab still reads the log when opened */
+    }
+  }
+  watchActivity()
+  app.on('will-quit', () => activityWatch?.close())
+  // keepRenders: the person talked over the agent (ChatPanel's mic): stop its turn so the new words go in, but leave the
+  // renders it already started running; the agent can still cancel them if that's what they asked.
+  handle('chat:stop', async ({ keepRenders = false } = {}) => {
+    if (!chatTurn) return chatView()
+    const turn = chatTurn
+    const jobs = turn.jobs()
+    turn.stop()
+    if (!keepRenders) for (const id of jobs) await studio.cancelJob(id).catch(() => {})
+    // wait (briefly) for the turn to end, so a message sent next isn't refused as "still answering"
+    await Promise.race([turn.promise.catch(() => {}), new Promise((r) => setTimeout(r, 8000))])
+    return chatView()
+  })
   handle('models:h3', () => studio.h3Models())
   handle('models:status', () => installer.status())
   handle('models:download', (ids) => installer.enqueue(ids))
   handle('models:cancel', (id) => installer.cancel(id))
+  // a Hugging Face login for gated models on this PC (Flux.2 Klein, Flux 3 Klein, the LTX effects): IV Studio's saved
+  // token (the same one the cloud uses), else HF_TOKEN, else hf auth login's
+  try {
+    setSavedHfToken(unseal(readSettings(BASE).hfToken))
+  } catch {}
+  handle('models:hfLogin', () => ({ from: hfLoginFrom() }))
   handle('characters:list', async () => (await catalog?.attachVoices().catch(() => {}), studio.characters()))
   // Ready-made characters: bundled picture, LoRA downloaded on request (resources/characters/catalog.json).
   catalog = new CharacterCatalog({ studio, voices, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')) })
@@ -1541,6 +2863,8 @@ app.whenReady().then(() => {
   ranker = new Ranker({ studio: () => studio, voices: () => voices, shinobi: () => shinobi, ffmpeg: edits.ffmpeg, dataDir: DATA })
   handle('rank:job', async (id) => (await ranker.rank(id), studio.publicJob(studio.getJob(id))))
   handle('rank:learn', (id, candidate) => ranker.learn(id, candidate))
+  // a take's longest stretch without a cut, as its own file (to an edit, or to carry on from in Continue)
+  handle('rank:clean', (id, candidate, opts = {}) => cleanStretchFile({ studio, mediaTools, dir: videosDir(), jobId: id, candidate, forContinue: !!opts.forContinue }))
   reviewer = new Reviewer({ studio: () => studio, voices: () => voices, ffmpeg: edits.ffmpeg })
   handle('review:take', async (id, candidate) => (await reviewer.review(id, candidate, writerOf(readSettings(BASE))), studio.publicJob(studio.getJob(id))))
   // a staging board in motion: a grey previs clip for <Video n> (Edge or Chrome draws it, about 3 s)
@@ -1595,14 +2919,17 @@ app.whenReady().then(() => {
   handle('cast:places', () => studio.cast.places())
   handle('cast:savePlace', (place) => studio.cast.savePlace(place))
   handle('cast:deletePlace', (id) => studio.cast.deletePlace(id))
+  // What a render would cost on Comfy.org credits (Seedance), and what finishing a take would
+  handle('render:price', (request) => studio.priceRender(request))
+  handle('render:priceFinish', (opts) => studio.priceFinish(opts))
   handle('render:previews', async (request) => {
-    await freeVoices()
+    if (request?.engine !== 'seedance') await freeVoices()
     const job = await studio.generatePreviews(request)
     pending.add(job.id)
     return job
   })
   handle('render:finish', async (opts) => {
-    await freeVoices()
+    if (studio.getJob(opts.jobId)?.plan?.engine !== 'seedance' || opts.way === 'local') await freeVoices()
     const job = await studio.finishCandidate(opts)
     pending.add(job.id)
     return job
@@ -1626,9 +2953,11 @@ app.whenReady().then(() => {
     const filters = {
       picture: [{ name: 'Pictures', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
       video: [{ name: 'Videos', extensions: ['mp4', 'mov', 'webm', 'mkv'] }],
-      audio: [{ name: 'Audio', extensions: ['wav', 'mp3', 'flac', 'm4a', 'ogg'] }]
+      audio: [{ name: 'Audio', extensions: ['wav', 'mp3', 'flac', 'm4a', 'ogg'] }],
+      // the chat's paperclip: anything it can pass on (agentchat.js attachmentOf)
+      chat: [{ name: 'Pictures, videos, sound and scripts', extensions: ATTACH_EXTENSIONS }]
     }[kind]
-    const r = await dialog.showOpenDialog(win, { properties: ['openFile', ...(kind === 'picture' ? ['multiSelections'] : [])], filters })
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile', ...(kind === 'picture' || kind === 'chat' ? ['multiSelections'] : [])], filters })
     return r.canceled ? [] : r.filePaths
   })
   // A path on this PC opens in Explorer. An output that lives in the cloud is downloaded to
@@ -1656,6 +2985,57 @@ app.whenReady().then(() => {
     return true
   })
 
+  // ---------- terms for MiniMax H3 (terms.js, TERMS.md) ----------
+  // The first H3 render or training asks the window (terms:ask) and waits; the person reads the rules and accepts or
+  // declines (terms:answer). One question at a time: renders that arrive meanwhile wait for the same answer.
+  let termsAsk = null // { promise, resolve }
+  const termsState = () => {
+    const s = readSettings(BASE)
+    return { accepted: termsAccepted(s), at: s.h3Terms?.at || null, version: H3_TERMS_VERSION, rules: H3_RULES, abuseEmail: ABUSE_EMAIL, asking: termsAsk?.what || null }
+  }
+  const settleTerms = (ok) => {
+    if (ok) {
+      writeSettings({ h3Terms: acceptance() }, BASE)
+      send('terms:changed', termsState())
+    }
+    termsAsk?.resolve(!!ok)
+    termsAsk = null
+    return termsState()
+  }
+  setH3Gate(async (what) => {
+    if (termsAccepted(readSettings(BASE))) return
+    if (!win || win.isDestroyed()) throw new Error(H3_TERMS_NEEDED)
+    if (!termsAsk) {
+      let resolve
+      const promise = new Promise((r) => (resolve = r))
+      termsAsk = { promise, resolve, what }
+      send('terms:ask', { what })
+    }
+    if (!(await termsAsk.promise)) throw new Error(H3_TERMS_DECLINED)
+  })
+  handle('terms:state', () => termsState())
+  // terms:accept from Settings or Check my PC; terms:answer from the notice a render opened
+  handle('terms:accept', () => settleTerms(true))
+  handle('terms:answer', (ok) => settleTerms(ok))
+  handle('terms:report', () => {
+    shell.openExternal(REPORT_URL)
+    return ABUSE_EMAIL
+  })
+  // MiniMax's licence as shipped with IV Studio (resources/licenses); online if the file can't be opened
+  handle('terms:openLicense', async () => {
+    // copied to the data folder first, like the guide (an AppImage's resources live in a temporary mount)
+    const src = path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'licenses', 'MiniMax-H3-LICENSE.txt')
+    const dest = path.join(BASE, 'licenses', 'MiniMax-H3-LICENSE.txt')
+    let err = 'missing'
+    try {
+      fs.mkdirSync(path.dirname(dest), { recursive: true })
+      fs.copyFileSync(src, dest)
+      err = await shell.openPath(dest)
+    } catch {}
+    if (err) shell.openExternal(H3_LICENSE_URL)
+    return true
+  })
+
   // ---------- updates ----------
   // Restarting stops work this process is doing itself, so the update waits for it. Renders keep going in
   // ComfyUI either way.
@@ -1669,8 +3049,8 @@ app.whenReady().then(() => {
   handle('update:state', () => updateState())
   handle('update:check', () => updater.check())
   handle('update:install', () => {
-    // a Mac only opens the download page, which needs nothing to finish first
-    if (UPDATE_MANUAL) return updater.install()
+    // opening the download page (the portable copy, or a Mac copy that can't replace itself) needs nothing to finish first
+    if (UPDATE_MANUAL || updateState().status === 'available') return updater.install()
     const waits = busy()
     if (waits.length) throw new Error(`Restart when it's done: ${waits.join(' and ')}.`)
     return updater.install()

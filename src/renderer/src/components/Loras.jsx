@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Hero from './Hero'
+import Stage from './Stage'
+import QuickBar from './AudioQuick'
 import { fileUrl } from './edit/model'
 import Loading from './Loading'
 
-// LoRAs as pictures: Civitai's H3 LoRAs (Discover) and the ones on this PC (Yours), with clips that play on
-// hover. LoraPicker is the same thing in a dialog, for Create's LoRA tray and for Characters.
+// LoRAs as pictures, for every model family IV Studio runs (civitai.js LORA_FAMILIES: MiniMax H3, LTX-2.5, Wan 2.1,
+// Flux 3 Klein, Flux.2 Klein, Krea 2, Qwen Image 2.1, Z-Image, SDXL, Moss): Civitai's (Discover) and the ones on this
+// PC (Yours), with clips that play on hover. LoraPicker is the same thing in a dialog, for Create's LoRA trays and
+// for Characters; it opens on the family the tray is for.
 const L = () => window.ivstudio.loras
 const MB = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : `${Math.round(b / 1024 ** 2)} MB`)
 const K = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n))
@@ -13,6 +16,38 @@ const folderOf = (name) => {
   const parts = String(name).split(/[\\/]/)
   return parts.length > 1 ? parts.slice(0, -1).join(' / ') : 'Top level'
 }
+
+// The family bar: video models, then picture models, each with how many of its LoRAs this PC has.
+const FAMILY_KEY = 'iv.loraFamily'
+export function savedFamily() {
+  try {
+    return localStorage.getItem(FAMILY_KEY) || 'h3'
+  } catch {
+    return 'h3'
+  }
+}
+function FamilyBar({ families = [], value, onChange, counts = {} }) {
+  const group = (kind, title) => (
+    <div className="lora-fam-group">
+      <span className="mono small dim lora-fam-kind">{title}</span>
+      {families
+        .filter((f) => f.kind === kind)
+        .map((f) => (
+          <button key={f.id} className={`lora-tag ${value === f.id ? 'on' : ''}`} title={f.uses} onClick={() => onChange(f.id)}>
+            {f.label}
+            {counts[f.id] ? <span className="lora-fam-n">{counts[f.id]}</span> : null}
+          </button>
+        ))}
+    </div>
+  )
+  return (
+    <div className="lora-families" role="group" aria-label="Model">
+      {group('video', 'Video')}
+      {group('image', 'Pictures')}
+    </div>
+  )
+}
+const famLabel = (meta, id) => meta?.families?.find((f) => f.id === id)?.label || 'H3'
 
 // Whether mature previews show without the blur: Settings -> Civitai, only after the 18+ opt-in.
 let unblurred = false
@@ -76,22 +111,27 @@ function useProgress() {
 }
 
 // ---------- Discover: Civitai ----------
-function Discover({ meta, onOpen, compact = false }) {
-  const [query, setQuery] = useState('')
+// query / setQuery: the search words, when the page above owns them (the LoRAs page's banner shares them)
+function Discover({ meta, onOpen, compact = false, family = 'h3', query: shared, setQuery: setShared }) {
+  const [own, setOwn] = useState('')
+  const query = setShared ? shared : own
+  const setQuery = setShared || setOwn
   const [tag, setTag] = useState('')
   const [sort, setSort] = useState('Most Downloaded')
   const [items, setItems] = useState([])
   const [next, setNext] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [none, setNone] = useState(null)
   const typed = useRef(null)
   async function load(more = false) {
     setBusy(true)
     setError(null)
     try {
-      const page = await L().search({ query, tag, sort, cursor: more ? next : null, limit: compact ? 18 : 24 })
+      const page = await L().search({ query, tag, sort, family, cursor: more ? next : null, limit: compact ? 18 : 24 })
       setItems((x) => (more ? [...x, ...page.items] : page.items))
       setNext(page.next)
+      setNone(page.none || null)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -102,11 +142,11 @@ function Discover({ meta, onOpen, compact = false }) {
     clearTimeout(typed.current)
     typed.current = setTimeout(() => load(false), query ? 450 : 0)
     return () => clearTimeout(typed.current)
-  }, [query, tag, sort])
+  }, [query, tag, sort, family])
   return (
     <div className="lora-discover">
       <div className="lora-bar">
-        <input className="lora-search" value={query} placeholder="Search H3 LoRAs: cinematic, anime, POV, turbo…" onChange={(e) => setQuery(e.target.value)} />
+        <input className="lora-search" value={query} placeholder={`Search ${famLabel(meta, family)} LoRAs: cinematic, anime, painterly, turbo…`} onChange={(e) => setQuery(e.target.value)} />
         <select value={sort} onChange={(e) => setSort(e.target.value)}>
           {(meta?.sorts || []).map((s) => (
             <option key={s}>{s}</option>
@@ -137,7 +177,7 @@ function Discover({ meta, onOpen, compact = false }) {
           </button>
         ))}
       </div>
-      {!busy && !error && items.length === 0 && <p className="dim">Nothing matches. Try another word or tag.</p>}
+      {!busy && !error && items.length === 0 && <p className="dim">{none || 'Nothing matches. Try another word or tag.'}</p>}
       <div className="lora-more">{busy ? <Loading label="Loading more" small /> : next && <button className="btn btn-small" onClick={() => load(true)}>Show more</button>}</div>
       <p className="small dim">From Civitai. Each LoRA keeps its maker's licence, shown before you download. LoRAs of real people aren't shown.</p>
     </div>
@@ -217,7 +257,7 @@ function Details({ id, meta, onClose, onUse, go }) {
 
         <aside className="lora-modal-info">
           <div className="lora-modal-head">
-            <span className="mono small dim">Civitai{m?.version?.baseModel ? ` · ${m.version.baseModel}` : ''}</span>
+            <span className="mono small dim">Civitai{(v || m?.version)?.baseModel ? ` · ${(v || m.version).baseModel}` : ''}</span>
             <button className="link-btn mono" onClick={onClose}>
               Close ×
             </button>
@@ -252,11 +292,12 @@ function Details({ id, meta, onClose, onUse, go }) {
                   {v.installed || installedName ? (
                     <>
                       <span className="mono small cloud-ok">● Installed</span>
-                      {onUse && installedName && (
-                        <button className="btn btn-primary" onClick={() => onUse({ name: installedName, words: v.trainedWords, title: m.name })}>
-                          Use in a shot
+                      {onUse && installedName && !['ltx', 'wan'].includes(v.family) && (
+                        <button className="btn btn-primary" onClick={() => onUse({ name: installedName, words: v.trainedWords, title: m.name, family: v.family })}>
+                          {v.family && v.family !== 'h3' ? 'Use in a picture' : 'Use in a shot'}
                         </button>
                       )}
+                      {['ltx', 'wan'].includes(v.family) && <span className="small dim">In ComfyUI’s loras folder, for your own workflows.</span>}
                     </>
                   ) : state && ['downloading', 'verifying'].includes(state.status) ? (
                     <div className="dl">
@@ -393,14 +434,14 @@ export function useYours() {
   return [items, setItems, reload]
 }
 
-// family: { label, test(name) } narrows the list to one image family's LoRAs (Create -> Image) instead of H3's.
-function Yours({ items, setItems, onPick, onOpenCivitai, compact = false, notify, family = null }) {
+// family: a family id (civitai.js LORA_FAMILIES) narrows the list to that model's LoRAs; All shows every one.
+function Yours({ items, setItems, onPick, onOpenCivitai, compact = false, notify, family = 'h3', meta }) {
   const [all, setAll] = useState(false)
   const [q, setQ] = useState('')
   const [looking, setLooking] = useState(null)
   const shown = useMemo(() => {
     const words = q.toLowerCase().split(/\s+/).filter(Boolean)
-    const mine = (x) => (family ? family.test(x.name) : x.h3)
+    const mine = (x) => x.family === family
     return (items || []).filter((x) => (all || mine(x)) && words.every((w) => `${x.name} ${x.civitai?.name || ''}`.toLowerCase().includes(w)))
   }, [items, all, q, family])
   const groups = useMemo(() => {
@@ -425,6 +466,15 @@ function Yours({ items, setItems, onPick, onOpenCivitai, compact = false, notify
     }
     setLooking(null)
   }
+  async function setFamily(x, id) {
+    try {
+      const prefs = await L().prefs(x.name, { family: id || null })
+      setItems((all) => all.map((y) => (y.name === x.name ? { ...y, prefs, family: id || y.civitaiFamily || null } : y)))
+      if (!id) L().yours().then(setItems, () => {})
+    } catch (err) {
+      notify?.(err.message)
+    }
+  }
   async function fav(x) {
     const prefs = await L().prefs(x.name, { favourite: !x.prefs.favourite })
     setItems((all) => all.map((y) => (y.name === x.name ? { ...y, prefs } : y)))
@@ -435,7 +485,7 @@ function Yours({ items, setItems, onPick, onOpenCivitai, compact = false, notify
         <input className="lora-search" value={q} placeholder="Search your LoRAs" onChange={(e) => setQ(e.target.value)} />
         <div className="segmented">
           <button className={all ? '' : 'on'} onClick={() => setAll(false)}>
-            {family ? family.label : 'H3'} · {(items || []).filter((x) => (family ? family.test(x.name) : x.h3)).length}
+            {famLabel(meta, family)} · {(items || []).filter((x) => x.family === family).length}
           </button>
           <button className={all ? 'on' : ''} onClick={() => setAll(true)}>
             All · {(items || []).length}
@@ -475,6 +525,16 @@ function Yours({ items, setItems, onPick, onOpenCivitai, compact = false, notify
                       Find
                     </button>
                   )}
+                  {(all || !x.family) && meta?.families && (
+                    <select className="lora-fam-pick mono small" value={x.prefs.family || ''} title="Which model this LoRA is for" onClick={(e) => e.stopPropagation()} onChange={(e) => setFamily(x, e.target.value)}>
+                      <option value="">{x.family && !x.prefs.family ? `${famLabel(meta, x.family)} (found)` : x.family ? 'Back to what was found' : 'Which model?'}</option>
+                      {meta.families.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   {x.civitai && onOpenCivitai && (
                     <button className="link-btn mono small" onClick={(e) => (e.stopPropagation(), onOpenCivitai(x.civitai.modelId))}>
                       Info
@@ -486,7 +546,98 @@ function Yours({ items, setItems, onPick, onOpenCivitai, compact = false, notify
           </div>
         </div>
       ))}
-      {items && shown.length === 0 && <p className="dim">{q ? 'Nothing matches.' : 'No H3 LoRAs in ComfyUI yet. Find some in Discover.'}</p>}
+      {items && shown.length === 0 && <p className="dim">{q ? 'Nothing matches.' : `No ${famLabel(meta, family)} LoRAs in ComfyUI yet. Find some in Discover, or open All and say which model a LoRA is for.`}</p>}
+    </div>
+  )
+}
+
+// ---------- Recommended: a short shelf of tested H3 LoRAs (recommended.js), pinned and checked on download ----------
+const MODE_LABEL = { text: 'Text', frames: 'First / last frame', reference: 'References' }
+const mb = (b) => `${Math.round(b / 1e6)} MB`
+function Recommended({ notify, onUse, go }) {
+  const [data, setData] = useState(null)
+  const load = () => window.ivstudio.loras.recommended().then(setData, (err) => (notify(err.message), setData({ list: [], onDisk: {}, state: {} })))
+  useEffect(() => {
+    load()
+    return window.ivstudio.loras.onRecommended((u) => {
+      setData((d) => (d ? { ...d, state: { ...d.state, [u.id]: u } } : d))
+      if (u.status === 'done') load()
+    })
+  }, [])
+  if (!data) return <Loading label="Reading your LoRAs" />
+  return (
+    <div className="rec-shelf">
+      <p className="small dim">
+        LoRAs we’ve tried with MiniMax H3, each fixed to one tested file and checked when it downloads. They go into ComfyUI’s <span className="mono">loras\MiniMax H3\Recommended</span> folder. Each keeps its maker’s licence.
+      </p>
+      <div className="rec-grid">
+        {data.list.map((r) => {
+          const have = data.onDisk[r.id]
+          const st = data.state[r.id]
+          const busy = st && ['queued', 'downloading', 'verifying'].includes(st.status)
+          return (
+            <article key={r.id} className={`rec-card ${have ? 'have' : ''}`}>
+              <header>
+                <h3>{r.name}</h3>
+                <button className="link-btn mono small" onClick={() => window.ivstudio.links.open(r.page)} title={r.page}>
+                  by {r.author} ↗
+                </button>
+              </header>
+              <p className="small">{r.what}</p>
+              <dl className="rec-facts small">
+                <div>
+                  <dt className="dim">Works in</dt>
+                  <dd>{r.use === 'turnaround' ? 'Characters → Turnaround sheet' : r.works.map((w) => MODE_LABEL[w]).join(', ')}</dd>
+                </div>
+                <div>
+                  <dt className="dim">How</dt>
+                  <dd>{r.how}</dd>
+                </div>
+                <div>
+                  <dt className="dim">Licence</dt>
+                  <dd>{r.licence}</dd>
+                </div>
+                {r.trigger && (
+                  <div>
+                    <dt className="dim">Trigger</dt>
+                    <dd className="mono">{r.trigger}</dd>
+                  </div>
+                )}
+              </dl>
+              <footer>
+                {have ? (
+                  <>
+                    <span className="mono small cloud-ok">● On this PC</span>
+                    {r.use === 'turnaround' ? (
+                      <button className="btn btn-small" onClick={() => go?.('characters')}>
+                        Open Characters
+                      </button>
+                    ) : (
+                      <button className="btn btn-small btn-primary" onClick={() => onUse({ name: have, words: r.trigger ? [r.trigger] : [], title: r.name, strength: r.strength })}>
+                        Use in a shot
+                      </button>
+                    )}
+                  </>
+                ) : busy ? (
+                  <>
+                    <span className="mono small">{st.status === 'downloading' && st.total ? `${Math.round((100 * st.received) / st.total)}%` : st.status === 'verifying' ? 'Checking…' : 'Waiting…'}</span>
+                    <button className="link-btn small" onClick={() => window.ivstudio.loras.recommendedCancel(r.id)}>
+                      Stop
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {st?.status === 'error' && <span className="small pink">{st.error}</span>}
+                    <button className="btn btn-small" onClick={() => window.ivstudio.loras.recommendedDownload(r.id).catch((err) => notify(err.message))}>
+                      Download · {mb(r.size)}
+                    </button>
+                  </>
+                )}
+              </footer>
+            </article>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -494,34 +645,59 @@ function Yours({ items, setItems, onPick, onOpenCivitai, compact = false, notify
 // ---------- the page ----------
 export function LorasPage({ notify, go, addLoraToCreate }) {
   const [tab, setTab] = useState('discover')
+  const [query, setQuery] = useState('')
   const [meta, setMeta] = useState(null)
+  const [family, setFamilyState] = useState(savedFamily)
+  const setFamily = (id) => {
+    setFamilyState(id)
+    try {
+      localStorage.setItem(FAMILY_KEY, id)
+    } catch {}
+  }
   const [open, setOpen] = useState(null)
   const [items, setItems, reload] = useYours()
+  const counts = useMemo(() => {
+    const c = {}
+    for (const x of items || []) if (x.family) c[x.family] = (c[x.family] || 0) + 1
+    return c
+  }, [items])
   useEffect(() => {
     L().meta().then(setMeta)
   }, [])
-  const use = (l) => addLoraToCreate?.(l)
+  const use = (l) => addLoraToCreate?.({ family, ...l })
+  const fam = meta?.families?.find((f) => f.id === family)
   return (
     <div className="loras">
-      <Hero art="loras" title="LoRAs" kicker="Looks, moves and styles" />
+      <Stage effect="flare" art="loras" title="LoRAs" kicker="Looks, moves and styles">
+        <QuickBar search label="Search Civitai" placeholder={`Search Civitai for ${fam?.label || 'H3'} LoRAs: cinematic, anime, painterly…`} value={query} onChange={(v) => (setQuery(v), setTab('discover'))} results=".lora-tabs" />
+      </Stage>
       <p className="lede">
-        Change how H3 looks and moves.
-        <span className="lede-small dim">Find LoRAs on Civitai and download them straight into ComfyUI, or browse the ones you already have. Add one to a shot from Create's LoRA tray.</span>
+        Change how your models look and move.
+        <span className="lede-small dim">Pick a model, then find its LoRAs on Civitai and download them straight into ComfyUI, or browse the ones you already have. Shots use MiniMax H3's; pictures use their own model's.</span>
       </p>
+      <FamilyBar families={meta?.families} value={family} onChange={setFamily} counts={counts} />
+      {fam && <p className="small dim lora-fam-uses">{fam.label}: {fam.uses}.</p>}
       <div className="lora-tabs segmented">
         <button className={tab === 'discover' ? 'on' : ''} onClick={() => setTab('discover')}>
           Discover
         </button>
         <button className={tab === 'yours' ? 'on' : ''} onClick={() => (setTab('yours'), reload())}>
-          Yours{items ? ` · ${items.filter((x) => x.h3).length}` : ''}
+          Yours{items ? ` · ${counts[family] || 0}` : ''}
         </button>
+        {family === 'h3' && (
+          <button className={tab === 'recommended' ? 'on' : ''} onClick={() => setTab('recommended')}>
+            Recommended
+          </button>
+        )}
       </div>
       <div className="lora-layout">
         <div>
-          {tab === 'discover' ? (
-            <Discover meta={meta} onOpen={(m) => setOpen(m.id)} />
+          {tab === 'recommended' && family === 'h3' ? (
+            <Recommended notify={notify} go={go} onUse={(l) => use({ ...l, family: 'h3' })} />
+          ) : tab === 'discover' ? (
+            <Discover meta={meta} family={family} onOpen={(m) => setOpen(m.id)} query={query} setQuery={setQuery} />
           ) : (
-            <Yours items={items} setItems={setItems} notify={notify} onOpenCivitai={(id) => setOpen(id)} onPick={(x) => use({ name: x.name, words: x.prefs.triggers || x.civitai?.trainedWords || [], title: x.civitai?.name || loraTitle(x.name) })} />
+            <Yours meta={meta} family={family} items={items} setItems={setItems} notify={notify} onOpenCivitai={(id) => setOpen(id)} onPick={['ltx', 'wan'].includes(family) ? null : (x) => use({ name: x.name, words: x.prefs.triggers || x.civitai?.trainedWords || [], title: x.civitai?.name || loraTitle(x.name), family: x.family || family })} />
           )}
         </div>
         {open && <Details key={open} id={open} meta={meta} go={go} onClose={() => setOpen(null)} onUse={(l) => (reload(), use(l))} />}
@@ -531,8 +707,9 @@ export function LorasPage({ notify, go, addLoraToCreate }) {
 }
 
 // The same in a dialog: Yours first, Discover a tab away. onPick({name, words, title}).
-// family (Create -> Image): only this PC's LoRAs, narrowed to the family; Civitai's tab searches H3's.
-export function LoraPicker({ onPick, onClose, notify, go, family = null }) {
+// family: the model the tray is for (a LORA_FAMILIES id; Create's video tray is h3, Create -> Image its family);
+// both tabs show that model's LoRAs.
+export function LoraPicker({ onPick, onClose, notify, go, family = 'h3' }) {
   const [tab, setTab] = useState('yours')
   const [meta, setMeta] = useState(null)
   const [open, setOpen] = useState(null)
@@ -551,12 +728,11 @@ export function LoraPicker({ onPick, onClose, notify, go, family = null }) {
             <button className={tab === 'yours' ? 'on' : ''} onClick={() => (setTab('yours'), reload())}>
               Your LoRAs
             </button>
-            {!family && (
-              <button className={tab === 'discover' ? 'on' : ''} onClick={() => setTab('discover')}>
-                Find on Civitai
-              </button>
-            )}
+            <button className={tab === 'discover' ? 'on' : ''} onClick={() => setTab('discover')}>
+              Find on Civitai
+            </button>
           </div>
+          <span className="mono small dim lora-picker-for">For {famLabel(meta, family)}</span>
           <button className="link-btn mono" onClick={onClose}>
             Close ×
           </button>
@@ -564,9 +740,9 @@ export function LoraPicker({ onPick, onClose, notify, go, family = null }) {
         <div className="lora-layout">
           <div>
             {tab === 'yours' ? (
-              <Yours compact family={family} items={items} setItems={setItems} notify={notify} onOpenCivitai={(id) => setOpen(id)} onPick={(x) => onPick({ name: x.name, words: x.prefs.triggers || x.civitai?.trainedWords || [], title: x.civitai?.name || loraTitle(x.name) })} />
+              <Yours compact meta={meta} family={family} items={items} setItems={setItems} notify={notify} onOpenCivitai={(id) => setOpen(id)} onPick={(x) => onPick({ name: x.name, words: x.prefs.triggers || x.civitai?.trainedWords || [], title: x.civitai?.name || loraTitle(x.name) })} />
             ) : (
-              <Discover compact meta={meta} onOpen={(m) => setOpen(m.id)} />
+              <Discover compact meta={meta} family={family} onOpen={(m) => setOpen(m.id)} />
             )}
           </div>
           {open && <Details key={open} id={open} meta={meta} go={go && ((p) => (onClose(), go(p)))} onClose={() => setOpen(null)} onUse={(l) => onPick(l)} />}

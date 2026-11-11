@@ -51,13 +51,16 @@ export class Cutouts {
   async make({ file, what = 'person', soften = 1.2, name }) {
     if (!file || !fs.existsSync(file)) throw new Error('Pick a picture or a video.')
     const studio = this.studio()
-    if (studio.comfy.remote) throw new Error('Cut-outs run on this computer’s ComfyUI.')
+    if (studio.comfy.hosted) throw new Error('Cut-outs run on this computer’s ComfyUI or on your own cloud (RunPod, Modal).')
     const kind = IMAGE.test(file) ? 'image' : 'video'
     const info = await probe(this.edits.ffprobe, file)
     const words = String(what || 'person').trim()
     const base = `${slug(name || path.basename(file).replace(/\.[^.]+$/, ''))}_${slug(words)}_${Date.now().toString(36)}`
-    const source = kind === 'image' ? await studio.comfy.upload(file) : file
+    // a video on the person's own cloud is uploaded and read from ComfyUI's input folder (it can't read this PC's path)
+    const cloudVideo = kind === 'video' && studio.comfy.ownCloud
+    const source = kind === 'image' || cloudVideo ? await studio.comfy.upload(file) : file
     const graph = cutoutGraph({ kind, source, what: words, prefix: `iv_studio/cutouts/${base}_mask`, fps: info.fps || 24 })
+    if (cloudVideo) graph.load.class_type = 'VHS_LoadVideo'
     const job = await studio.submitGraph({ kind: 'cutout', graph, name: `Cut out ${words}`, plan: { cutout: { what: words, from: file, kind } } })
     let j = job
     for (const end = Date.now() + 20 * 60e3; Date.now() < end; await new Promise((r) => setTimeout(r, 3000))) {

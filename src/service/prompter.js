@@ -4,6 +4,8 @@
 //   local     - a model in the user's own Ollama with IV Studio's H3 rule sheet and MiniMax's own H3 guide
 //               (h3guide.js). Free and private; the model is unloaded right after writing so H3 gets the GPU back.
 //   claude, codex - the person's own Claude Code or Codex (harness.js), with the same rules and guide.
+//   openai    - the same as local, on an OpenAI-compatible server (llm.js; Settings calls it OpenAI-compatible).
+//               writerOf (paths.js) hands it on as engine 'local'; localChat picks the server.
 // The character is written as its first name for the writer and turned back into {char} afterwards.
 import fs from 'node:fs'
 import os from 'node:os'
@@ -15,6 +17,7 @@ import { loadGuide } from './h3guide.js'
 import { harnessJson, onPath } from './harness.js'
 import { FIRST_FRAME_LINE, firstLastLine, lintPrompt, withLine } from './lint.js'
 import { isPrevis } from './staging.js'
+import { llmConfig, openaiChat, openaiModels } from './llm.js'
 
 // The bundled ffmpeg, outside the asar in a packaged app (as in main and the MCP server).
 const unpacked = (p) => p && p.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
@@ -56,6 +59,51 @@ export function ollamaIsLocal(url = ollamaUrl()) {
 // Ollama options that keep the writer off the GPU while ComfyUI renders on this PC.
 export const cpuOptions = (cpu) => (cpu && ollamaIsLocal() ? { num_gpu: 0 } : {})
 export const DEFAULT_LOCAL_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
+
+// The local writer's model, ready to use: { name, vision, provider }. With an OpenAI-compatible server chosen, the
+// model and "sees pictures" come from its settings (the model asked for is the Ollama one, so it's ignored).
+// needsEyes: what the job is called when it can't be done without pictures ("review a take").
+export async function localWriterModel(model, { needsEyes = null } = {}) {
+  const cfg = llmConfig()
+  if (cfg.provider === 'openai') {
+    if (!cfg.url) throw new Error('The OpenAI-compatible writer has no address. Enter it in Settings → Prompt writer.')
+    if (!cfg.model) throw new Error('Choose the model for the OpenAI-compatible writer in Settings → Prompt writer.')
+    // a server that lists its models must list this one; one that doesn't list (or can't be asked) is tried anyway
+    const listed = await openaiModels(cfg).catch((err) => (/refused the key/.test(err.message) ? Promise.reject(err) : []))
+    if (listed.length && !listed.includes(cfg.model)) throw new Error(`The OpenAI-compatible server at ${cfg.url} doesn't list the model "${cfg.model}". Choose one of its models in Settings → Prompt writer.`)
+    if (needsEyes && !cfg.vision) throw new Error(`The OpenAI-compatible writer is set to not see pictures, so it can't ${needsEyes}. If ${cfg.model} can, turn on "It can see pictures" in Settings → Prompt writer, or choose Claude Code or Codex.`)
+    return { name: cfg.model, vision: cfg.vision, provider: 'openai' }
+  }
+  await ensureOllama()
+  const name = model || DEFAULT_LOCAL_MODEL
+  const info = (await ollamaStatus()).models.find((m) => m.name === name)
+  if (!info) throw new Error(`The writer model ${name} isn't in Ollama yet. Install it in Settings → Prompt writer.`)
+  if (needsEyes && !info.vision) throw new Error(`${name} can't see pictures, so it can't ${needsEyes}. Choose a vision model, Claude Code or Codex in Settings → Prompt writer.`)
+  return { name, vision: info.vision, provider: 'ollama' }
+}
+
+// One structured answer from the local writer (Ollama, or the OpenAI-compatible server): system + messages in
+// ([{ role, content, images?: [base64 JPEG] }]), the parsed JSON of `schema`'s shape out. Ollama unloads the model
+// afterwards and, with cpu, keeps it off the GPU while ComfyUI renders; a server manages its own models.
+// raw: return the reply text instead (writeLocal parses and retries itself).
+// signal: stops the answer early (the Library's describer stops when a render starts).
+export async function localChat({ model, system, messages, schema, temperature = 0.5, ctx = 16384, maxTokens = 6000, cpu = false, timeoutMs = 600000, raw = false, signal = null }) {
+  const cfg = llmConfig()
+  let text
+  if (cfg.provider === 'openai') text = await openaiChat({ cfg, model: cfg.model, system, messages, schema, temperature, maxTokens, timeoutMs })
+  else {
+    await ensureOllama()
+    const r = await fetch(`${ollamaUrl()}/api/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: model || DEFAULT_LOCAL_MODEL, stream: false, format: schema, keep_alive: 0, options: { temperature, num_ctx: ctx, num_predict: maxTokens, ...cpuOptions(cpu) }, messages: [{ role: 'system', content: system }, ...messages] }),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs)
+    })
+    if (!r.ok) throw new Error(`Ollama: ${(await r.text()).slice(0, 300)}`)
+    text = (await r.json()).message?.content
+  }
+  return raw ? text : parseJson(text)
+}
 export const CONTEXT_IR_PRICE = 'about $0.02 a prompt ($0.05 with first/last frames, $0.06–0.11 with reference media)'
 
 const RULES = `You write prompts for MiniMax H3, a model that makes short videos with native sound (24 fps, picture and audio together).
@@ -361,7 +409,7 @@ const run = (cmd, args) =>
   })
 
 // One picture or video frame as base64 JPEG. at: a fraction of the video's length, 'end', or none for a picture.
-async function jpegOf({ file, at }) {
+export async function jpegOf({ file, at }) {
   let seek = []
   if (at === 'end') seek = ['-sseof', '-0.1']
   else if (at != null) {
@@ -511,11 +559,8 @@ export function keepIdeaMedium(prompt, idea) {
 // cpu: keep the model off the GPU (used while ComfyUI is rendering, so H3 keeps its VRAM). On the CPU the draft is
 // mended but not sent back for a second pass, which would double a slow write.
 export async function writeLocal({ idea, mode = 'text', seconds = 5, character, sequence = false, previous, media = [], model, cpu = false }) {
-  await ensureOllama()
-  const status = await ollamaStatus()
-  const name = model || DEFAULT_LOCAL_MODEL
-  const info = status.models.find((m) => m.name === name)
-  if (!info) throw new Error(`The writer model ${name} isn't in Ollama yet. Install it in Settings → Prompt writer.`)
+  const info = await localWriterModel(model)
+  const name = info.name
   // On the CPU (ComfyUI is rendering) the full-reference part of the guide makes a prompt take over five minutes,
   // so it's left out there; IV Studio's reference rules and layout still apply.
   const full = await loadGuide()
@@ -527,14 +572,7 @@ export async function writeLocal({ idea, mode = 'text', seconds = 5, character, 
     message.content += `\n\n${lookRule(mode)}\n${req.shown.map((s, i) => `Image ${i + 1}: ${s.label}`).join('\n')}`
   }
   const chat = async (messages, tries = 2) => {
-    const r = await fetch(`${ollamaUrl()}/api/chat`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: name, stream: false, format: req.schema, keep_alive: 0, options: { temperature: 0.6, num_ctx: guide ? (guide.ref ? 24576 : 16384) : 8192, num_predict: 6000, ...cpuOptions(cpu) }, messages: [{ role: 'system', content: req.system }, ...messages] }),
-      signal: AbortSignal.timeout(600000)
-    })
-    if (!r.ok) throw new Error(`Ollama: ${(await r.text()).slice(0, 300)}`)
-    const content = (await r.json()).message?.content
+    const content = await localChat({ model: name, system: req.system, messages, schema: req.schema, temperature: 0.6, ctx: guide ? (guide.ref ? 24576 : 16384) : 8192, maxTokens: 6000, cpu, raw: true })
     try {
       return parseJson(content)
     } catch (err) {
@@ -574,18 +612,8 @@ function parseJson(text) {
 // Any structured answer from the local writer: system + user text in, an object of `schema`'s shape out
 // (Projects' scene breakdown uses it). Unloads afterwards like every write.
 export async function ollamaJson({ system, user, schema, model, cpu = false, ctx = 16384, temperature = 0.5 }) {
-  await ensureOllama()
-  const name = model || DEFAULT_LOCAL_MODEL
-  const status = await ollamaStatus()
-  if (!status.models.some((m) => m.name === name)) throw new Error(`The writer model ${name} isn't in Ollama yet. Install it in Settings → Prompt writer.`)
-  const r = await fetch(`${ollamaUrl()}/api/chat`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ model: name, stream: false, format: schema, keep_alive: 0, options: { temperature, num_ctx: ctx, ...cpuOptions(cpu) }, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
-    signal: AbortSignal.timeout(900000)
-  })
-  if (!r.ok) throw new Error(`Ollama: ${(await r.text()).slice(0, 300)}`)
-  return parseJson((await r.json()).message?.content)
+  const { name } = await localWriterModel(model)
+  return localChat({ model: name, system, messages: [{ role: 'user', content: user }], schema, temperature, ctx, maxTokens: 8000, cpu, timeoutMs: 900000 })
 }
 
 // A short story -> one prompt per shot, written to join as one continuous take. engine: 'local' (Ollama) or a
@@ -597,15 +625,8 @@ TASK: Split the story into exactly ${shots} consecutive shots of ${seconds} seco
   let list
   if (engine !== 'local') list = (await harnessJson({ engine, model, system: sys, user: `Story: ${withName(story, character)}\n\nAnswer with the JSON object only.`, schema, timeoutMs: 600000 })).prompts
   else {
-    await ensureOllama()
-    const r = await fetch(`${ollamaUrl()}/api/chat`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: model || DEFAULT_LOCAL_MODEL, stream: false, format: schema, keep_alive: 0, options: { temperature: 0.6, num_ctx: 16384, ...cpuOptions(cpu) }, messages: [{ role: 'system', content: sys }, { role: 'user', content: `Story: ${withName(story, character)}` }] }),
-      signal: AbortSignal.timeout(600000)
-    })
-    if (!r.ok) throw new Error(`Ollama: ${(await r.text()).slice(0, 300)}`)
-    list = parseJson((await r.json()).message?.content).prompts
+    const { name } = await localWriterModel(model)
+    list = (await localChat({ model: name, system: sys, messages: [{ role: 'user', content: `Story: ${withName(story, character)}` }], schema, temperature: 0.6, ctx: 16384, maxTokens: 8000, cpu })).prompts
   }
   if (!Array.isArray(list) || !list.length) throw new Error('The writer did not return a shot list. Try again.')
   return list.slice(0, shots).map((p) => cleanPrompt(assemble(p, { seconds }), character))

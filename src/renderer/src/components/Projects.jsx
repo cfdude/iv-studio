@@ -5,9 +5,13 @@ import StageBoard from './StageBoard'
 import { needsPrevis } from '../../../service/staging'
 import { fileUrl } from './edit/model'
 import Hero from './Hero'
+import Stage from './Stage'
+import QuickBar from './AudioQuick'
 import Loading from './Loading'
 import { dayGroup, groupBy, WHEN, inWhen, Chips, useMore, Groups, FilterPanel } from './ShelfKit'
 import { LoraPicker } from './Loras'
+import { askAgent, useAgentName } from './ChatPanel'
+import { CinemaChips, CinemaPicker, LookbookBox, PromptTools, useSlate } from './CraftKit'
 
 // Projects: a short film made step by step (src/service/productions.js). The list of films, and one film as a
 // six-step wizard: Idea, Story, Cast and places, Storyboard, Film it, Watch. The storyboard is the heart of it:
@@ -110,6 +114,7 @@ export function ProjectsList({ notify, openProject }) {
   const [items, setItems] = useState(null)
   const [busy, setBusy] = useState(false)
   const [q, setQ] = useState('')
+  const agent = useAgentName()
   const [stage, setStage] = useState('all')
   const [period, setPeriod] = useState('any')
   const [shape, setShape] = useState('all')
@@ -155,10 +160,17 @@ export function ProjectsList({ notify, openProject }) {
 
   return (
     <div className="projects shelf-page">
-      <Hero art="projects" title="Projects" kicker="A short film, step by step" />
+      <Stage effect="spotlight" art="projects" title="Projects" kicker="A short film, step by step">
+        <QuickBar search label="Search films" placeholder="Search your films" value={q} onChange={setQ} results=".shelf-tools" found={shown.length} noun="film" alt={{ label: '+ New film', onClick: create, disabled: busy }} />
+      </Stage>
       <p className="lede">
         Turn an idea into a short film.
         <span className="lede-small dim">Say what it's about, get a script, cast your characters, see it as a storyboard, then film it shot by shot and watch it come together.</span>
+        {agent && (
+          <button className="btn btn-small proj-ask" onClick={() => askAgent({ text: 'Let’s make a short film together, one step at a time. It’s about ' })} title={`${agent} walks it through script, cast, storyboard, shots and rough cut, and stops for your OK at each step`}>
+            Make one with {agent}
+          </button>
+        )}
       </p>
       <div className="shelf-tools">
         <div className="shelf-bar">
@@ -169,7 +181,6 @@ export function ProjectsList({ notify, openProject }) {
               </button>
             ))}
           </div>
-          <input className="list-search" type="search" value={q} placeholder="Search films" onChange={(e) => setQ(e.target.value)} aria-label="Search films" />
           <label className="shelf-sort mono">
             Sort
             <select value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -180,9 +191,6 @@ export function ProjectsList({ notify, openProject }) {
               ))}
             </select>
           </label>
-          <button className="btn btn-primary shelf-new proj-new" disabled={busy} onClick={create}>
-            + New film
-          </button>
         </div>
         {all.length > 0 && (
           <FilterPanel id="projects" total={all.length} shown={shown.length} onClear={() => (setPeriod('any'), setShape('all'))} active={[period !== 'any' && WHEN.find(([w]) => w === period)[1], shape !== 'all' && shape].filter(Boolean)}>
@@ -253,7 +261,8 @@ export function ProjectPage({ productionId, notify, go, openShot, openEdit, char
   const act = async (fn, ok) => {
     try {
       const r = await fn()
-      if (ok) notify(typeof ok === 'function' ? ok(r) : ok, 'info')
+      const said = typeof ok === 'function' ? ok(r) : ok
+      if (said) notify(said, 'info')
       await load()
       return r
     } catch (err) {
@@ -486,7 +495,10 @@ function Cast({ v, act, characters, notify, go, setStep }) {
   const face = useFaces()
   const [picking, setPicking] = useState(false)
   const [look, setLook] = useState(v.look?.notes || '')
+  const [cinema, setCinema] = useState(false)
+  const slate = useSlate()
   const save = (patch, ok) => act(() => P().update(v.id, patch), ok)
+  const saveLook = (patch) => save({ look: { ...v.look, ...patch } })
   // everyone who speaks in the script, plus anyone cast who doesn't
   const speakers = [...new Set(v.scenes.flatMap((s) => s.elements.filter((e) => e.type === 'dialogue').map((e) => e.who)))]
   const roles = [...speakers, ...v.cast.filter((c) => !speakers.some((s) => first(s) === first(c.as))).map((c) => c.as)]
@@ -664,6 +676,17 @@ function Cast({ v, act, characters, notify, go, setStep }) {
         </button>
       </div>
       {picking && <LoraPicker notify={notify} go={go} onClose={() => setPicking(false)} onPick={(l) => (setPicking(false), save({ look: { ...v.look, loras: [...(v.look?.loras || []), { name: l.name, strength: 0.8, title: l.title }] } }))} />}
+      <div className="wiz-craft" data-tour="film-cinema">
+        <h3 className="wiz-q-small">Cinematography</h3>
+        <p className="small dim">Film stock, lenses, light and camera for the whole film. Each goes into every shot's prompt.</p>
+        <CinemaChips value={v.look?.setups || []} onChange={(setups) => saveLook({ setups })} onOpen={() => setCinema(true)} label={v.look?.setups?.length ? '+ More' : '+ Choose the cinematography'} />
+      </div>
+      {cinema && <CinemaPicker value={v.look?.setups || []} onChange={(setups) => saveLook({ setups })} onClose={() => setCinema(false)} />}
+      <div className="wiz-craft" data-tour="film-lookbook">
+        <h3 className="wiz-q-small">Lookbook</h3>
+        <p className="small dim">Name a film, a director or a cinematographer, or describe the look. It becomes look language for every shot, with no names in it.</p>
+        <LookbookBox value={v.look?.lookbook || null} onChange={(lookbook) => saveLook({ lookbook })} writer={slate?.writer} />
+      </div>
 
       <details className="wiz-more">
         <summary className="mono small">Props (optional)</summary>
@@ -750,7 +773,7 @@ function Board({ v, act, characters, openShot, setStep, mode }) {
             ))}
           </div>
           <h2 className="wiz-q">Turn the script into a storyboard</h2>
-          <p className="wiz-help">IV Studio reads your script and plans every shot: what we see, the camera and who speaks. Then it sketches each panel, so you can see the film before you make it. Planning runs on this computer and takes a minute or two.</p>
+          <p className="wiz-help">IV Studio reads your script and plans every shot: what we see, the camera and who speaks. Then it sketches each panel, so you can see the film before you make it. Planning uses your prompt writer (Settings → Prompt writer) and takes a minute or two.</p>
           {b?.state === 'error' && <p className="small pink">The last try stopped: {b.error}</p>}
           <button className="btn btn-primary wiz-next" onClick={plan}>
             ✦ Plan my storyboard
@@ -817,6 +840,14 @@ function Board({ v, act, characters, openShot, setStep, mode }) {
                     Sketch {unsketched === all.length ? 'every panel' : `the ${plural(unsketched, 'panel')} left`}
                   </button>
                 )}
+                <span className="wiz-shotlist" data-tour="film-shotlist">
+                  <button className="link-btn mono small" title="The shot list as a Markdown document, a table per scene" onClick={() => act(() => P().shotList(v.id, 'md'), (f) => (f ? `Shot list saved: ${f}` : null))}>
+                    Shot list
+                  </button>
+                  <button className="link-btn mono small" title="One row per shot, with its prompt, for a spreadsheet" onClick={() => act(() => P().shotList(v.id, 'csv'), (f) => (f ? `Shot list saved: ${f}` : null))}>
+                    CSV
+                  </button>
+                </span>
                 <button
                   className="link-btn mono small"
                   onClick={async () => (await ask({ title: 'Plan it all again?', message: 'Every scene gets new shots, prompts and sketches. Anything you filmed stays in Shots and the Library.', confirm: 'Plan it again' })) && act(() => P().breakDown(v.id, { redo: true, sketch: true }))}
@@ -845,6 +876,7 @@ function Board({ v, act, characters, openShot, setStep, mode }) {
               </button>
             )}
           </div>
+          {!film && <SceneTools v={v} sc={sc} k={k} act={act} planning={planning} />}
           <div className="wiz-panels">
             {sc.shots.map((sh, i) => (
               <Panel
@@ -885,6 +917,62 @@ function Board({ v, act, characters, openShot, setStep, mode }) {
       {takesShot && <Takes v={v} sh={takesShot} act={act} onClose={() => setTakes(null)} onOpen={() => (setTakes(null), setOpen({ sceneId: v.scenes.find((s) => s.shots.some((x) => x.id === takesShot.id)).id, shotId: takesShot.id }))} />}
       {(animatic?.open || (animatic?.making && animatic.voice)) && <Animatic v={v} a={animatic} unvoiced={unvoiced} onVoice={() => playAnimatic(true)} onClose={() => setAnimatic(null)} />}
     </section>
+  )
+}
+
+// A scene's coverage plan (Slate's twelve, by Sam Wasserman) and its continuity check.
+function SceneTools({ v, sc, k, act, planning }) {
+  const slate = useSlate()
+  const [checking, setChecking] = useState(false)
+  const c = sc.continuity
+  const check = async () => {
+    setChecking(true)
+    await act(() => P().continuity(v.id, sc.id), (issues) => (issues?.length ? `${issues.length} continuity ${issues.length === 1 ? 'note' : 'notes'} on scene ${k + 1}.` : `Scene ${k + 1} reads clean.`))
+    setChecking(false)
+  }
+  const plan = slate?.plans.find((p) => p.id === sc.coverage?.id)
+  return (
+    <>
+      <div className="wiz-scene-tools">
+        <label className="small dim" title={plan ? plan.description : 'How the scene is covered: the planner\'s own choice, or one of Slate\'s coverage plans. Changing it plans the scene again.'}>
+          Coverage{' '}
+          <select value={sc.coverage?.id || ''} disabled={planning || !slate} aria-label={`Coverage for scene ${k + 1}`} onChange={(e) => act(() => P().coverage(v.id, sc.id, e.target.value || null), e.target.value ? 'Coverage set. Plan the changed scene to get its shots.' : 'Coverage set back to the planner\'s choice.')}>
+            <option value="">The planner's choice</option>
+            {['Shot Coverage', 'Angle Coverage', 'Story'].map((g) => (
+              <optgroup key={g} label={g}>
+                {(slate?.plans || [])
+                  .filter((p) => p.group === g)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label} · {p.shots.length} shots
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        <button className="link-btn mono small" disabled={checking || planning || sc.shots.filter((s) => s.prompt).length < 2} title="A script supervisor's read of the scene's shots: looks, wardrobe, props, light, time of day, screen sides and how each shot ends against the next" onClick={check}>
+          {checking ? 'Checking continuity…' : 'Check continuity'}
+        </button>
+      </div>
+      {c && (
+        <div className="wiz-continuity">
+          {c.issues.length ? (
+            c.issues.map((x, i) => (
+              <div key={i} className="wiz-continuity-row">
+                <span className={`mono small ${x.severity === 'error' ? 'pink' : 'dim'}`}>{x.severity === 'error' ? 'Fix' : 'Check'}</span>
+                <span className="mono small dim">{x.shots.length ? `Shot ${x.shots.join(', ')}` : ''}</span>
+                <span className="small">
+                  {x.issue} <span className="dim">{x.fix}</span>
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="small dim">Continuity reads clean.</p>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -939,6 +1027,7 @@ function Panel({ v, sh, n, film, ch, face, onClick }) {
           <span className="wiz-panel-blank mono small">{sh.sketchSet ? 'Sketching…' : sh.prompt ? 'No sketch yet' : 'Planning…'}</span>
         )}
         <span className="wiz-panel-n">{n}</span>
+        {sh.slot && <span className="wiz-panel-slot wiz-panel-cont">{sh.slot}</span>}
         <span className="wiz-panel-secs mono">{sh.seconds}s</span>
         {sh.continues && (
           <span className="wiz-panel-cont mono" title="Carries straight on from the shot before, as one unbroken take">
@@ -961,6 +1050,7 @@ function Panel({ v, sh, n, film, ch, face, onClick }) {
 // A shot opened from the board: what happens, the camera, the line and its length, plus its sketch and prompt.
 function ShotDrawer({ v, sceneId, sh, act, characters, face, openShot, film, previews, fromSketch, onTakes, onClose }) {
   const [changed, setChanged] = useState(false)
+  const slate = useSlate()
   const [working, setWorking] = useState('')
   const sc = v.scenes.find((s) => s.id === sceneId)
   const i = sc.shots.findIndex((s) => s.id === sh.id)
@@ -1109,6 +1199,16 @@ function ShotDrawer({ v, sceneId, sh, act, characters, face, openShot, film, pre
         <details className="wiz-more">
           <summary className="mono small">The prompt H3 gets</summary>
           <textarea className="prompt" rows={9} defaultValue={sh.prompt} key={sh.prompt} onBlur={(e) => e.target.value !== sh.prompt && edit({ prompt: e.target.value }, false)} />
+          <PromptTools
+            prompt={sh.prompt}
+            writer={slate?.writer}
+            disabled={!!working}
+            run={({ tool, note }) => act(() => P().rework(v.id, sceneId, sh.id, { tool, note }))}
+            variants={() => P().variants(v.id, sceneId, sh.id)}
+            onUse={(prompt, why) => act(() => P().setPrompt(v.id, sceneId, sh.id, prompt, why))}
+            history={sh.history || []}
+            onRestore={(index) => act(() => P().restorePrompt(v.id, sceneId, sh.id, index), 'The earlier prompt is back.')}
+          />
         </details>
         {st.error && <p className="small pink">{st.error}</p>}
         <div className="wiz-drawer-acts">

@@ -65,7 +65,9 @@ export const DEFAULTS = {
   voiceLine: null,
   refmods: [],
   retention: 1,
-  extraLoras: []
+  extraLoras: [],
+  // the speed preset the shot was made with (speed.js), kept so its finish starts from the preset's finish
+  speed: null
 }
 
 // request: see DEFAULTS. characters: [{id, name, lora, strength, trigger}]. Returns the plan or throws.
@@ -94,7 +96,9 @@ export function planPreviews(request, characters) {
   if (refmods.length > 8) errors.push(refChar ? 'At most 7 RefMods with a RefMod character (it takes the first).' : 'At most 8 RefMods.')
   if (errors.length) throw Object.assign(new Error(errors.join(' ')), { errors })
 
-  const previews = r.mode === 'continue' ? 1 : Math.min(3, Math.max(1, Math.round(r.previews)))
+  // Continue makes one take for the app's own chains (Extend, one-take film shots, sequences); a shot from Create
+  // (continueFull) hunts 1-3 takes like any other and finishes at full size (planFinish)
+  const previews = r.mode === 'continue' && !r.continueFull ? 1 : Math.min(3, Math.max(1, Math.round(r.previews)))
   const size = resolveSize(r.aspect, r.megapixels)
   const frames = resolveFrames(r.seconds)
   const groups = [mode.group, character && !refChar ? 'char_tess' : 'char_none', 'select1']
@@ -160,12 +164,32 @@ export function planFinish(previewPlan, finish) {
   if (f.audio === 'voice' && !previewPlan.request.voiceLine) errors.push('Final audio "voice" needs a voice line.')
   if (errors.length) throw Object.assign(new Error(errors.join(' ')), { errors })
 
-  const single = previewPlan.request.mode === 'continue'
+  // Continue: the app's own chains finish in one pass at preview size (DLSS only, 'single'). A Create shot
+  // (continueFull) gets the full finish: the picked take's 2 MP pass (its frame-free continuation conditioning,
+  // node 611), with the source scaled to that size and joined back on before it ('continue_full'), so the
+  // final is the whole continued video. continueFinish: 'single' keeps the old one-pass finish for such a shot.
+  const cont = previewPlan.request.mode === 'continue'
+  const full = cont && !!previewPlan.request.continueFull && f.continueFinish !== 'single'
+  const single = cont && !full
   const keep = previewPlan.groups.filter((g) => !/^preview\d$|^select\d$/.test(g))
   const groups = [...keep, `preview${f.candidate}`, `select${f.candidate}`, single ? 'single' : 'upscale']
+  if (full) groups.push('continue_full')
   if (!single && f.audio === 'preview') groups.push('audio_preview')
   if (!single && f.audio === 'voice') groups.push('audio_voice')
   const values = { ...previewPlan.values, '504': f.megapixels, '511': f.upscale2x ? 2 : 1, '512': f.fps }
+  if (cont) {
+    // the continued video (source + take) is built from the picked take, not always take 1
+    const decode = { 1: ['40', '41'], 2: ['116', '117'], 3: ['126', '127'] }[f.candidate]
+    values['615.image2'] = [decode[0], 0]
+    values['617.audio2'] = [decode[1], 0]
+  }
+  if (full) {
+    values['30.images'] = ['632', 0]
+    values['30.audio'] = ['633', 0]
+  }
+  // DLSS 5's noise reduction (0-2) and style, when the finish asks for them
+  if (f.dlssStrength != null && Number.isFinite(Number(f.dlssStrength))) values['50.NR Intensity'] = Math.min(2, Math.max(0, Number(f.dlssStrength)))
+  if (['Default', 'Natural', 'Cinematic'].includes(f.dlssStyle)) values['50.NR Style'] = f.dlssStyle
   if (f.rerollSeed != null) values['505.seed'] = f.rerollSeed
   else values['505.seed'] = previewPlan.request.seed + 444
   const { width, height } = previewPlan.resolved
@@ -186,7 +210,8 @@ export function planFinish(previewPlan, finish) {
       fps: f.fps || 24,
       frames: f.fps ? Math.round((frames / 24) * f.fps) : frames,
       seconds: previewPlan.resolved.seconds,
-      singlePass: single
+      singlePass: single,
+      ...(full ? { continued: true } : {})
     }
   }
 }

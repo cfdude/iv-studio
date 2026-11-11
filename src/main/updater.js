@@ -6,20 +6,24 @@
 import { app, shell } from 'electron'
 import electronUpdater from 'electron-updater'
 import { dataLocation } from '../service/paths'
+import { initMacUpdater } from './macupdater'
+import { initPortableUpdater } from './portableupdater'
 
 const { autoUpdater } = electronUpdater
 const SIX_HOURS = 6 * 60 * 60 * 1000
 const TEST_FEED = process.env.IV_STUDIO_UPDATE_FEED
-// macOS installs updates only into an app signed with an Apple Developer ID. Until the Mac build is signed, a Mac
-// copy says a new version is out and opens the release page to download it (as IV Downloader does).
-// The portable copy (a "data" folder beside IV Studio.exe, see paths.js) is updated the same way: the installer
-// would put a second copy in Program Files, so it says a new version is out and opens the release page, where the
-// person downloads the new zip and unzips it over this folder (the data folder stays).
+// macOS's own updater installs only into an app signed with an Apple Developer ID, so a Mac copy uses IV Studio's
+// own (macupdater.js): the same download in the background and one-click install, swapping the app bundle itself.
+// The portable copy (a "data" folder beside IV Studio.exe, see paths.js) has its own too (portableupdater.js): the
+// installer would put a second copy in Program Files, so it downloads the new portable zip into its data folder and
+// swaps the program files in place, keeping the data folder.
 export const PORTABLE = dataLocation().source === 'portable'
-export const MANUAL = process.platform === 'darwin' || PORTABLE
+export const MANUAL = false
+const MAC = process.platform === 'darwin' && !PORTABLE
+const WIN_PORTABLE = PORTABLE && process.platform === 'win32'
 const RELEASES = 'https://github.com/hollisorg/iv-studio/releases/latest'
 
-let state = { status: 'idle', version: app.getVersion(), available: null, percent: null, error: null, checkedAt: null, manual: MANUAL, portable: PORTABLE }
+let state = { status: 'idle', version: app.getVersion(), available: null, percent: null, error: null, checkedAt: null, manual: MANUAL, portable: PORTABLE, mac: MAC, why: null }
 export const updateState = () => state
 
 export function initUpdater(onChange) {
@@ -34,9 +38,10 @@ export function initUpdater(onChange) {
     return { check: async () => state, install: () => false }
   }
 
+  if (MAC) return initMacUpdater({ set, get: () => state, testFeed: TEST_FEED })
+  if (WIN_PORTABLE) return initPortableUpdater({ set, get: () => state, testFeed: TEST_FEED })
+
   if (TEST_FEED) autoUpdater.setFeedURL({ provider: 'generic', url: TEST_FEED })
-  // the zip carries no installer's update settings, so name the releases it checks
-  else if (PORTABLE) autoUpdater.setFeedURL({ provider: 'github', owner: 'hollisorg', repo: 'iv-studio' })
   autoUpdater.autoDownload = !MANUAL
   autoUpdater.autoInstallOnAppQuit = !TEST_FEED && !MANUAL
 
@@ -44,7 +49,11 @@ export function initUpdater(onChange) {
   autoUpdater.on('update-not-available', () => set({ status: 'current', available: null, checkedAt: new Date().toISOString() }))
   autoUpdater.on('update-available', (info) => set({ status: MANUAL ? 'available' : 'downloading', available: info.version, percent: MANUAL ? null : 0, checkedAt: new Date().toISOString() }))
   autoUpdater.on('download-progress', (p) => set({ status: 'downloading', percent: p.percent }))
-  autoUpdater.on('update-downloaded', (info) => set({ status: 'ready', available: info.version, percent: 100 }))
+  autoUpdater.on('update-downloaded', (info) => {
+    set({ status: 'ready', available: info.version, percent: 100 })
+    // the Linux CI's update check (scripts/ci-linux.sh): a test copy on a local feed installs and reopens at once
+    if (TEST_FEED && process.env.IV_STUDIO_UPDATE_SELFTEST === '1') setTimeout(() => autoUpdater.quitAndInstall(true, true), 500)
+  })
   autoUpdater.on('error', (err) => {
     const message = String(err?.message || err)
     // With no published release yet (drafts only), GitHub has no "latest" to report.

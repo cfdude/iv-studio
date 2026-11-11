@@ -23,13 +23,18 @@ export function CreateKind({ kind, onKind }) {
 }
 
 // A step's number, title and one line on what it's for.
-export function StepHead({ n, title, sub }) {
+// subPlain: the sub line in plain words, shown instead with Simple words on (words.js)
+export function StepHead({ n, title, sub, subPlain }) {
   return (
     <div className="step-head">
       {n != null && <span className="step-n">{String(n).padStart(2, '0')}</span>}
       <div>
         <h2>{title}</h2>
-        {sub && <p className="dim small">{sub}</p>}
+        {sub && (
+          <p className="dim small" data-plain={subPlain}>
+            {sub}
+          </p>
+        )}
       </div>
     </div>
   )
@@ -105,6 +110,10 @@ export function ImageModeIcon({ id }) {
         <g {...LINE}>
           <path d="M16 5l2.4 6.6L25 14l-6.6 2.4L16 23l-2.4-6.6L7 14l6.6-2.4z" />
           <path d="M24 22l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z" />
+        </g>
+      ) : id === 'tools' ? (
+        <g {...LINE}>
+          <path d="M20.5 5.5a6 6 0 00-7.7 7.7L5 21l3 3 7.8-7.8a6 6 0 007.7-7.7l-3.6 3.6-3-1-1-3z" />
         </g>
       ) : (
         <g {...LINE}>

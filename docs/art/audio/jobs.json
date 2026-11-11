@@ -1,0 +1,42 @@
+﻿[
+    {
+        "r":  [
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\workflows\\reel.webp",
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\pages\\voices.webp"
+              ],
+        "p":  "A wide 3:2 illustration in exactly the style of the first reference image: deep near-black background, coral-red and pink hand-inked swirls, crisp line work. A pair of full red lips, slightly parted as if speaking, with two small curved sound arcs on each side, drawn correctly and believably with every part in the right place, sitting on the right half of the picture. The left 45 percent stays dark and nearly empty so text can sit there. Fewer swirls than the second reference image. No text, letters, numbers or logos anywhere.",
+        "f":  "card-voices.png"
+    },
+    {
+        "r":  [
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\workflows\\reel.webp",
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\pages\\lines.webp"
+              ],
+        "p":  "A wide 3:2 illustration in exactly the style of the first reference image: deep near-black background, coral-red and pink hand-inked swirls, crisp line work. A vintage ribbon microphone on a short stand, drawn correctly and believably with every part in the right place, sitting on the right half of the picture. The left 45 percent stays dark and nearly empty so text can sit there. Fewer swirls than the second reference image. No text, letters, numbers or logos anywhere.",
+        "f":  "card-lines.png"
+    },
+    {
+        "r":  [
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\workflows\\reel.webp",
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\pages\\music.webp"
+              ],
+        "p":  "A wide 3:2 illustration in exactly the style of the first reference image: deep near-black background, coral-red and pink hand-inked swirls, crisp line work. A record player with a vinyl record on the platter and its tonearm resting on the record, drawn correctly and believably with every part in the right place, sitting on the right half of the picture. The left 45 percent stays dark and nearly empty so text can sit there. Fewer swirls than the second reference image. No text, letters, numbers or logos anywhere.",
+        "f":  "card-music.png"
+    },
+    {
+        "r":  [
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\workflows\\reel.webp",
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\pages\\sounds.webp"
+              ],
+        "p":  "A wide 3:2 illustration in exactly the style of the first reference image: deep near-black background, coral-red and pink hand-inked swirls, crisp line work. A wooden theatre wind machine: a slatted wooden drum on a frame with a crank handle and a cloth draped over the drum, drawn correctly and believably with every part in the right place, sitting on the right half of the picture. The left 45 percent stays dark and nearly empty so text can sit there. Fewer swirls than the second reference image. No text, letters, numbers or logos anywhere.",
+        "f":  "card-sounds.png"
+    },
+    {
+        "r":  [
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\pages\\music.webp",
+                  "C:\\Users\\Matthew\\iv-studio-premium\\src\\renderer\\src\\assets\\pages\\lines.webp"
+              ],
+        "p":  "A wide banner illustration in exactly the style of the first reference image: deep near-black background densely filled with coral-red and pink hand-inked swirls radiating from the middle, a dark halo of fine dots around the subject. The subject is a pair of studio headphones, drawn correctly and believably with every part in the right place (headband, two ear cups, cable), centred horizontally at about a third of the height from the top, in the same finish as the subject in the second reference image. No text, letters, numbers or logos anywhere.",
+        "f":  "banner-audio.png"
+    }
+]

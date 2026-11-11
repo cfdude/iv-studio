@@ -43,6 +43,7 @@ ok('4090 + 64 GB: everything here, 2 MP finals with DLSS, core models recommende
   assert.equal(r.tier.id, 'all')
   assert.equal(r.tier.renderOn, 'local')
   assert.equal(r.prefs.finalMp, 2)
+  assert.equal(r.prefs.speed, 'quality')
   assert.equal(r.prefs.enhancer, 'dlss')
   assert.ok(r.downloads.find((d) => d.id === 'core').recommended)
   assert.ok(r.downloads.find((d) => d.id === 'music').recommended)
@@ -58,10 +59,12 @@ ok('5090 + 128 GB on Linux: top tier, SeedVR2 instead of DLSS', () => {
   assert.ok(r.tips.some((t) => /DLSS 5 needs/.test(t.text)))
 })
 
-ok('16 GB card + 32 GB: most things here, finals at 1.5 MP, Replace not pushed', () => {
+ok('16 GB card + 32 GB: most things here, Balanced (1 MP finals upscaled 2x), Replace not pushed', () => {
   const r = recommend(machine({ vram: 16, ram: 32, name: 'NVIDIA GeForce RTX 4080' }))
   assert.equal(r.tier.id, 'most')
-  assert.equal(r.prefs.finalMp, 1.5)
+  assert.equal(r.prefs.speed, 'balanced')
+  assert.equal(r.prefs.finalMp, 1)
+  assert.equal(r.prefs.previewMp, 0.4)
   assert.equal(r.downloads.find((d) => d.id === 'replace').recommended, false)
   assert.equal(r.verdicts.find((v) => v.id === 'ram').state, 'ok')
 })
@@ -69,6 +72,8 @@ ok('16 GB card + 32 GB: most things here, finals at 1.5 MP, Replace not pushed',
 ok('12 GB card: pictures here, video in the cloud, no H3 download pushed', () => {
   const r = recommend(machine({ vram: 12, ram: 32, name: 'NVIDIA GeForce RTX 3060' }))
   assert.equal(r.tier.id, 'some')
+  assert.equal(r.prefs.speed, 'low')
+  assert.equal(r.prefs.quality, 'draft')
   assert.equal(r.downloads.find((d) => d.id === 'core').recommended, false)
   assert.ok(r.downloads.find((d) => d.id === 'design').recommended)
   assert.equal(r.training.localReady, false)

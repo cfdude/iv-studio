@@ -9,7 +9,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { RunPod } from '../src/service/runpod.js'
-import { Trainings, trainScript } from '../src/service/training.js'
+import { FIZGIG, Trainings, trainScript } from '../src/service/training.js'
 
 const RES = path.resolve('resources')
 const PY =
@@ -62,6 +62,16 @@ const calls = []
 const fetchImpl = async (url, init = {}) => {
   url = String(url)
   if (url.includes('.proxy.runpod.net')) return fetch(url.replace(/^https:\/\/[^/]+/, local), init)
+  // pods from a template go through REST v1 (they stay linked to it); the rest through v2
+  if (url === 'https://rest.runpod.io/v1/pods' && init.method === 'POST') {
+    calls.push('POST v1 /pods')
+    const body = JSON.parse(init.body)
+    const json = (b, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
+    calls.push(`pod ${body.gpuTypeIds[0]} template=${body.templateId} commit=${body.env.IV_FIZGIG_COMMIT} vol=${body.networkVolumeId} ${body.env.IV_MODE} run=${body.env.IV_RUN}`)
+    if (body.gpuTypeIds[0] === 'NVIDIA H100 80GB HBM3') return json({ error: 'There are no longer any instances available with the requested specifications.' }, 400)
+    startPod({ IV_TOKEN: body.env.IV_TOKEN, IV_RUN: body.env.IV_RUN, IV_MODE: body.env.IV_MODE })
+    return json({ id: 'pod1', costPerHr: 1.09, templateId: body.templateId })
+  }
   const route = url.replace('https://api.runpod.io/v2', '')
   calls.push(`${init.method || 'GET'} ${route.split('?')[0]}`)
   const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -117,7 +127,13 @@ try {
   await tr.runs.get(id)
   const t = tr.get(id)
   ok(t.train.state === 'done', `run: ends done (${t.train.state} ${t.train.error || ''})`)
-  ok(calls.includes('POST /network-volumes') && calls.some((c) => c.startsWith('pod NVIDIA L40S ghcr.io/shootthesound/fizgig:latest train run=theo_x_abc123_1')), 'run: makes the training volume, and a pod from Fizgig’s image on the next free GPU')
+  ok(calls.includes('POST /network-volumes') && calls.some((c) => c.startsWith(`pod NVIDIA L40S template=${FIZGIG.template} commit=${FIZGIG.commit} vol=vol1 train run=theo_x_abc123_1`)), 'run: makes the training volume, and a pod from Fizgig’s RunPod template (v1, so it stays linked) on the next free GPU')
+  // the image is pinned by digest, and Modal trains on the same one
+  const app = fs.readFileSync(new URL('../resources/cloud/train_app.py', import.meta.url), 'utf8')
+  ok(
+    new RegExp(`^ghcr\\.io/shootthesound/fizgig:${FIZGIG.version.replace(/\./g, '\\.')}@sha256:[0-9a-f]{64}$`).test(FIZGIG.image) && app.includes(`from_registry("${FIZGIG.image}")`) && app.includes(`FIZGIG_COMMIT = "${FIZGIG.commit}"`) && /^[0-9a-f]{40}$/.test(FIZGIG.commit),
+    'Modal builds on the same pinned Fizgig image and commit as RunPod'
+  )
   ok(t.train.gpu === 'NVIDIA L40S' && t.train.pod?.id === 'pod1', 'run: records the GPU it got and the pod')
   // the files the pod got
   const runDir = path.join(ws, 'train', 'theo_x_abc123_1')

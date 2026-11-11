@@ -16,6 +16,33 @@ import { comboOptions } from './setup.js'
 
 export const CIVITAI_SITES = { safe: 'https://civitai.com', mature: 'https://civitai.red' }
 export const LORA_BASE = 'MiniMax H3'
+// Every model family IV Studio runs, as Civitai names its base models (checked against civitai.com/api/v1 on
+// 2026-11-09), how its LoRAs on this PC are recognised when Civitai doesn't know them (the folder or file name;
+// the same patterns as images.js), and the folder a download goes to under loras/Civitai/. ids match images.js's
+// families, so Create -> Image's LoRA tray and the LoRAs page share them. Order matters for names: Flux 3 before
+// Flux.2, whose "klein" would catch it.
+export const LORA_FAMILIES = [
+  // "H3 Image" names belong to H3 Image below, not to the video model
+  { id: 'h3', label: 'MiniMax H3', kind: 'video', bases: ['MiniMax H3'], pattern: 'minimax[ _-]?h3(?![ _-]?image)|(^|[\\/_ -])h3(?![ _-]?image)([\\/_ -]|$)|mmh3|t3ss4', folder: 'MiniMax H3', uses: 'Shots, sequences, films and H3 stills' },
+  { id: 'h3image', label: 'MiniMax H3 Image', kind: 'image', bases: [], pattern: 'minimax[ _-]?h3[ _-]?image|(^|[\\/_ -])h3[ _-]?image', folder: 'MiniMax H3 Image', uses: 'Pictures: make and edit (Civitai has no H3 Image category yet; yours show under Yours)' },
+  { id: 'ltx', label: 'LTX-2.5', kind: 'video', bases: ['LTXV 2.5'], pattern: 'ltx[ _-]?(v|video)?[ _-]?2\\.?5', folder: 'LTX-2.5', uses: 'Your own ComfyUI workflows (IV Studio’s LTX effects bring their own LoRAs)' },
+  { id: 'wan', label: 'Wan 2.1', kind: 'video', bases: ['Wan Video 14B i2v 480p', 'Wan Video 14B i2v 720p', 'Wan Video 14B t2v'], pattern: 'wan[ _-]?2\\.?1|wan_?14b', folder: 'Wan 2.1', uses: 'Your own ComfyUI workflows (the Effects gallery brings its own LoRAs)' },
+  { id: 'flux3', label: 'Flux 3 Klein', kind: 'image', bases: ['Flux.3 Klein'], pattern: 'flux ?\\.?3', folder: 'Flux 3 Klein', uses: 'Pictures: make and edit, inpaint' },
+  { id: 'flux2', label: 'Flux.2 Klein 9B', kind: 'image', bases: ['Flux.2 Klein 9B'], pattern: 'flux ?\\.?2|klein|klien', folder: 'Flux.2 Klein', uses: 'Pictures: make and edit' },
+  { id: 'krea2', label: 'Krea 2', kind: 'image', bases: ['Krea 2'], pattern: 'krea', folder: 'Krea 2', uses: 'Pictures: make and edit' },
+  { id: 'qwen21', label: 'Qwen Image 2.1', kind: 'image', bases: ['Qwen 2.1'], pattern: 'qwen[ _-]?(image[ _-]?)?2\\.1', folder: 'Qwen 2.1', uses: 'Pictures: make and edit, relight' },
+  { id: 'zimage', label: 'Z-Image Turbo', kind: 'image', bases: ['ZImageTurbo'], pattern: 'z[-_ ]?image|\\bzit\\b', folder: 'Z-Image', uses: 'Pictures: make, character design' },
+  { id: 'sdxl', label: 'SDXL', kind: 'image', bases: ['SDXL 1.0', 'Pony', 'Illustrious'], pattern: 'sdxl|\\bxl\\b|[-_]xl[-_.]|pony|illustrious|noob', folder: 'SDXL', uses: 'Pictures: make' },
+  { id: 'moss', label: 'Moss', kind: 'image', bases: [], pattern: 'moss', folder: 'Moss', uses: 'Pictures: make (Civitai has no Moss category; yours show under Yours)' }
+]
+const FAMILY_BY_BASE = new Map(LORA_FAMILIES.flatMap((f) => f.bases.map((b) => [b, f.id])))
+const ALL_BASES = LORA_FAMILIES.flatMap((f) => f.bases)
+export const familyById = (id) => LORA_FAMILIES.find((f) => f.id === id) || null
+// Which family a LoRA is for: what Civitai says about it, else its folder or file name.
+export function familyOf({ name = '', civitai = null } = {}) {
+  if (civitai?.baseModel) return FAMILY_BY_BASE.get(civitai.baseModel) || null
+  return LORA_FAMILIES.find((f) => new RegExp(f.pattern, 'i').test(name))?.id || null
+}
 // Filter chips: Civitai tags the H3 LoRAs most often carry (checked 2026-10-29).
 export const LORA_TAGS = [
   ['', 'All'],
@@ -157,9 +184,14 @@ export class Civitai {
     }
   }
 
-  // One page of H3 LoRAs. cursor: from the previous page's next.
-  async search({ query = '', tag = '', sort = LORA_SORTS[0], cursor = null, limit = 24 } = {}) {
-    const q = new URLSearchParams({ types: 'LORA', baseModels: LORA_BASE, limit: String(Math.min(Math.max(limit, 1), 100)), sort, nsfw: this.mature() ? 'true' : 'false' })
+  // One page of a family's LoRAs (family: an id from LORA_FAMILIES, or 'all'). cursor: from the previous page's next.
+  async search({ query = '', tag = '', sort = LORA_SORTS[0], cursor = null, limit = 24, family = 'h3' } = {}) {
+    const fam = familyById(family)
+    const bases = family === 'all' ? ALL_BASES : fam?.bases
+    if (!bases) throw new Error(`Unknown model family "${family}". One of: ${LORA_FAMILIES.map((f) => f.id).join(', ')}, all.`)
+    if (!bases.length) return { items: [], next: null, mature: this.mature(), none: `Civitai has no ${fam.label} category. Your own ${fam.label} LoRAs show under Yours.` }
+    const q = new URLSearchParams({ types: 'LORA', limit: String(Math.min(Math.max(limit, 1), 100)), sort, nsfw: this.mature() ? 'true' : 'false' })
+    for (const b of bases) q.append('baseModels', b)
     if (query.trim()) q.set('query', query.trim())
     if (tag) q.set('tag', tag)
     if (cursor) q.set('cursor', String(cursor))
@@ -179,10 +211,10 @@ export class Civitai {
       url: `${this.site()}/models/${m.id}`,
       licence: { commercial: (m.allowCommercialUse || []).length > 0, commercialUses: m.allowCommercialUse || [], derivatives: !!m.allowDerivatives, creditNeeded: !m.allowNoCredit },
       versions: (m.modelVersions || [])
-        .filter((v) => v.baseModel === LORA_BASE)
+        .filter((v) => FAMILY_BY_BASE.has(v.baseModel))
         .map((v) => {
           const f = this.pickFile(v)
-          return { id: v.id, name: v.name, baseModel: v.baseModel, publishedAt: v.publishedAt, trainedWords: v.trainedWords || [], notes: plain(v.description).slice(0, 1500), file: f ? { id: f.id, name: f.name, size: Math.round(f.sizeKB * 1024), sha256: f.hashes?.SHA256?.toLowerCase() || null } : null, previews: this.previews(v.images, 16, true), installed: !!(f?.hashes?.SHA256 && installed.has(f.hashes.SHA256.toLowerCase())) }
+          return { id: v.id, name: v.name, baseModel: v.baseModel, family: FAMILY_BY_BASE.get(v.baseModel), publishedAt: v.publishedAt, trainedWords: v.trainedWords || [], notes: plain(v.description).slice(0, 1500), file: f ? { id: f.id, name: f.name, size: Math.round(f.sizeKB * 1024), sha256: f.hashes?.SHA256?.toLowerCase() || null } : null, previews: this.previews(v.images, 16, true), installed: !!(f?.hashes?.SHA256 && installed.has(f.hashes.SHA256.toLowerCase())) }
         })
     }
   }
@@ -209,9 +241,10 @@ export class Civitai {
       const known = lib.files[name]
       const fresh = known && st && known.size === st.size && known.mtime === st.mtimeMs
       const civitai = fresh ? known.civitai : null
-      // made for H3: Civitai says so, or the file sits in or is named for MiniMax H3
-      const h3 = civitai ? civitai.baseModel === LORA_BASE : /minimax[ _-]?h3|(^|[\\/_ -])h3([\\/_ -]|$)|mmh3/i.test(name)
-      items.push({ name, file: file || null, size: st?.size || null, sha256: fresh ? known.sha256 : null, civitai, checked: fresh ? known.checkedAt : null, h3, prefs: lib.prefs[name] || {} })
+      // the model it's for: the person's own choice, else what Civitai says, else the folder or file name
+      const prefs = lib.prefs[name] || {}
+      const family = prefs.family || familyOf({ name, civitai })
+      items.push({ name, file: file || null, size: st?.size || null, sha256: fresh ? known.sha256 : null, civitai, checked: fresh ? known.checkedAt : null, family, h3: family === 'h3', prefs })
     }
     return items
   }
@@ -241,7 +274,9 @@ export class Civitai {
   setPrefs(name, patch) {
     const lib = this.library()
     const cur = lib.prefs[name] || {}
-    for (const k of ['favourite', 'strength', 'triggers', 'autoTrigger', 'picture']) if (patch[k] !== undefined) cur[k] = patch[k]
+    if (patch.family != null && !familyById(patch.family)) throw new Error(`Unknown model family "${patch.family}".`)
+    for (const k of ['favourite', 'strength', 'triggers', 'autoTrigger', 'picture', 'family']) if (patch[k] !== undefined) cur[k] = patch[k]
+    if (cur.family === null) delete cur.family
     lib.prefs[name] = cur
     this.saveLibrary(lib)
     return cur
@@ -278,7 +313,9 @@ export class Civitai {
     if (this.downloads.get(v.id)?.status === 'downloading') throw new Error('That LoRA is already downloading.')
     const [root] = await this.loraFolders()
     if (!root) throw new Error('ComfyUI has no loras folder.')
-    const rel = path.join('Civitai', slug(m.name), v.file.name)
+    // H3 LoRAs keep their old place (loras/Civitai/<model>/); other families get a folder of their own
+    const fam = familyById(FAMILY_BY_BASE.get(v.baseModel))
+    const rel = fam && fam.id !== 'h3' ? path.join('Civitai', fam.folder, slug(m.name), v.file.name) : path.join('Civitai', slug(m.name), v.file.name)
     const target = path.join(root, rel)
     if (fs.existsSync(target)) return this.finish(m, v, target, rel)
     const part = `${target}.part`
@@ -328,6 +365,6 @@ export class Civitai {
     lib.files[rel] = { size: st.size, mtime: st.mtimeMs, sha256, civitai: { modelId: m.id, versionId: v.id, name: m.name, version: v.name, baseModel: v.baseModel, trainedWords: v.trainedWords, mature: m.mature, preview: shown ? await this.cachePreview(v.id, shown).catch(() => null) : null }, checkedAt: now() }
     this.saveLibrary(lib)
     this.set(v.id, { status: 'done', received: st.size, path: target, lora: rel })
-    return { lora: rel, path: target, sha256, name: m.name, trainedWords: v.trainedWords }
+    return { lora: rel, path: target, sha256, name: m.name, trainedWords: v.trainedWords, family: FAMILY_BY_BASE.get(v.baseModel) || null }
   }
 }

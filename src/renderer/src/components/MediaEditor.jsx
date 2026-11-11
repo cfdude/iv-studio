@@ -4,7 +4,7 @@ import { fileUrl } from './edit/model'
 // A reference as a card: what it is at a glance (picture, a video's first frame, a sound's length),
 // with what was done to it. Clicking it opens the editor.
 // item: { kind: 'picture'|'video'|'audio', path, source?, edit?: {crop, start, end}, info? }
-export function MediaTile({ item, label, onEdit, onRemove }) {
+export function MediaTile({ item, label, onEdit, onRemove, extra = null }) {
   const len = item.info?.duration
   const notes = [item.edit?.crop && 'cropped', item.edit && (item.edit.start != null || item.edit.end != null) && 'trimmed'].filter(Boolean)
   return (
@@ -21,6 +21,7 @@ export function MediaTile({ item, label, onEdit, onRemove }) {
           {base(item.source || item.path)}
         </span>
         <span className="mono dim small">{[len && `${len.toFixed(2)} s`, item.info?.width && `${item.info.width}×${item.info.height}`, ...notes].filter(Boolean).join(' · ')}</span>
+        {extra}
       </div>
       <button className="media-remove" onClick={onRemove} title="Remove">
         ×

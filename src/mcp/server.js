@@ -11,12 +11,22 @@ import path from 'node:path'
 import { z } from 'zod'
 import { INSTRUCTIONS, readGuide } from '../service/agent'
 import { editsFolderText, liveEditText, rendersFolderText } from '../shared/platform'
+import { agentGuard, chatAsk, startedJobId } from '../service/agentrun'
+import { TOUR_PAGES, TOURS, placesToShow } from '../renderer/src/tours'
 import { GUIDE_SOURCE, loadGuide } from '../service/h3guide'
 import { blocking, lintPrompt } from '../service/lint'
-import { Ranker } from '../service/ranking'
+import { cleanStretchFile, Ranker } from '../service/ranking'
+import { exportInterchange } from '../service/interchange'
+import { ModelInstaller } from '../service/models'
+import { RECOMMENDED, recommendedManifest, recommendedOnDisk } from '../service/recommended'
+import { Turnarounds } from '../service/turnaround'
+import { SoftMouth } from '../service/softmouth'
+import { makeDailies } from '../service/dailies'
 import { Reviewer } from '../service/review'
 import { Previs } from '../service/previs'
 import { setOllamaSource, unloadOllama } from '../service/prompter'
+import { parseHeaders, setLlmSource } from '../service/llm'
+import { LOOK_FIELDS, PROMPT_TOOLS, loadSlate, lookbook, promptVariants, rewritePrompt, setupSnippets, withSetups } from '../service/filmcraft'
 import { CAMERA_MOVES, lineCheck } from '../service/staging'
 import { DIRECTING, DIRECTING_SOURCE } from '../service/directing'
 import { menuMessage, START_MENU } from '../service/startmenu'
@@ -27,16 +37,26 @@ import { Reels } from '../service/reel'
 import { Cutouts } from '../service/cutout'
 import { Reframes } from '../service/reframe'
 import { MediaTools } from '../service/media'
+import { applyFinishSpeed, applySpeed, savedSpeed, SPEED_IDS, SPEEDS } from '../service/speed'
 import { comfyFolders, contentDir, dataLocation, mcpVideosBase, readSettings, resourcesDir, videosFolderOf, writerOf, writeSettings } from '../service/paths'
+import { H3_TERMS_NEEDED, setH3Gate, termsAccepted } from '../service/terms'
 import { ASPECTS, FRAME_GEN_FPS, MODES } from '../service/plan'
+import { keepUndo, readActivity, record as activityRecord, whoOf } from '../service/activity'
 import { RETAKE_MODES, SHOT_SECONDS } from '../service/sequence'
 import { Studio } from '../service/studio'
+import { getBalance } from '../service/comfyaccount'
+import { infoFor, priceGraph, usdToCredits } from '../service/pricing'
+import { decideSpend, spendDeskClient } from '../service/spending'
+import { captionEdit, clipAudio, peakDb, QUIET_DB } from '../service/captions'
+import { listRecipes, removeRecipe, saveRecipe } from '../service/recipes'
+import { Batches, batchReport, batchState, MAX_BATCH } from '../service/batches'
+import { lintSeedance } from '../service/seedlint'
 import { comfyUp, findLaunchers, launcherFor } from '../service/comfylauncher'
 import { MODEL_GROUPS, recommend, scanHardware } from '../service/hardware'
 import { comboOptions } from '../service/setup'
 import { harnessStatus } from '../service/harness'
 import { ollamaStatus } from '../service/prompter'
-import { applyOps, clipEnd, TRACK_ID, tracksOf, videoLayers } from '../service/timeline'
+import { applyOps, clipEnd, clipLength, TRACK_ID, tracksOf, videoLayers } from '../service/timeline'
 import { TALKS, TRAIN_GPUS, Trainings } from '../service/training'
 import { Shinobi } from '../service/shinobi'
 import { CharacterCatalog } from '../service/characters'
@@ -44,9 +64,11 @@ import { Replace, RESOLUTIONS } from '../service/replace'
 import { Remake, REMAKE_KINDS } from '../service/remake'
 import { VOICE_ENGINES, Voices } from '../service/voices'
 import { ACE_KEYS, monoDecoder, Music, MUSIC_DEFAULTS, MUSIC_ENGINES, REMIX } from '../service/music'
+import { SOUND_KINDS, SOUND_LIMITS, Sounds } from '../service/sounds'
+import { offeredFx, CLIP_FX, FreefieldApps } from '../service/freefield'
 import { IMAGE_ASPECTS, IMAGE_FAMILIES, Images } from '../service/images'
 import { RefMods } from '../service/refmods'
-import { Civitai, LORA_SORTS, LORA_TAGS } from '../service/civitai'
+import { Civitai, LORA_FAMILIES, LORA_SORTS, LORA_TAGS } from '../service/civitai'
 import { Comfy } from '../service/comfy'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { Reader } from '../service/reader'
@@ -61,10 +83,25 @@ if (LOCATION.missing) {
   process.exit(1)
 }
 const BASE = LOCATION.dir
+// MiniMax H3 only after the person has accepted its terms in the app (terms.js). An agent can't accept for them.
+setH3Gate(async () => {
+  if (!termsAccepted(readSettings(BASE))) throw new Error(H3_TERMS_NEEDED)
+})
 const INCOGNITO = !!readSettings(BASE).incognito
 const DATA = contentDir(BASE)
 // the writer's Ollama: the address in Settings → Prompt writer, else OLLAMA_HOST, else this PC (prompter.js)
 setOllamaSource(() => readSettings(BASE).ollamaUrl)
+// the OpenAI-compatible writer (llm.js): address and model from Settings; its key and headers from this server's
+// environment (IV_STUDIO_LLM_KEY or OPENAI_API_KEY, IV_STUDIO_LLM_HEADERS as "Name: value" lines), since only the app
+// can unseal the ones saved in Settings. A server that needs no key works without them.
+setLlmSource(() => {
+  const s = readSettings(BASE)
+  let headers = {}
+  try {
+    headers = parseHeaders(process.env.IV_STUDIO_LLM_HEADERS || '')
+  } catch {}
+  return { provider: s.promptEngine === 'openai' ? 'openai' : 'ollama', url: s.openaiUrl, model: s.openaiModel, vision: !!s.openaiVision, key: process.env.IV_STUDIO_LLM_KEY || process.env.OPENAI_API_KEY || '', headers }
+})
 const studio = new Studio({ dataDir: DATA, resourcesDir: resourcesDir(), comfyUrl: readSettings(BASE).comfyUrl, models: readSettings(BASE).models })
 const server = new McpServer({ name: 'iv-studio', version: '0.1.0' }, { instructions: INSTRUCTIONS })
 // Where the app puts downloads and exports (Electron's videos folder; this process has no Electron app).
@@ -79,38 +116,184 @@ const ok = (value) => {
   return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }], structuredContent: structured }
 }
 const fail = (err) => ({ isError: true, content: [{ type: 'text', text: err.message }] })
+// Started from IV Studio's Dashboard ("Let Claude Code make it", agentrun.js): no deleting, installing, training,
+// Settings changes or spending, and the jobs it starts are written down so Stop can cancel them.
+// A chat inside IV Studio (IV_STUDIO_AGENT_RUN=chat, agentchat.js) has every tool, but anything that deletes, costs
+// money, installs or changes Settings (chatAsk) waits for the person's Allow: an ask file in IV_STUDIO_AGENT_ASK, which
+// the app shows as a card, and the answer file it writes back.
+const AGENT_CHAT = process.env.IV_STUDIO_AGENT_RUN === 'chat'
+const AGENT_RUN = process.env.IV_STUDIO_AGENT_RUN === '1' || AGENT_CHAT
+const AGENT_JOBS = process.env.IV_STUDIO_AGENT_JOBS || null
+const AGENT_ASK = process.env.IV_STUDIO_AGENT_ASK || null
+const ASK_WAIT_MS = Number(process.env.IV_STUDIO_AGENT_ASK_MS) || 10 * 60 * 1000
+const agentStarted = new Set()
+const shortArgs = (args) => Object.fromEntries(Object.entries(args || {}).map(([k, v]) => [k, typeof v === 'string' && v.length > 300 ? `${v.slice(0, 300)}…` : v]))
+async function askPerson(name, args, why) {
+  if (!AGENT_ASK) throw new Error(`${why} There's no one to ask here, so it didn't run.`)
+  fs.mkdirSync(AGENT_ASK, { recursive: true })
+  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  const askFile = path.join(AGENT_ASK, `${id}.ask.json`)
+  const answerFile = path.join(AGENT_ASK, `${id}.answer.json`)
+  fs.writeFileSync(`${askFile}.tmp`, JSON.stringify({ id, tool: name, why, args: shortArgs(args), at: new Date().toISOString() }))
+  fs.renameSync(`${askFile}.tmp`, askFile)
+  const until = Date.now() + ASK_WAIT_MS
+  try {
+    while (Date.now() < until) {
+      let answer = null
+      try {
+        answer = JSON.parse(fs.readFileSync(answerFile, 'utf8'))
+      } catch {
+        /* not answered yet */
+      }
+      if (answer) {
+        if (answer.allow) return
+        throw new Error(`The person chose Don't allow for ${name}, so it didn't run. Don't try it again unless they ask; tell them what you'd do instead.`)
+      }
+      await new Promise((r) => setTimeout(r, 400))
+    }
+    throw new Error(`The person didn't answer the Allow card for ${name}, so it didn't run.`)
+  } finally {
+    for (const f of [askFile, answerFile]) fs.rmSync(f, { force: true })
+  }
+}
+// In a chat: the steps with a price IV Studio knows before they run (Seedance on Comfy.org credits). The app's spend
+// desk (spending.js) says whether the person's spending limit covers it; if not, the Allow card shows the price. Either
+// way the step then runs on IV Studio's own price as its confirm_cost, with the key the app lends, and is recorded.
+const spendDesk = AGENT_CHAT ? spendDeskClient() : null
+let chatKey = null
+async function chatPrice(name, args) {
+  if (name === 'generate_previews' && args.engine === 'seedance') return studio.priceRender(args)
+  if (name === 'finish_candidate' && args.jobId) {
+    const source = studio.getJob(args.jobId)
+    if (source.plan?.engine === 'seedance' && (args.way || (source.plan.resolved.draft ? 'seedance' : 'take')) === 'seedance') return studio.priceFinish({ jobId: args.jobId, way: 'seedance' })
+  }
+  return null
+}
+async function chatPaid(name, args, settings) {
+  let price = null
+  try {
+    price = await chatPrice(name, args)
+  } catch {
+    // no price (ComfyUI down, a bad job): the card asks as before, and the tool itself reports the problem
+    const why = chatAsk(name, args, { settings })
+    if (why) await askPerson(name, args, why)
+    return { args, spend: null }
+  }
+  if (!price?.paid) return null
+  const credits = usdToCredits(price.max)
+  const step = { tool: name, credits, usd: price.max, unknown: price.unknown.length > 0 }
+  let d = null
+  if (spendDesk) d = await spendDesk.check(step).catch(() => null)
+  if (!d?.auto) await askPerson(name, args, d?.why || decideSpend({ budget: { on: false }, credits, usd: price.max }).why)
+  if (spendDesk && !process.env.COMFY_ORG_API_KEY) chatKey = await spendDesk.key().catch(() => null)
+  return { args: { ...args, confirm_cost: Math.max(Number(args.confirm_cost) || 0, price.max) }, spend: { ...step, auto: !!d?.auto } }
+}
+const EDIT_CHANGERS = new Set(['edit_timeline', 'add_media', 'set_edit_settings', 'caption_edit'])
+const EDIT_FIELDS = ['name', 'settings', 'media', 'clips', 'tracks', 'markers']
+function editSnapshot(editId) {
+  try {
+    const e = edits.get(editId)
+    return { editId, name: e.name, fields: Object.fromEntries(EDIT_FIELDS.map((k) => [k, e[k] ?? null])) }
+  } catch {
+    return null
+  }
+}
+function writeUndo(tool, before) {
+  try {
+    const after = editSnapshot(before.editId)
+    if (after && JSON.stringify(after.fields) === JSON.stringify(before.fields)) return
+    fs.mkdirSync(AGENT_ASK, { recursive: true })
+    const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+    const file = path.join(AGENT_ASK, `${id}.undo.json`)
+    fs.writeFileSync(`${file}.tmp`, JSON.stringify({ id, tool, ...before, at: new Date().toISOString() }))
+    fs.renameSync(`${file}.tmp`, file)
+  } catch {
+    /* an undo point is a help, not a reason to fail the change */
+  }
+}
+// Every step an agent takes that changes, spends or fails goes into the activity log (activity.js), with who took it:
+// the chat, a Dashboard idea, or the outside agent that connected (its MCP client name).
+const who = () => whoOf({ env: process.env, client: server.server.getClientVersion?.() || null })
+function logStep(name, args, { value = null, error = null, t0, spend = null, undo = null }) {
+  try {
+    activityRecord(DATA, { tool: name, args, value, error: error?.message || error || null, ms: Date.now() - t0, who: who(), spend, undo })
+  } catch {
+    /* never a reason for the step to fail */
+  }
+}
 const tool = (name, description, shape, fn) =>
   server.registerTool(name, { description, inputSchema: shape }, async (args) => {
+    const t0 = Date.now()
+    let spendUsed = null
+    let undoId = null
     try {
       // the app switched Incognito on or off after this server started: its data is somewhere else now
       const s = readSettings(BASE)
       // the folders the person picked in Settings, as they are now
       studio.comfy.folders = comfyFolders(s, INCOGNITO)
       if (!!s.incognito !== INCOGNITO) throw new Error(`IV Studio switched Incognito ${INCOGNITO ? 'off' : 'on'} since this MCP server started. Restart the server (reconnect the iv-studio MCP) to work in the ${INCOGNITO ? 'normal' : 'Incognito'} data.`)
-      return ok(await fn(args))
+      let spend = null
+      if (AGENT_CHAT) {
+        const paid = await chatPaid(name, args, s)
+        if (paid) ({ args, spend } = paid)
+        else {
+          const why = chatAsk(name, args, { settings: s })
+          if (why) await askPerson(name, args, why)
+        }
+      } else if (AGENT_RUN) {
+        const refused = agentGuard(name, args, { settings: s, started: agentStarted })
+        if (refused) throw new Error(refused)
+      }
+      // an edit the chat's agent changes: what it was before, so the chat can offer "Undo this change" even when
+      // the edit isn't open (an open one also puts it on the editor's own Ctrl+Z)
+      const before = EDIT_CHANGERS.has(name) && args.editId ? editSnapshot(args.editId) : null
+      spendUsed = spend
+      const value = await fn(args)
+      if (before && AGENT_CHAT && AGENT_ASK) writeUndo(name, before)
+      // the activity log's own undo point, for any agent's change to an edit
+      if (before) {
+        const after = editSnapshot(before.editId)
+        if (!after || JSON.stringify(after.fields) !== JSON.stringify(before.fields)) undoId = keepUndo(DATA, before)
+      }
+      logStep(name, args, { value, t0, spend: spend && { credits: spend.credits, usd: spend.usd }, undo: undoId })
+      // a paid step counts once it has started, whatever happens to the render after
+      if (spend && spendDesk) await spendDesk.record(spend).catch(() => {})
+      const started = AGENT_RUN && startedJobId(name, value)
+      if (started && !agentStarted.has(started)) {
+        agentStarted.add(started)
+        if (AGENT_JOBS) fs.appendFileSync(AGENT_JOBS, `${started}\n`)
+      }
+      return ok(value)
     } catch (err) {
+      logStep(name, args, { error: err, t0, spend: spendUsed && { credits: spendUsed.credits, usd: spendUsed.usd } })
       return fail(err)
     }
   })
 
 const media = z
-  .array(z.object({ kind: z.enum(['picture', 'video', 'audio']), file: z.string().describe('Absolute local path (uploaded to ComfyUI) or a name already in ComfyUI input') }))
+  .array(z.object({ kind: z.enum(['picture', 'video', 'audio']), file: z.string().describe('Absolute local path (uploaded to ComfyUI) or a name already in ComfyUI input'), softMouth: z.boolean().optional().describe('A video reference in References mode: blur the mouths in it first, so the new face doesn’t mouth its words. Ignored when the shot has a spoken line. Needs the face models and Shinobi’s Python (soften_mouth checks).') }))
   .optional()
   .describe('frames mode: 1-2 pictures (first, last). reference mode: pictures, videos, audio, named <Picture 1>, <Video 1>, <Audio 1> in the prompt. continue mode: 1 video.')
+const SPEED_HELP = SPEED_IDS.map((id) => `${id}: ${SPEEDS[id].say}`).join(' ')
 const request = {
+  engine: z.enum(['h3', 'seedance']).default('h3').describe('h3: MiniMax H3 on this computer (free). seedance: Seedance 2.5 through ComfyUI\'s partner nodes, on the person\'s Comfy.org credits (needs COMFY_ORG_API_KEY in this server\'s environment and confirm_cost; price it first with price_shot). Seedance takes no LoRAs, RefMods or sampler settings; a character comes in as their face picture.'),
+  tier: z.enum(['draft', '720p', '1080p']).optional().describe('seedance: draft (480p, cheap, for hunting; finish the pick at 1080p with way seedance, or use it as it is with way take), 720p or 1080p (final quality)'),
+  audio: z.boolean().optional().describe('seedance: generate sound (default true)'),
   mode: z.enum(Object.keys(MODES)).default('text').describe('text, frames (first/last frame), reference (ref2va), continue (extend a video)'),
-  prompt: z.string().describe('H3 prompt. Write {char} where the character trigger word goes, e.g. "{char} (S1) says: <d>[English] Hi.</d>"'),
+  prompt: z.string().describe('H3 prompt. Write {char} where the character trigger word goes, e.g. "{char} (S1) says: <d>[English] Hi.</d>". For seedance: plain sentences, references named @image1, @video1, @audio1 in attach order (write_prompt with target seedance writes them)'),
   character: z.string().default('tess').describe('Character preset id from list_characters, or "none"'),
   aspect: z.enum(Object.keys(ASPECTS)).default('16:9'),
-  megapixels: z.number().min(0.1).max(2.5).default(0.4).describe('Preview size. 0.4 is the tested default.'),
-  seconds: z.number().min(1).max(15).default(5),
-  previews: z.number().int().min(1).max(3).default(3),
+  speed: z.enum(SPEED_IDS).optional().describe(`Speed preset (get_speeds), H3 only: sets megapixels, steps and previews when you leave them out, and the finish later. Default: the one saved in Settings → Your computer. ${SPEED_HELP}`),
+  megapixels: z.number().min(0.1).max(2.5).optional().describe('Preview size; default from the speed preset (Quality 0.4).'),
+  seconds: z.number().min(1).max(30).default(5).describe('H3: 1-15. seedance: 4-30, whole seconds'),
+  previews: z.number().int().min(1).max(3).optional().describe('How many takes; default from the speed preset (Quality 3)'),
   seed: z.number().int().min(0).default(4242).describe('Previews use seed, seed+1000, seed+2000'),
-  steps: z.number().int().min(4).max(20).default(8),
+  steps: z.number().int().min(4).max(20).optional().describe('Default from the speed preset: 8, or 4 on Fast and Low memory'),
   sampler: z.string().optional().describe('Preview sampler (list_samplers); default er_sde'),
   scheduler: z.string().optional().describe('Preview scheduler (list_samplers); default beta'),
   media,
   overlapFrames: z.number().int().optional().describe('continue mode: 5, 22, 39 or 56'),
+  continueFull: z.boolean().optional().describe('continue mode (H3): true, the default here, hunts previews (1-3 takes) and finish_candidate then refines the picked take at the finish size and joins the source back on, so the final is the whole continued video; false makes one take, finished in one DLSS pass at preview size'),
   voiceLine: z.string().optional().describe('Absolute path to a voice recording; the previews lip-sync to it'),
   refmods: z.array(z.object({ name: z.string(), strength: z.number().min(0).max(1).optional(), copies: z.number().int().min(1).max(10).optional() })).optional(),
   retention: z.number().min(0).max(1).optional(),
@@ -118,13 +301,17 @@ const request = {
 }
 const finish = {
   candidate: z.number().int().min(1).max(3).default(1),
-  megapixels: z.number().min(0.5).max(4).default(2),
-  upscale2x: z.boolean().default(false).describe('RTX 2x after DLSS (2 MP -> about 4K)'),
+  speed: z.enum(SPEED_IDS).optional().describe("Speed preset for the finish's size and 2x; default: the shot's own preset, else the saved one"),
+  megapixels: z.number().min(0.5).max(4).optional().describe('The pass size; default from the speed preset (Quality 2, the others 1)'),
+  upscale2x: z.boolean().optional().describe('RTX 2x after DLSS (2 MP -> about 4K); default from the speed preset (on for Balanced, Fast, Low memory)'),
   fps: z.number().int().default(0).describe(`Frame generation: ${FRAME_GEN_FPS.join(', ')} (0 = off)`),
   audio: z.enum(['pass', 'preview', 'voice']).default('pass').describe('Final sound: the 2 MP pass, the picked preview (keeps a cloned voice), or the voice line itself'),
   rerollSeed: z.number().int().optional(),
   enhancer: z.enum(['dlss', 'seedvr2', 'upscale']).default('dlss').describe('dlss: DLSS 5 in the finish (noise reduction, upscale2x, fps). upscale: no DLSS 5; the finish\'s own Real-ESRGAN 2x (upscale2x) and RIFE frame rate (fps 48, 72 or 120), what a Mac uses; needs Real-ESRGAN x2 (a model) and the RIFE node pack, both in Setup on a Mac or Linux. seedvr2: the finish skips DLSS and SeedVR2 then restores detail to enhanceResolution (24 fps); follow the enhanceJob of the finish job with get_job'),
-  enhanceResolution: z.union([z.literal(1080), z.literal(1440), z.literal(2160)]).default(1080).describe('seedvr2: the short side')
+  enhanceResolution: z.union([z.literal(1080), z.literal(1440), z.literal(2160)]).default(1080).describe('seedvr2: the short side'),
+  dlssStrength: z.number().min(0).max(2).optional().describe("DLSS 5's strength (its noise reduction), 0-2; 0.8 is IV Studio's tested default. Higher adds contrast and skin texture; lower stays closest to the take"),
+  dlssStyle: z.enum(['Default', 'Natural', 'Cinematic']).optional().describe("DLSS 5's look"),
+  continueFinish: z.enum(['full', 'single']).optional().describe('A continue shot hunted with continueFull: full (default) refines the take at megapixels and joins the source back on; single finishes in one DLSS pass at preview size')
 }
 
 // The full how-to, as plain markdown (resources/agent-guide.md, also the Claude Code skill), or MiniMax's own H3
@@ -165,23 +352,93 @@ tool('update_comfy', "Update this computer's ComfyUI through ComfyUI-Manager: sa
 tool('undo_comfy_update', "Undo the last update_comfy (or the Setup screen's Update everything): restores the snapshot it saved and restarts ComfyUI. Afterwards it switches back on any pack ComfyUI-Manager's restore switched off (plain folders a snapshot can't track, IV Studio's own pack among them) and restarts again; reenabled lists them. If ComfyUI isn't running, the snapshot is set to restore at its next start (startNeeded: true): start ComfyUI, then call this again to finish.", {}, () => studio.undoComfyUpdate({ folder: readSettings(BASE).comfyFolder || null }))
 tool('list_characters', 'Character presets (LoRA, strength, trigger word).', {}, () => studio.characters())
 tool('list_projects', 'Projects in the IV Studio library, newest first.', {}, () => studio.listProjects())
-tool('plan_render', 'Validate a request and resolve size, frames, duration, seeds and the finished size, without rendering.', { ...request, finish: z.object(finish).partial().optional() }, ({ finish: f, ...r }) => studio.planRender(r, f || {}))
+tool('plan_render', 'Validate a request and resolve size, frames, duration, seeds and the finished size, without rendering.', { ...request, finish: z.object(finish).partial().optional() }, ({ finish: f, ...r }) => {
+  const req = applySpeed(r, savedSpeed(readSettings(BASE)))
+  return studio.planRender(req, applyFinishSpeed(f || {}, req.speed))
+})
+tool('get_speeds', "The speed presets (Quality, Balanced, Fast, Low memory): what each sets for previews and the finish, what it trades, rough times measured on an RTX 4090, and which one is saved in Settings → Your computer (Check my computer picks it from the graphics card). Pass speed to generate_previews, plan_render or finish_candidate to use another.", {}, () => ({ saved: savedSpeed(readSettings(BASE)), speeds: SPEED_IDS.map((id) => ({ id, ...SPEEDS[id] })) }))
 // The prompt checker (src/service/lint.js) for a request: its context is the request's own mode, length and media.
 const checkRequest = (r) => {
   const ch = r.character && r.character !== 'none' ? studio.characters().find((c) => c.id === r.character) : null
   return lintPrompt(r.prompt || '', { mode: r.mode, seconds: r.seconds, media: r.media || [], character: ch ? { name: ch.name, trigger: ch.trigger } : null, voiceLine: r.voiceLine })
 }
+// Overnight batches (batches.js): many variations of one idea queued at once on this PC, ranked as they finish, with
+// a morning report in IV Studio's chat when all are done
+const batches = new Batches({ dir: path.join(DATA, 'batches') })
+const BATCH_REQUEST = z.object(request)
+tool('start_batch', `Queue a batch of shots to render on this computer (H3, free) while the person is away, like "make 10 variations of this idea, three takes each, overnight". Write each variation as its own full H3 prompt (vary what they asked to vary: the action, the light, the camera, the place). All go in one project named name; each is checked by the prompt checker first, and nothing is queued if one has an error. Returns at once. IV Studio keeps the computer awake while it runs, ranks each shot's takes as they finish, and when all are done leaves a report in this chat with the best takes; the person needs nothing more from you tonight. At most ${MAX_BATCH} shots.`, {
+  name: z.string().min(1).max(80).describe('The batch and its project, e.g. "Fox at dawn: 10 variations"'),
+  shots: z.array(z.object({ prompt: z.string().min(1), label: z.string().max(80).optional().describe('A few words on what this variation tries'), seconds: z.number().min(1).max(15).optional(), aspect: z.enum(Object.keys(ASPECTS)).optional(), character: z.string().optional() })).min(1).max(MAX_BATCH),
+  takes: z.number().int().min(1).max(3).default(3),
+  character: z.string().default('none').describe('For every shot without its own: a character preset id, or none'),
+  aspect: z.enum(Object.keys(ASPECTS)).default('16:9'),
+  seconds: z.number().min(1).max(15).default(5),
+  speed: z.enum(SPEED_IDS).optional()
+}, async ({ name, shots, takes, character, aspect, seconds, speed }) => {
+  const asks = shots.map((sh) => BATCH_REQUEST.parse({ engine: 'h3', mode: 'text', prompt: sh.prompt, character: sh.character || character, aspect: sh.aspect || aspect, seconds: sh.seconds || seconds, previews: takes, ...(speed && { speed }) }))
+  const problems = asks.map((r, i) => ({ i: i + 1, errors: blocking(checkRequest(r)) })).filter((p) => p.errors.length)
+  if (problems.length) throw new Error(`Nothing was queued. The prompt checker found: ${problems.map((p) => `shot ${p.i}: ${p.errors.map((f) => f.message).join(' | ')}`).join('; ')}`)
+  if (readSettings(BASE).target !== 'cloud') await voices.release()
+  const jobs = []
+  let projectId = null
+  for (const [i, r] of asks.entries()) {
+    const job = await studio.generatePreviews({ ...applySpeed(r, savedSpeed(readSettings(BASE))), ...(projectId ? { projectId } : { projectName: name }) })
+    projectId = projectId || job.projectId
+    jobs.push({ jobId: job.id, prompt: r.prompt, label: shots[i].label || null })
+  }
+  const b = batches.create({ name, chatId: process.env.IV_STUDIO_CHAT_ID || null, projectId, takes, jobs })
+  return { batch: b.id, project: projectId, queued: jobs.length, takes, note: 'Queued. IV Studio keeps the computer awake, ranks the takes and reports here when every shot is done.' }
+})
+tool('get_batch', 'Where an overnight batch stands: each shot\'s status, and the report once it is done.', { batchId: z.string() }, ({ batchId }) => {
+  const b = batches.get(batchId)
+  const jobs = Object.fromEntries(b.jobs.map((j) => [j.jobId, (() => { try { return studio.getJob(j.jobId, { refresh: false }) } catch { return null } })()]))
+  return { name: b.name, status: b.status, state: batchState(b, jobs), shots: b.jobs.map((j, i) => ({ shot: i + 1, label: j.label, status: jobs[j.jobId]?.status || 'gone' })), ...(b.status === 'reported' ? { report: batchReport(b, jobs) } : {}) }
+})
+tool('make_dailies', "An overnight batch's dailies: one reel of every take (the best of each shot first), each after a title card with its shot, take, seed and checks (words heard, likeness, cuts away mid-shot, first and last frames held, freezes), and notes.md saying what to look at first. Into Videos\IV Studio\Dailies. The app makes them by itself when a batch finishes; this makes them again, or for an older batch. Returns the folder, the reel and the notes.", { batchId: z.string() }, async ({ batchId }) => {
+  const b = batches.get(batchId)
+  const jobs = {}
+  for (const j of b.jobs) {
+    try {
+      jobs[j.jobId] = studio.getJob(j.jobId, { refresh: false })
+    } catch {
+      jobs[j.jobId] = null
+    }
+  }
+  return makeDailies({ batch: b, jobs, outDir: path.join(VIDEOS(), 'Dailies'), ffmpeg: edits.ffmpeg, font: path.join(resourcesDir(), 'fonts', 'BarlowCondensed-SemiBold.ttf'), localCopy: (o, dir) => studio.localCopy(o, dir), probe: (f) => edits.probe(f) })
+})
 tool('list_cast', 'Who and what a prompt can mention with @: character presets (@Tess: the picked character becomes {char}; anyone else with a face picture is attached as a reference) and places (@BusStop: attached as the place). A shot that mentions a member with a picture renders in References mode with the pictures attached, as <Subject N>.', {}, () => ({ items: studio.cast.members().map(({ handle, kind, name, picture, description, film }) => ({ mention: `@${handle}`, kind, name, hasPicture: !!picture, description, film })) }))
 tool('save_place', 'Save a place to mention as @Name in any prompt: a name, a picture (an image file path) and a short description of the room or setting.', { name: z.string(), picture: z.string().describe('An image file path'), description: z.string().default(''), id: z.string().optional().describe('To change a saved place') }, (args) => studio.cast.savePlace(args))
-tool('enhance_final', "Enhance a finished shot: engine seedvr2 (SeedVR2 3B restores detail and upscales to a short side of resolution, sound kept) or dlss (DLSS 5 with the finish's own noise reduction, at scale 1 or 2). A new job in the same shot; follow with get_job. On this computer's ComfyUI only. jobId is the finish job.", { jobId: z.string(), engine: z.enum(['seedvr2', 'dlss']).default('seedvr2'), resolution: z.union([z.literal(1080), z.literal(1440), z.literal(2160)]).default(1080).describe('seedvr2: the short side'), scale: z.union([z.literal(1), z.literal(2)]).default(1).describe('dlss: 1 cleans up at the same size, 2 doubles it') }, async (args) => (readSettings(BASE).target === 'cloud' || (await voices.release()), studio.enhanceFinal(args)))
+tool('enhance_final', "Enhance a finished shot: engine seedvr2 (SeedVR2 3B restores detail and upscales to a short side of resolution, sound kept) or dlss (DLSS 5 with the finish's own noise reduction, at scale 1 or 2). A new job in the same shot; follow with get_job. On this computer's ComfyUI only. jobId is the finish job.", { jobId: z.string(), engine: z.enum(['seedvr2', 'dlss']).default('seedvr2'), resolution: z.union([z.literal(1080), z.literal(1440), z.literal(2160)]).default(1080).describe('seedvr2: the short side'), scale: z.union([z.literal(1), z.literal(2)]).default(1).describe('dlss: 1 cleans up at the same size, 2 doubles it'), strength: z.number().min(0).max(2).optional().describe("dlss: its strength (noise reduction), 0-2, default 0.8"), style: z.enum(['Default', 'Natural', 'Cinematic']).optional().describe('dlss: its look'), detail: z.number().min(0).max(1).optional().describe('seedvr2: how much it redraws (its latent noise), 0 restores faithfully (default); 0.1-0.3 smooths skin and can change faces') }, async (args) => (readSettings(BASE).target === 'cloud' || (await voices.release()), studio.enhanceFinal(args)))
 tool('check_prompt', "Check an H3 prompt before rendering: the prompt checker lists what H3 is likely to misread (wrong opening line for frames, cut times past the end, more lines than fit the time, quotes or names inside <d>, missing speaker IDs, references attached but never named, describing a LoRA character's face, filler words, too many camera moves). Each finding has a level (error blocks generate_previews unless force), a message and sometimes fix: the whole prompt mended.", { ...request }, (args) => ({ findings: checkRequest(args) }))
-tool('generate_previews', 'Start preview candidates. Returns a job at once; follow with get_job. The prompt checker runs first: errors stop it (fix them, or pass force: true when you mean it).', { ...request, projectId: z.string().optional(), projectName: z.string().optional(), force: z.boolean().default(false) }, async ({ force, ...args }) => {
+tool('generate_previews', 'Start preview candidates (takes). Returns a job at once; follow with get_job. The prompt checker runs first: errors stop it (fix them, or pass force: true when you mean it). engine seedance renders on the person\'s Comfy.org credits: get the price with price_shot, tell the person, and pass confirm_cost (at least the top of the price) only after they agree.', { ...request, projectId: z.string().optional(), projectName: z.string().optional(), force: z.boolean().default(false), confirm_cost: z.number().optional().describe('seedance: the dollars the person agreed to (price_shot\'s maxUsd)') }, async ({ force, confirm_cost, ...args }) => {
+  if (args.engine === 'seedance') {
+    const plan = studio.seedanceRequest(args)
+    const errs = lintSeedance(plan.request.prompt, { mode: plan.request.mode, seconds: plan.resolved.seconds, refs: plan.refs }).filter((f) => f.level === 'error')
+    if (errs.length && !force) throw new Error(`The Seedance prompt checker found: ${errs.map((f) => f.message).join(' | ')} Fix the prompt, or pass force: true.`)
+    return studio.generatePreviews({ ...args, spend: await agreed(studio.priceRender(args), confirm_cost) })
+  }
   const errors = blocking(checkRequest(args))
   if (errors.length && !force) throw new Error(`The prompt checker found ${errors.length} error${errors.length > 1 ? 's' : ''}: ${errors.map((f) => f.message).join(' | ')} Fix the prompt (check_prompt gives fixes), or pass force: true.`)
   if (readSettings(BASE).target !== 'cloud') await voices.release()
-  return studio.generatePreviews(args)
+  // a continue shot started here hunts takes and gets the full finish, like one made in the window
+  if (args.mode === 'continue' && args.continueFull === undefined) args.continueFull = true
+  return studio.generatePreviews(applySpeed(args, savedSpeed(readSettings(BASE))))
 })
-tool('finish_candidate', "Finish one preview candidate (2 MP pass, then DLSS 5 with optional RTX 2x and frame generation, or SeedVR2 with enhancer seedvr2) from its recorded settings. Reuses the candidate's saved latent.", { jobId: z.string().describe('The previews job id'), ...finish }, (args) => studio.finishCandidate(args))
+tool('finish_candidate', "Finish one preview candidate (2 MP pass, then DLSS 5 with optional RTX 2x and frame generation, or SeedVR2 with enhancer seedvr2) from its recorded settings. Reuses the candidate's saved latent. A Seedance take: way seedance (a draft only) renders it again at 1080p on the person's Comfy.org credits (price_shot with jobId gives the price; pass confirm_cost after they agree); way local finishes it free on this computer, with refiner seedvr2 (the default: SeedVR2 to resolution 1080 or 1440, keeps faces, about 4 minutes), dlss (DLSS 5 to the same size, about 15 s, adds a little skin texture) or h3 (H3 refines it at megapixels, strength light or medium, then DLSS 5; faces shift a little; useLora adds the character's LoRA); way take uses it as it is.", { jobId: z.string().describe('The previews job id'), ...finish, way: z.enum(['seedance', 'local', 'take']).optional().describe('Seedance takes only'), refiner: z.enum(['seedvr2', 'dlss', 'h3', 'h3seedvr2']).optional().describe('way local: seedvr2 (default, cleanest), dlss (DLSS 5, quickest), h3 (H3 pass then DLSS 5) or h3seedvr2 (H3 pass then SeedVR2 to resolution; follow the enhanceJob of the finish job)'), resolution: z.union([z.literal(1080), z.literal(1440)]).optional().describe('way local, seedvr2, dlss or h3seedvr2: the short side'), strength: z.union([z.enum(['light', 'medium']), z.number().min(0.05).max(0.5)]).optional().describe('way local, h3 or h3seedvr2: light (0.1), medium (0.2) or a number 0.05-0.5; above 0.2 faces change clearly'), detail: z.number().min(0).max(1).optional().describe('way local, seedvr2 or h3seedvr2: added detail, 0 (default) to about 0.3'), useLora: z.boolean().optional().describe('way local, h3'), confirm_cost: z.number().optional() }, async ({ confirm_cost, ...args }) => {
+  const source = studio.getJob(args.jobId)
+  if (source.plan?.engine === 'seedance' && (args.way || (source.plan.resolved.draft ? 'seedance' : 'take')) === 'seedance') return studio.finishCandidate({ ...args, way: 'seedance', spend: await agreed(studio.priceFinish({ jobId: args.jobId, way: 'seedance' }), confirm_cost) })
+  if (source.plan?.engine === 'seedance' && args.way === 'local') {
+    const { refiner = 'seedvr2', resolution = 1080, ...rest } = args
+    if (refiner.startsWith('h3') || readSettings(BASE).target !== 'cloud') await voices.release()
+    return studio.finishCandidate({ ...rest, engine: refiner, resolution })
+  }
+  return studio.finishCandidate({ ...args, fallbackSpeed: savedSpeed(readSettings(BASE)) })
+})
+// What a Seedance shot, or finishing a Seedance draft, would cost on the person's Comfy.org credits.
+tool('price_shot', "The price of a Seedance 2.5 render before it runs, from ComfyUI's own price for each take (211 credits = $1): pass the same fields as generate_previews (engine seedance), or jobId (and way seedance) for finishing a draft at 1080p. Tell the person the figure and get a yes before passing it as confirm_cost. H3 renders on this computer are free.", { ...request, prompt: z.string().default('x'), jobId: z.string().optional() }, async ({ jobId, ...args }) => {
+  const p = jobId ? await studio.priceFinish({ jobId, way: 'seedance' }) : await studio.priceRender(args)
+  return { paid: p.paid, label: p.label, minUsd: p.min, maxUsd: p.max, credits: p.credits, noPrice: p.unknown }
+})
 const sequenceFields = {
   name: z.string().optional(),
   method: z.enum(['take', 'shots']).optional().describe('take: every shot in one seamless render. shots: hunt and finish shot by shot, each continuing from the last.'),
@@ -221,7 +478,7 @@ tool('render_out', 'Finish a version: optional colour smoothing across the joins
   scale: z.number().int().min(1).max(2).default(1),
   fps: z.number().int().default(0).describe(`Frame generation: ${FRAME_GEN_FPS.join(', ')} (0 = off)`)
 }, ({ sequenceId, ...opts }) => studio.renderOutSequence(sequenceId, opts))
-tool('write_prompt', "Write a MiniMax H3 prompt from a plain-words idea, using the same writer as the app. engine (default: the choice in Settings → Prompt writer) local = free model in Ollama; claude / codex = the Claude Code or Codex installed on this computer, on its own login; contextir = MiniMax Context IR, paid per call, needs COMFY_ORG_API_KEY in the environment of this server. local, claude and codex follow MiniMax's H3 prompt guide; Context IR is MiniMax's own rewriter.", {
+tool('write_prompt', "Write a MiniMax H3 prompt from a plain-words idea, using the same writer as the app. engine (default: the choice in Settings → Prompt writer) local = the writer model chosen in Settings: Ollama, or an OpenAI-compatible server (llama.cpp, llama-swap, vLLM, LM Studio, LiteLLM, OpenAI) when Settings picks OpenAI-compatible, with its key in IV_STUDIO_LLM_KEY or OPENAI_API_KEY; claude / codex = the Claude Code or Codex installed on this computer, on its own login; contextir = MiniMax Context IR, paid per call, needs COMFY_ORG_API_KEY in the environment of this server. local, claude and codex follow MiniMax's H3 prompt guide; Context IR is MiniMax's own rewriter.", {
   idea: z.string(),
   mode: z.enum(Object.keys(MODES)).default('text'),
   seconds: z.number().min(1).max(15).default(5),
@@ -230,8 +487,11 @@ tool('write_prompt', "Write a MiniMax H3 prompt from a plain-words idea, using t
   media,
   sequence: z.boolean().default(false).describe('Write it as one shot of a continuous sequence (join rules)'),
   previous: z.string().optional().describe('sequence: the prompt of the previous shot'),
-  engine: z.enum(['local', 'claude', 'codex', 'contextir']).optional().describe('Defaults to the choice in Settings → Prompt writer')
-}, ({ engine, ...request }) => {
+  engine: z.enum(['local', 'claude', 'codex', 'contextir']).optional().describe('Defaults to the choice in Settings → Prompt writer'),
+  target: z.enum(['h3', 'seedance']).default('h3').describe('seedance: a Seedance 2.5 prompt from IV Studio\'s Seedance guide, with references named @image1, @video1, @audio1 (a character\'s face comes after your pictures)'),
+  voiceLine: z.string().optional().describe('seedance: a voice recording that goes along as @audio')
+}, ({ engine, target, ...request }) => {
+  if (target === 'seedance') request = { ...request, engine: 'seedance' }
   const s = readSettings(BASE)
   const chosen = engine || (s.promptEngine === 'contextir' && !process.env.COMFY_ORG_API_KEY ? 'local' : s.promptEngine || 'local')
   const w = writerOf({ ...s, promptEngine: chosen })
@@ -246,7 +506,17 @@ tool('write_shots_from_story', 'Split a short story into sequence shots and writ
   const w = writerOf(readSettings(BASE))
   return studio.writeStory(args, w.engine === 'claude' || w.engine === 'codex' ? w : { model: readSettings(BASE).ollamaModel }).then((shots) => ({ shots }))
 })
-tool('get_job', 'Status, progress and outputs of a job.', { jobId: z.string() }, ({ jobId }) => studio.refreshJob(jobId))
+// In an agent run from the Dashboard the agent has no way to wait, so get_job waits for it: up to 25 s while the job
+// is still queued or running (a call every few seconds would spend the person's plan for nothing).
+tool('get_job', AGENT_RUN ? 'Status, progress and outputs of a job. While it is still queued or running this waits up to 25 seconds for it to finish before answering, so just call it again until it is done.' : 'Status, progress and outputs of a job.', { jobId: z.string() }, async ({ jobId }) => {
+  let job = await studio.refreshJob(jobId)
+  const until = Date.now() + (AGENT_RUN ? 25000 : 0)
+  while (['queued', 'running'].includes(job.status) && Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 3000))
+    job = await studio.refreshJob(jobId)
+  }
+  return job
+})
 tool('cancel_job', 'Cancel an IV Studio job (removes it from the queue or interrupts it if running); never touches other work.', { jobId: z.string() }, ({ jobId }) => studio.cancelJob(jobId))
 tool('get_outputs', 'Playable outputs (paths and URLs) with the settings that made them, for a job or a whole project.', { jobId: z.string().optional(), projectId: z.string().optional() }, async ({ jobId, projectId }) => {
   if (jobId) {
@@ -367,10 +637,33 @@ tool('edit_timeline', `Change an edit's timeline with a list of operations, appl
   const { clips, media, tracks, markers, results } = applyOps(e, ops)
   return { results, edit: describe(edits.save(editId, { clips, media, tracks, markers })) }
 })
+tool('caption_edit', `Put captions on an edit: Whisper (the voice engine) hears each clip with sound on the video tracks (or tracks), and the words go on as short title lines at the bottom (style: size, position, color, box), timed across each clip. Done again, it replaces its own captions and leaves the edit's other titles alone. Needs the voice engine (voice_status); about 2-5 s a clip. ${LIVE}`, {
+  editId: z.string(),
+  tracks: z.array(trackId).optional().describe('Which tracks to hear (default every video track); add an A track for a voiceover'),
+  style: z.object({ size: z.number().min(2).max(30).optional(), position: z.enum(['top', 'center', 'bottom']).optional(), color: z.string().optional(), box: z.boolean().optional() }).optional(),
+  maxWords: z.number().int().min(2).max(14).default(7).describe('Most words on one line')
+}, async ({ editId, tracks, style, maxWords }) => {
+  if (!(await voices.status()).installed) throw new Error('Captions need the voice engine (its Whisper hears the words). Ask the person to press Set up voices on Audio > Voices, or run setup_voices with their OK.')
+  const e = edits.get(editId)
+  const hear = async (c, m) => {
+    const wav = await clipAudio(edits.ffmpeg, m.path, c.in, clipLength(c))
+    try {
+      // silence or near it: nothing to hear (Whisper would make up a word)
+      const peak = await peakDb(edits.ffmpeg, wav)
+      if (peak !== null && peak < QUIET_DB) return ''
+      return await voices.transcribe(wav)
+    } finally {
+      fs.rmSync(wav, { force: true })
+    }
+  }
+  const { clips, heard, lines } = await captionEdit(e, hear, { tracks, style, maxWords })
+  if (!lines) return { lines: 0, heard, note: heard.length ? 'Nothing was said in the clips heard.' : 'No clips with sound on those tracks.' }
+  return { lines, heard, edit: describe(edits.save(editId, { clips })) }
+})
 
-tool('grab_frame', 'A picture of one moment, to check an edit or a render by eye: either an edit at a timeline time (the top visible video clip, without titles) or any video file at a time.', {
+tool('grab_frame', 'A picture of one moment, to check an edit or a render by eye: either an edit at a timeline time (the top visible video clip, without titles), any video file at a time, or a picture file (at 0) to see it.', {
   editId: z.string().optional(),
-  file: z.string().optional().describe('Instead of editId: an absolute video path'),
+  file: z.string().optional().describe('Instead of editId: an absolute video or picture path'),
   at: z.number().min(0).describe('Seconds'),
   width: z.number().int().min(160).max(1920).default(640)
 }, async ({ editId, file, at, width }) => {
@@ -427,17 +720,93 @@ tool('update_film', `Change a film's brief or assets: name, logline, aspect, tar
   props: z.array(z.object({ name: z.string(), description: z.string().optional(), pictures: z.array(z.string()).optional() })).optional()
 }, ({ filmId, ...patch }) => films.update(filmId, patch))
 tool('set_film_script', `Replace a film's script (screenplay text, see create_film). Scenes are read from it; scenes that didn't change keep their shots, changed ones are marked stale. Speakers who share a first name with a character preset join the cast, and the scene headings add locations. ${LIVE_FILM}`, { filmId: z.string(), script: z.string().min(1) }, ({ filmId, script }) => films.setScript(filmId, script))
-tool('write_film_script', `Draft a film's script with the local writer from its idea (idea, else the film's logline), its cast and its target length. It replaces the script, so ask before writing over one the person wrote. Takes a minute or two. ${LIVE_FILM}`, { filmId: z.string(), idea: z.string().optional() }, ({ filmId, idea }) => films.writeScript(filmId, { idea }))
+tool('write_film_script', `Draft a film's script with the writer chosen in Settings → Prompt writer from its idea (idea, else the film's logline), its cast and its target length. It replaces the script, so ask before writing over one the person wrote. Takes a minute or two. ${LIVE_FILM}`, { filmId: z.string(), idea: z.string().optional() }, ({ filmId, idea }) => films.writeScript(filmId, { idea }))
 tool('sketch_film_shots', "Draw a storyboard still for each shot without one (or shotIds, or every shot with redo), on this computer's picture models: about 15-30 s a shot, free. A shot's character face and its place's picture are kept when an editing model is set up. get_film shows each shot's sketch once drawn.", { filmId: z.string(), shotIds: z.array(z.string()).optional(), redo: z.boolean().default(false) }, async ({ filmId, ...opts }) => {
   if (readSettings(BASE).target !== 'cloud') await voices.release()
   return { items: await films.sketch(filmId, opts) }
 })
-tool('break_down_film', 'Break the script into shots with the local writer: each scene becomes 3-10 s shots (what we see, camera, who is on screen, at most one speaker and their exact words), then each shot gets its H3 prompt. Runs in the background (minutes); get_film shows breakdown progress. By default only scenes without shots, or stale ones; redo does every scene. sketch (on by default) then draws each new shot\'s storyboard still, as the Projects page does. Show the person the board and get their OK before rendering: renders take GPU time.', {
+tool('break_down_film', 'Break the script into shots with the writer chosen in Settings → Prompt writer (scenes with a coverage plan get exactly its shots): each scene becomes 3-10 s shots (what we see, camera, who is on screen, at most one speaker and their exact words), then each shot gets its H3 prompt. Runs in the background (minutes); get_film shows breakdown progress. By default only scenes without shots, or stale ones; redo does every scene. sketch (on by default) then draws each new shot\'s storyboard still, as the Projects page does. Show the person the board and get their OK before rendering: renders take GPU time.', {
   filmId: z.string(),
   redo: z.boolean().default(false),
   sceneIds: z.array(z.string()).optional(),
   sketch: z.boolean().default(true)
 }, ({ filmId, ...opts }) => films.breakDown(filmId, opts))
+// ---------- film craft (filmcraft.js, after Sam Wasserman's Slate) ----------
+const slate = () => loadSlate(resourcesDir())
+const writerNow = () => writerOf(readSettings(BASE))
+const busy = () => studio.gpuBusy().catch(() => false)
+tool('list_cinematography', 'The Cinematography picker\'s setups (Slate by Sam Wasserman, wassermanproductions.com): 165 ready phrases in 12 groups (photo, cinematic and commercial styles, film stocks, lenses, lighting setups, camera rigs, single-shot moves, mood, depth layers, frames within the frame, realism), and Slate\'s 12 coverage plans for a scene. Use setup ids with add_cinematography, plan ids with set_scene_coverage.', {
+  group: z.string().optional().describe('Only this group id, e.g. film-stocks, lighting-setups, camera')
+}, ({ group }) => ({
+  setups: slate().setups.filter((g) => !group || g.id === group).map((g) => ({ id: g.id, label: g.label, items: g.items.map((i) => ({ id: i.id, label: i.label, snippet: i.snippet })) })),
+  plans: group ? [] : slate().plans.map((p) => ({ id: p.id, label: p.label, description: p.description, shots: p.shots.map((x) => `${x.slot}: ${x.size}, ${x.angle}, ${x.movement}`) }))
+}))
+tool('add_cinematography', 'Add cinematography setups (ids from list_cinematography) to a prompt: each setup\'s phrase goes at the end of the description, once. Returns the new prompt.', {
+  prompt: z.string(),
+  setups: z.array(z.string()).min(1)
+}, ({ prompt, setups }) => {
+  const picked = setupSnippets(slate(), setups)
+  if (!picked.length) throw new Error('None of those setup ids exist. See list_cinematography.')
+  return { prompt: withSetups(prompt, picked), added: picked.map((x) => x.label) }
+})
+tool('rework_prompt', `Rewrite an H3 prompt with the writer chosen in Settings → Prompt writer: tool ${Object.entries(PROMPT_TOOLS).map(([k, v]) => `${k} (${v.what})`).join(', ')}, or note with a director's note in plain words. Sections, spoken lines and labels are kept; missing lists anything the rewrite dropped. For a Projects shot use rework_film_shot instead (it keeps a history).`, {
+  prompt: z.string(),
+  tool: z.enum(['note', ...Object.keys(PROMPT_TOOLS)]).default('note'),
+  note: z.string().optional(),
+  keep: z.array(z.string()).optional().describe('Words that must stay exactly as they are')
+}, async ({ prompt, tool: t, note = '', keep = [] }) => rewritePrompt(writerNow(), { prompt, tool: t, note, context: { keep }, cpu: await busy() }))
+tool('prompt_variants', 'Three versions of an H3 prompt, each weighting the shot differently (composition, light, motion or mood), with the writer chosen in Settings. Same subject, lines and continuity: good for hunting side by side.', {
+  prompt: z.string()
+}, async ({ prompt }) => ({ variants: await promptVariants(writerNow(), { prompt, cpu: await busy() }) }))
+tool('make_lookbook', `Turn a film, series, director or cinematographer (or a described look) into look language with no names in it: ${LOOK_FIELDS.map(([, l]) => l.toLowerCase()).join(', ')}, and one paragraph (words) for prompts. With filmId it becomes that film's Lookbook, used in every shot it writes.`, {
+  source: z.string(),
+  filmId: z.string().optional()
+}, async ({ source, filmId }) => {
+  const look = await lookbook(writerNow(), { source, cpu: await busy() })
+  if (filmId) films.update(filmId, { look: { ...(films.get(filmId).look || {}), lookbook: look } })
+  return look
+})
+tool('set_film_cinematography', "Set a film's cinematography: setup ids from list_cinematography, used in every shot prompt it writes (with its look notes and Lookbook). An empty list clears it.", {
+  filmId: z.string(),
+  setups: z.array(z.string())
+}, ({ filmId, setups }) => films.update(filmId, { look: { ...(films.get(filmId).look || {}), setups: setupSnippets(slate(), setups).map((x) => ({ id: x.id, label: x.label, snippet: x.snippet })) } }))
+tool('set_scene_coverage', "Cover a film's scene with one of Slate's coverage plans (plan ids from list_cinematography): the storyboard planner then makes exactly the plan's shots, in its order, each named by its slot (Master, OTS A...). plan: '' for the planner's own choice. The scene is marked to plan again (break_down_film).", {
+  filmId: z.string(),
+  sceneId: z.string(),
+  plan: z.string()
+}, ({ filmId, sceneId, plan }) => {
+  const found = plan ? slate().plans.find((p) => p.id === plan) : null
+  if (plan && !found) throw new Error(`No coverage plan "${plan}". See list_cinematography.`)
+  return films.setCoverage(filmId, sceneId, found)
+})
+tool('rework_film_shot', `A director's note (tool note) or ${Object.keys(PROMPT_TOOLS).join(', ')} on a Projects shot's prompt, with the writer chosen in Settings. The old prompt goes into the shot's history (restore_film_shot_prompt puts it back).`, {
+  filmId: z.string(),
+  sceneId: z.string(),
+  shotId: z.string(),
+  tool: z.enum(['note', ...Object.keys(PROMPT_TOOLS)]).default('note'),
+  note: z.string().optional(),
+  keep: z.array(z.string()).optional()
+}, ({ filmId, sceneId, shotId, tool: t, note = '', keep = [] }) => films.reworkShot(filmId, sceneId, shotId, { tool: t, note, keep }))
+tool('film_shot_variants', "Three variants of a Projects shot's prompt (not applied: pass one to edit_film_shot's prompt to use it; the old prompt goes into the shot's history).", {
+  filmId: z.string(),
+  sceneId: z.string(),
+  shotId: z.string()
+}, async ({ filmId, sceneId, shotId }) => ({ variants: await films.shotVariants(filmId, sceneId, shotId) }))
+tool('restore_film_shot_prompt', "Put back a prompt from a Projects shot's history (index 0 is the newest); the current one goes into the history.", {
+  filmId: z.string(),
+  sceneId: z.string(),
+  shotId: z.string(),
+  index: z.number().int().min(0).default(0)
+}, ({ filmId, sceneId, shotId, index }) => films.restoreShotPrompt(filmId, sceneId, shotId, index))
+tool('check_film_continuity', "A script supervisor's read of one scene's shot prompts, with the writer chosen in Settings: a person's look or wardrobe, props, light, time of day, weather, place, screen sides and eyelines, and where each shot ends against where the next begins. Returns issues with a concrete fix each; kept on the scene.", {
+  filmId: z.string(),
+  sceneId: z.string()
+}, async ({ filmId, sceneId }) => ({ issues: await films.checkContinuity(filmId, sceneId) }))
+tool('export_shot_list', "A film's shot list: md (Markdown, a table per scene) or csv (one row per shot, for a spreadsheet; with each prompt). Returns the text.", {
+  filmId: z.string(),
+  format: z.enum(['md', 'csv']).default('md'),
+  prompts: z.boolean().optional().describe('Include each shot prompt (csv has them unless false)')
+}, ({ filmId, format, prompts }) => ({ text: films.shotList(filmId, format, { prompts }) }))
 tool('edit_film_shot', `Change a shot (any of action, staging, camera, ends, characters, speaker, line, seconds, prompt, character, stage), add one after it (add: true, with the new shot's fields), remove it (remove: true) or move it within its scene (move: -1 or 1). stage is the staging board's plan: its exact screen-side words become staging and camera, and lineWarnings says when two people swap sides from the scene's previous staged shot. After changing what happens, write_film_shot_prompt rewrites its prompt. A change to action, staging, camera or stage marks an existing sketch sketchStale: filming starts without it until sketch_film_shots redraws it. ${LIVE_FILM}`, {
   filmId: z.string(),
   sceneId: z.string(),
@@ -453,7 +822,7 @@ tool('edit_film_shot', `Change a shot (any of action, staging, camera, ends, cha
   const before = shots.slice(0, shots.findIndex((s) => s.id === shotId)).reverse().find((s) => s.stage)
   return { ...out, lineWarnings: lineCheck(before?.stage, patch.stage) }
 })
-tool('write_film_shot_prompt', 'Write (or rewrite) one shot\'s H3 prompt from its description with the local writer.', { filmId: z.string(), sceneId: z.string(), shotId: z.string() }, async ({ filmId, sceneId, shotId }) => ({ prompt: await films.writeShotPrompt(filmId, sceneId, shotId) }))
+tool('write_film_shot_prompt', 'Write (or rewrite) one shot\'s H3 prompt from its description with the writer chosen in Settings (the old prompt goes into the shot history).', { filmId: z.string(), sceneId: z.string(), shotId: z.string() }, async ({ filmId, sceneId, shotId }) => ({ prompt: await films.writeShotPrompt(filmId, sceneId, shotId) }))
 tool('speak_film_line', 'Say a shot\'s line in its character\'s voice; the shot then lip-syncs to it when rendered, and its finish uses that sound. Each take is read back with Whisper and said again (up to 3 seeds) until every word is there; heard is what Whisper heard. again: a new take with fresh seeds, then film new takes to use it. The character needs a voice (Characters page).', { filmId: z.string(), shotId: z.string(), again: z.boolean().default(false) }, async ({ filmId, shotId, again }) => {
   if (readSettings(BASE).target !== 'cloud') await voices.release()
   await films.speak(filmId, shotId, { again })
@@ -522,6 +891,19 @@ tool('reframe', `Put a video or picture in a new frame shape (9:16, 1:1, 4:5 or 
   return /\.(png|jpe?g|webp|bmp)$/i.test(args.file) ? reframes.makePicture(args) : reframes.make(args)
 })
 const cutouts = new Cutouts({ dataDir: DATA, studio: () => studio, edits })
+// ---------- Clip effects and Workflows -> Effects: Freefield's apps (freefield.js) on this PC's ComfyUI ----------
+const clipfx = new FreefieldApps({ resourcesDir: resourcesDir(), dataDir: DATA, studio: () => studio })
+tool('effects_list', `The video and photo effects IV Studio can run (Freefield's apps): ${offeredFx().map((k) => [k, CLIP_FX[k]]).map(([k, v]) => `${k} (${v.label.toLowerCase()}; takes a ${v.media})`).join(', ')}. Give fx to get one effect's inputs (ids, types, options with their values, limits, defaults) and whether this ComfyUI can run it (missing node packs or models).`, { fx: z.enum(offeredFx()).optional() }, async ({ fx }) => (fx ? { ...clipfx.meta(fx), status: await clipfx.status(fx) } : { items: offeredFx().map((k) => ({ fx: k, ...CLIP_FX[k] })), status: await clipfx.statusAll() }))
+tool('run_effect', 'Run one effect on this computer (free, local; a few minutes) and wait for it. file: a video (dub, cleanplate, night, water, hdr, removebg, smooth) or a picture (effects, morph, transitions; transitions also takes last). values: the effect’s own inputs by id (effects_list fx=...), select inputs by their option value. Returns the result files (the first is the main video; a matte or a warp guide may follow). Put a result on an edit with add_media.', {
+  fx: z.enum(offeredFx()),
+  file: z.string().describe('Absolute path of the clip or picture'),
+  last: z.string().optional().describe('transitions: absolute path of the last frame'),
+  values: z.record(z.any()).optional(),
+  camera: z.object({ hfov: z.number().min(0).max(120).optional(), vertical_shift: z.number().min(-1).max(1).optional(), depth_ratio: z.number().min(1).max(20).optional(), keep_source_aim: z.boolean().optional(), smooth_depth: z.boolean().optional() }).optional().describe('reshoot only: CrossView Warp settings. hfov 0 (the default) reads the lens from the clip.'),
+  size: z.number().optional().describe('reshoot only: picture size in megapixels, 0.35 (default; fits 5 s in 64 GB of RAM) or 0.5 (sharper, needs much more memory)'),
+  name: z.string().optional()
+}, async ({ fx, file, last, values, camera, size, name }) => (readSettings(BASE).target === 'cloud' || (await voices.release()), clipfx.run({ fx, file, last, values: values || {}, camera: camera || null, size: size ?? null, name })))
+tool('list_effect_runs', 'Effects run so far, newest first: effect, source, values, status and result files.', {}, () => ({ items: clipfx.runs() }))
 tool('cut_out', `Cut out who or what you name from a picture or video (SAM 3.1 on this computer's ComfyUI, free): what stays is found in every frame and the rest turns see-through. Returns a PNG (pictures) or a WebM with a see-through background and the video's sound, plus coverage (how much of the frame stays). About 15 s for a picture and 30 s for a 5 s clip. Put it on a track above other footage (add_media, then edit_timeline); export_edit keeps it see-through. Use plain words ("person", "dog", "bird"): a fancier name ("bluebird") can catch someone else while the thing is off screen, and when it leaves the frame the track can jump to something nearby, so check the frames. Fails when nothing matching is found: try other words.`, {
   file: z.string().describe('A picture or video on this computer'),
   what: z.string().default('person').describe('Who or what stays: "person", "the woman", "the dog", "the red car"'),
@@ -554,6 +936,9 @@ tool('export_edit', `Render the whole edit to one MP4 (H.264 + AAC) in ${editsFo
     .catch((err) => Object.assign(st, { state: /cancel/i.test(err.message) ? 'cancelled' : 'failed', error: err.message }))
   return st
 })
+tool('export_edit_for_editors', "Hand an edit to a real editor: writes the timeline as FCP 7 XML (Premiere Pro and DaVinci Resolve import it), FCPXML 1.10 (Resolve, Final Cut Pro) and a CMX3600 EDL of V1, with every file it uses copied into a Media folder beside them and the folder zipped to send (zip false to skip). Carries every track, clip timing and trims, pictures, clip volume, hidden, muted and locked tracks, markers, and titles (as markers, and as text in the FCPXML). Fades and title styling don't carry over. Into Videos\IV Studio\Edits, or outDir.", { editId: z.string(), outDir: z.string().optional(), zip: z.boolean().optional() }, ({ editId, outDir, zip }) =>
+  exportInterchange(edits.get(editId), outDir || path.join(VIDEOS(), 'Edits'), { zip: zip !== false })
+)
 tool('get_edit_export', 'Progress of an export started with export_edit (state running, done, failed or cancelled; file when done).', { editId: z.string() }, ({ editId }) => {
   const st = exporting.get(editId)
   if (!st) throw new Error('No export started for this edit from this MCP server. Past exports are in get_edit.')
@@ -564,6 +949,10 @@ tool('cancel_edit_export', 'Stop an export started with export_edit.', { editId:
 // ---------- character training ----------
 // ---------- Shinobi: the agent-driven editor (OpenKatana engine) ----------
 const shinobi = new Shinobi({ dataDir: DATA, resourcesDir: resourcesDir(), ffmpegDir: path.dirname(edits.ffmpeg) })
+// soft mouth (softmouth.js): a reference video's mouths blurred, for shots with no spoken line
+const softMouth = new SoftMouth({ dataDir: DATA, ffmpeg: edits.ffmpeg, shinobi: () => shinobi, resourcesDir: resourcesDir() })
+studio.softMouth = (file) => softMouth.make(file)
+tool('soften_mouth', "A copy of a video with every person's mouth and jaw blurred (InsightFace's face detector finds them each frame), so when it's a References-mode <Video N> the new face doesn't mouth the words spoken in it. Use only for shots with no spoken line. generate_previews does it by itself for media marked softMouth. Needs Shinobi's Python and the face models; without them it says what to set up.", { file: z.string() }, ({ file }) => softMouth.make(file))
 // Pictures a Shinobi tool made (preview frames, contact sheets), as small JPEGs for the agent to look at.
 async function picturesOf(result, max = 4) {
   const paths = []
@@ -896,6 +1285,9 @@ tool('rank_takes', "Rank a finished previews job's takes: each is scored on hear
   if (!ranking) throw new Error('Only a finished previews job with its takes on this computer can be ranked.')
   return { ranking, ...(picked ? { weights: ranker.learn(jobId, picked) } : {}) }
 })
+tool('use_clean_stretch', "A take that cuts away mid-shot (rank_takes reports raw.cuts and the longest stretch without one, raw.clean): save that stretch as its own video, frame-exact. forContinue cuts it down to H3's 17n+5 frame grid, ready as the source of a Continue shot (generate_previews mode continue). Returns the file; add it to an edit with add_media. Only hard cuts are caught, not slow dissolves.", { jobId: z.string(), candidate: z.number().int().min(1).max(3), forContinue: z.boolean().optional() }, async ({ jobId, candidate, forContinue }) =>
+  cleanStretchFile({ studio, mediaTools, dir: path.join(DATA, 'clean'), jobId, candidate, forContinue: !!forContinue })
+)
 const reviewer = new Reviewer({ studio: () => studio, voices: () => voices, ffmpeg: edits.ffmpeg })
 const previs = new Previs({ resourcesDir: resourcesDir(), dataDir: DATA, browser: () => shinobi.browser(), ffmpeg: edits.ffmpeg })
 tool('make_previs', "Draw a staging board plan in motion: a grey previs clip (plain mannequins and boxes) of the camera's move and the walks, about 3 s on this computer. H3 follows a previs's arc round people, which it barely does from words. Put the clip in generate_previews' media as a video in reference mode, and put words (it names <Video 1>; renumber it if other videos come first) into the prompt. Only worth it for an arc: a push, pull, track, pan or walk did as well or better from the staging words alone in tests, and renders 1.6-3.5x faster.", { stage: stageSchema, seconds: z.number().min(1).max(15).default(5), aspect: z.enum(Object.keys(ASPECTS)).default('16:9') }, ({ stage, seconds, aspect }) => previs.make({ stage, seconds, aspect }))
@@ -905,6 +1297,9 @@ tool('review_take', "Review one take against its prompt, as a director would: th
 })
 process.on('exit', () => voices.release())
 studio.beforeRender = () => voices.release()
+// Seedance and other partner nodes run on the key in this server's environment (the app keeps its own sealed); in
+// IV Studio's chat, the key the app lends for a paid step (chatPaid)
+studio.partnerKey = () => process.env.COMFY_ORG_API_KEY || chatKey || null
 tool('voice_status', `Whether IV Studio's voice engine is set up (${VOICE_ENGINES.map((e) => `${e.label}: ${e.note}`).join(' ')} Whisper large-v3 turbo, MIT, reads the words in recordings). installed false: ask the person to press Set up voices on Audio > Voices, or run setup_voices with their OK.`, {}, () => voices.status())
 tool('setup_voices', "Set up IV Studio's voice engine once: a Python environment with PyTorch and VoxCPM, plus the VoxCPM2 and Whisper models, about 12 GB of free downloads into IV Studio's data folder (roughly 5-15 minutes). Ask the person first. Returns when done.", {}, () => voices.setup())
 tool('list_voices', 'Every saved voice: id, name, kind (designed, clone, ready), engine, seed, reference recording and its words, and which characters use it.', {}, async () => {
@@ -978,6 +1373,22 @@ tool('remix_music', `Remix a song on this computer (free, local, ACE-Step 1.5 Tu
 tool('read_song', "A song's length, tempo (BPM) and a guess at its key, read on this computer. Give a sound file or a songId.", { source: z.string().optional(), songId: z.string().optional() }, (args) => music.analyse(args))
 tool('list_music', 'Every song made in IV Studio, newest first, with status, file (once finished), length, engine, style, lyrics, seed, and remix (the song and strength it came from) for remixes.', {}, () => music.list())
 tool('get_music', 'One song, brought up to date: status (queued, running, success, error), progress, and its file once finished.', { songId: z.string() }, ({ songId }) => music.get(songId))
+
+// ---------- Audio: sounds (Stable Audio 3 on this PC's ComfyUI) ----------
+const sounds = new Sounds({ studio, dataDir: DATA, probe: (f) => edits.probe(f) })
+tool('sound_status', "Whether this computer's ComfyUI can make sounds (Stable Audio 3, Stable Audio Community License): its two models and nodes. The person downloads missing ones on Audio > Sounds.", {}, () => sounds.status())
+tool('write_sound', 'Turn a few words into a full sound description and a length, with the person\'s prompt writer (Settings).', { idea: z.string(), kind: z.enum(SOUND_KINDS.map((k) => k.id)).default('sfx') }, (args) => sounds.write(args))
+tool('make_sound', `Make a sound effect, ambience, one-shot or short music loop on this computer (free, local, Stable Audio 3, seconds). Kinds: ${SOUND_KINDS.map((k) => `${k.id} (${k.label.toLowerCase()}, about ${k.seconds} s)`).join(', ')}. Describe the source, material, space and how it moves over time. takes makes 1-${SOUND_LIMITS.takes} variations at once. Returns the sound at once; follow with get_sound until status is success, then each take's file goes on an edit with add_media (A2 under the music).`, {
+  description: z.string(),
+  kind: z.enum(SOUND_KINDS.map((k) => k.id)).default('sfx'),
+  seconds: z.number().min(SOUND_LIMITS.min).max(SOUND_LIMITS.max).optional(),
+  takes: z.number().int().min(1).max(SOUND_LIMITS.takes).default(1),
+  name: z.string().optional(),
+  seed: z.number().int().min(0).optional()
+}, async (args) => (readSettings(BASE).target === 'cloud' || (await voices.release()), sounds.create(Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined)))))
+tool('list_sounds', 'Every sound made in IV Studio, newest first: status, kind, description, length, seed and its takes (files) once finished.', {}, async () => ({ items: await sounds.list() }))
+tool('get_sound', 'One sound, brought up to date: status, progress, and its takes (files) once finished.', { soundId: z.string() }, ({ soundId }) => sounds.get(soundId))
+tool('delete_sound', 'Delete a sound and its files (a sound still being made is stopped).', { soundId: z.string() }, ({ soundId }) => sounds.delete(soundId))
 tool('cancel_music', 'Stop a song that is still being made. Never touches other ComfyUI work.', { songId: z.string() }, ({ songId }) => music.cancel(songId))
 tool('rename_music', 'Rename a song.', { songId: z.string(), name: z.string().min(1) }, ({ songId, name }) => music.rename(songId, name))
 tool('delete_music', "Delete a song and its file in IV Studio's music folder (ComfyUI's own output copy stays). Ask the person first.", { songId: z.string() }, ({ songId }) => music.delete(songId))
@@ -1020,6 +1431,27 @@ tool('scan_hardware', "Check this computer, as the welcome wizard does: graphics
   const scan = await scanHardware({ installs, comfyFolder: modelsFolder || s.comfyFolder || (launchers[0] ? path.dirname(launchers[0].path) : '') })
   return { scan, recommendations: recommend(scan) }
 })
+// A paid render goes ahead only with the person's OK for at least its price (agents pass it as confirm_cost).
+async function agreed(pricePromise, confirm) {
+  const p = await pricePromise
+  if (!p.paid) return { approvedUsd: 0 }
+  if (typeof confirm !== 'number') throw new Error(`This costs ${p.label} on the person's Comfy.org credits. Tell them, and pass confirm_cost: ${Math.ceil(p.max * 100) / 100} once they agree.`)
+  if (confirm < p.max - 0.005) throw new Error(`This costs up to $${p.max.toFixed(2)} (${p.label}); confirm_cost ${confirm} is less. Ask the person to agree to the full figure.`)
+  return { approvedUsd: confirm, unknownOk: p.unknown.length > 0 }
+}
+// The Comfy.org account: this server reads COMFY_ORG_API_KEY from its environment (the app keeps its own key encrypted).
+tool('comfy_balance', "The person's Comfy.org credit balance: what ComfyUI's paid partner nodes (Seedance, Kling, Veo and others) spend. Returns credits and dollars (211 credits = $1). Needs COMFY_ORG_API_KEY in this server's environment; the IV Studio window shows the same balance in its title bar.", {}, async () => {
+  if (!process.env.COMFY_ORG_API_KEY) throw new Error('This server has no COMFY_ORG_API_KEY in its environment. The person can see their balance in the IV Studio window (title bar, or Settings → Comfy account), or add the key to this server’s environment.')
+  const b = await getBalance(process.env.COMFY_ORG_API_KEY)
+  return { credits: b.credits, usd: Math.round(b.usd * 100) / 100, newCustomer: b.newCustomer, checkedAt: b.at }
+})
+tool('price_workflow', "What a ComfyUI graph in API form would cost on the person's Comfy.org credits, before running it: each paid partner node's price from its own price formula, the total (a range when the price depends on how the run goes) and nodes that show no price. Free graphs say so. Pass the graph itself or a path to its .json. Prices are ComfyUI's own; tell the person the figure and get their OK before anything paid runs.", { graph: z.record(z.any()).optional().describe('An API-form graph: { "<id>": { class_type, inputs } }'), path: z.string().optional().describe('Or a path to an API-form .json file') }, async ({ graph, path: file }) => {
+  const g = graph || (file ? JSON.parse(fs.readFileSync(file, 'utf8')) : null)
+  if (!g || typeof g !== 'object') throw new Error('Pass graph or path.')
+  if (Array.isArray(g.nodes)) throw new Error('This is a workflow saved from ComfyUI’s window (UI form). Save it with Export (API), or pass the API form.')
+  const p = await priceGraph(g, await infoFor(studio.comfy, g))
+  return { paid: p.paid, label: p.label, minUsd: p.min, maxUsd: p.max, credits: p.credits, nodes: p.nodes.map(({ id, class: cls, title, min, max, unknown, why }) => ({ id, class: cls, title, ...(unknown ? { unknown: true, why } : { minUsd: min, maxUsd: max }) })), noPrice: p.unknown }
+})
 tool('free_memory', "Clear the GPU and RAM now: ComfyUI unloads its models (between prompts; a running render keeps its memory until it finishes), this server's voice engine stops and the prompt writer's Ollama models unload. The next job loads what it needs. Use it when the person asks, or before a big job on a crowded GPU.", {}, async () => {
   await studio.comfy.freeMemory()
   await voices.release()
@@ -1027,22 +1459,62 @@ tool('free_memory', "Clear the GPU and RAM now: ComfyUI unloads its models (betw
   const q = await studio.comfy.queue().catch(() => null)
   return { comfyui: 'asked to unload', voiceEngine: 'stopped', ollama, renderRunning: !!q?.queue_running?.length }
 })
-tool('list_image_models', `The image models on this computer's ComfyUI, by family: ${IMAGE_FAMILIES.map((f) => f.label).join(', ')}. Each family lists its checkpoints (pass one as make_image model), whether it is ready (and what's missing), whether it can edit, and its licence.`, {}, () => images.status())
+// "Show me where" from IV Studio's own chat: the app goes to a page and lights up one part of it, as a tour does
+// (tours.js). The server writes a show file into the chat's folder; the app's chat (agentchat.js) passes it on.
+tool('list_places', "Places in IV Studio you can show the person with show_in_app: each page's parts, as where (the page), spot (the part) and what's there. Use it to answer \"where do I...\" questions.", {}, () => ({ items: placesToShow() }))
+tool('show_in_app', "Take the person to a place in IV Studio and light it up, the way a page's tour does, with your words beside it (say: one or two short sentences on what to do there). where and spot come from list_places. Works in IV Studio's own chat.", { where: z.enum(Object.keys(TOUR_PAGES)), spot: z.string(), say: z.string().max(300).optional() }, ({ where, spot, say }) => {
+  const step = TOURS[where].steps.find((s) => s.title === spot && s.at)
+  if (!step) throw new Error(`There's no "${spot}" on ${TOURS[where].title}. Pick a spot from list_places.`)
+  if (!AGENT_CHAT || !AGENT_ASK) throw new Error("show_in_app works in IV Studio's own chat, where the app can move. Tell the person the page and what to click instead.")
+  fs.mkdirSync(AGENT_ASK, { recursive: true })
+  const file = path.join(AGENT_ASK, `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}.show.json`)
+  fs.writeFileSync(`${file}.tmp`, JSON.stringify({ where, spot, say: say || null }))
+  fs.renameSync(`${file}.tmp`, file)
+  return { shown: true, page: TOURS[where].title, spot }
+})
+// Recipes (recipes.js): one-click buttons on the Dashboard that send a saved request to IV Studio's chat
+tool('save_recipe', "Save something that worked as a recipe: a button on IV Studio's Dashboard that asks the chat for it again with one click. Only when the person asks (\"save this as a recipe\"). name: the button's few words. instruction: the request in full, as the person would type it, written so it works on its own another day: say \"my latest finished shot\" or \"the open edit\", never ids, and include the settings that made it work (length, shape, style, speed). The same name replaces an older recipe.", {
+  name: z.string().min(1).max(60),
+  instruction: z.string().min(10).max(2000),
+  note: z.string().max(200).optional().describe('One line under the button: what it makes')
+}, (args) => saveRecipe(BASE, args))
+tool('list_recipes', 'The recipes on the Dashboard: name, instruction, note.', {}, () => ({ items: listRecipes(BASE) }))
+tool('delete_recipe', 'Remove a recipe from the Dashboard. Ask the person first.', { id: z.string() }, ({ id }) => removeRecipe(BASE, id))
+tool('list_image_models', `The image models on this computer's ComfyUI, by family: ${IMAGE_FAMILIES.map((f) => f.label).join(', ')}. Each family lists its checkpoints (pass one as make_image model), whether it is ready (and what's missing), whether it can edit, its licence, its sizes (megapixels it works at) and, where the maker gives them, tips for writing its prompt: follow a family's tips when you write for it.`, {}, () => images.status())
 tool('make_image', "Make pictures on this computer (free, local). mode generate: from the prompt. mode edit: change refs (local picture paths) with the prompt as the instruction; only families with edit true can. loras: the family's LoRAs (list_loras, model-only). Returns the set at once; follow with get_image until status is success, then use its files (use one as a shot's first frame: generate_previews mode frames with a media picture).", {
   mode: z.enum(['generate', 'edit']).default('generate'),
   model: z.string().describe('A checkpoint from list_image_models'),
   prompt: z.string().describe('generate: describe the picture. edit: what to change, and what to keep.'),
   negative: z.string().optional(),
-  refs: z.array(z.string()).optional().describe('edit: absolute paths of the pictures to edit (Qwen Image 2.1: up to 3; Krea 2: 1; Flux: up to 6)'),
+  refs: z.array(z.string()).optional().describe('edit: absolute paths of the pictures to edit (Qwen Image 2.1: up to 3; Krea 2: 1; Flux: up to 6; MiniMax H3 Image: up to 16, called <Picture 1>, <Picture 2>... in the prompt)'),
   loras: z.array(z.object({ name: z.string(), strength: z.number().min(0).max(2).default(1) })).optional(),
   aspect: z.enum(Object.keys(IMAGE_ASPECTS)).default('1:1'),
-  megapixels: z.number().min(0.25).max(4).default(1),
+  megapixels: z.number().min(0.25).max(20).default(1).describe('Most families 0.25 to 4; MiniMax H3 Image 4 to 16 (best at 16, weak below 4)'),
   count: z.number().int().min(1).max(4).default(1),
   seed: z.number().int().min(0).optional(),
   steps: z.number().int().min(1).max(100).optional().describe("Leave out for the family's own setting"),
   cfg: z.number().min(0).max(20).optional(),
   name: z.string().optional()
 }, async (args) => (readSettings(BASE).target === 'cloud' || (await voices.release()), images.create(Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined)))))
+tool('picture_tools_status', 'Which one-step picture tools this computer\'s ComfyUI can run (inpaint, relight, removebg, upscale, depth) and what each still needs; also the relight presets and depth outputs.', {}, () => images.toolsStatus())
+tool('picture_tool', 'Run a one-step tool on a picture on this computer (free, local); the result joins the picture gallery (follow with get_image). inpaint: mask is a picture, white where to change, and prompt says what that part becomes (Flux 3 Klein). relight: light is one of the relight presets\' words (picture_tools_status), with optional direction, quality, brightness, color (their words too) and details (Qwen Image Edit 2509 + Relight LoRA). removebg: the subject on transparency, a PNG (BiRefNet). upscale: scale 2 or 4 with restored detail (SeedVR2). depth: output depth_colored, depth, normal_opengl or normal_directx (MoGe-2).', {
+  tool: z.enum(['inpaint', 'relight', 'removebg', 'upscale', 'depth']),
+  image: z.string().describe('Absolute path of the picture'),
+  mask: z.string().optional().describe('inpaint: absolute path of the mask picture, white where to change'),
+  prompt: z.string().optional().describe('inpaint: what the painted part becomes'),
+  light: z.string().optional(),
+  direction: z.string().optional(),
+  quality: z.string().optional(),
+  brightness: z.string().optional(),
+  color: z.string().optional(),
+  details: z.string().optional(),
+  scale: z.union([z.literal(2), z.literal(4)]).optional(),
+  output: z.enum(['depth_colored', 'depth', 'normal_opengl', 'normal_directx']).optional(),
+  seed: z.number().int().min(0).optional(),
+  name: z.string().optional()
+}, async (args) => (readSettings(BASE).target === 'cloud' || (await voices.release()), images.tool(Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined)))))
+tool('list_activity', "What agents have done in IV Studio: every step that changed something, spent money or failed, newest first, from the chat inside IV Studio, Dashboard ideas and outside agents (Claude Desktop, Codex, Claude Code, Hermes). Each has who did it, the step, what it was about, the ids it touched (jobId, projectId, editId…), whether it worked and any spend. Looking things up isn't logged. Use it to answer \"what did you do\" or \"what changed\".", { days: z.number().int().min(1).max(30).default(2), who: z.enum(['chat', 'idea', 'outside']).optional().describe('Only the chat, Dashboard ideas, or outside agents'), problems: z.boolean().default(false).describe('Only failed steps'), limit: z.number().int().min(1).max(300).default(60) }, ({ days, who: kind, problems, limit }) => ({ items: readActivity(DATA, { days, who: kind || null, problems, limit }) }))
+tool('last_frame', "Save the exact last frame of a video (a finished version's file from get_job, or any local video) as a picture in IV Studio's Library (Images). Returns the picture set; files[0] is the PNG. Use it as the first frame of a new shot (generate_previews mode frames, media picture) or edit it with make_image mode edit. To carry the motion on instead, use generate_previews mode continue with the video as its media.", { file: z.string().describe('Absolute path to the video'), name: z.string().optional() }, ({ file, name }) => images.lastFrame({ file, name }))
 tool('list_images', 'Every picture set made in IV Studio, newest first, with status, files (once finished), model, prompt and seed.', {}, () => images.list())
 tool('get_image', 'One picture set, brought up to date: status (queued, running, success, error), progress, and its files once finished.', { imageId: z.string() }, ({ imageId }) => images.get(imageId))
 tool('cancel_image', 'Stop a picture set that is still being made. Never touches other ComfyUI work.', { imageId: z.string() }, ({ imageId }) => images.cancel(imageId))
@@ -1069,10 +1541,13 @@ async function sizzlePicture(files, { width = 960, tile = null, aspect = 16 / 9 
 }
 const sizzleTool = (name, description, shape, fn) =>
   server.registerTool(name, { description, inputSchema: shape }, async (args) => {
+    const t0 = Date.now()
     try {
       const { pictures = [], ...value } = await fn(args)
+      logStep(name, args, { value, t0 })
       return { content: [...pictures, { type: 'text', text: JSON.stringify(value, null, 2) }], structuredContent: value }
     } catch (err) {
+      logStep(name, args, { error: err, t0 })
       return fail(err)
     }
   })
@@ -1196,16 +1671,37 @@ tool('delete_rebuild', 'Delete a rebuild and its frames, takes and cut pieces (r
 // Downloads use CIVITAI_API_KEY from this server's environment (the app keeps its own key encrypted).
 // Mature LoRAs only when the person has turned them on in the app (Settings > Civitai).
 const civitai = new Civitai({ dataDir: DATA, comfy: new Comfy(readSettings(BASE).comfyUrl), key: () => process.env.CIVITAI_API_KEY || null, mature: () => !!readSettings(BASE).civitaiMature })
-tool('search_loras', `Search Civitai for MiniMax H3 LoRAs (styles, looks, motion, speed). Returns cards: name, file size, downloads, trigger words, preview clip URLs and whether it's installed. tag: ${LORA_TAGS.filter(([t]) => t).map(([t]) => t).join(', ')}. Real-person LoRAs are never returned; mature ones only if the person turned them on in the app.`, {
+const FAMILY_IDS = LORA_FAMILIES.map((f) => f.id)
+const FAMILY_HELP = LORA_FAMILIES.map((f) => `${f.id} (${f.label}: ${f.uses})`).join('; ')
+tool('search_loras', `Search Civitai for LoRAs for one of IV Studio's model families (styles, looks, motion, speed): ${FAMILY_HELP}; or all. Defaults to MiniMax H3. Returns cards: name, file size, downloads, trigger words, preview clip URLs and whether it's installed. tag: ${LORA_TAGS.filter(([t]) => t).map(([t]) => t).join(', ')}. Real-person LoRAs are never returned; mature ones only if the person turned them on in the app.`, {
   query: z.string().optional(),
   tag: z.string().optional(),
   sort: z.enum(LORA_SORTS).default(LORA_SORTS[0]),
   cursor: z.string().optional().describe('next from the previous page'),
-  limit: z.number().int().min(1).max(50).default(12)
+  limit: z.number().int().min(1).max(50).default(12),
+  family: z.enum([...FAMILY_IDS, 'all']).default('h3')
 }, (a) => civitai.search(a))
 tool('get_lora', 'One Civitai LoRA in full: versions (each with its file, trigger words and preview clips), licence (commercial use, credit) and the maker’s notes.', { modelId: z.number().int() }, ({ modelId }) => civitai.model(modelId))
-tool('download_lora', 'Download a Civitai LoRA version into ComfyUI’s loras folder (Civitai/<model>/), checked against Civitai’s SHA-256. Needs CIVITAI_API_KEY in this server’s environment; ask the person first, and check the licence (get_lora) for commercial work. Returns the LoRA name to use in generate_previews extraLoras, and its trigger words.', { modelId: z.number().int(), versionId: z.number().int().optional() }, (a) => civitai.download(a))
-tool('list_my_loras', 'The LoRAs ComfyUI can load, with what IV Studio knows about each: H3 or not, Civitai name, trigger words, preview, and the person’s favourite and default strength.', { h3Only: z.boolean().default(true) }, async ({ h3Only }) => ({ items: (await civitai.yours()).filter((x) => !h3Only || x.h3) }))
+tool('download_lora', 'Download a Civitai LoRA version into ComfyUI’s loras folder (Civitai/<model>/ for H3, Civitai/<family>/<model>/ for the others), checked against Civitai’s SHA-256. Needs CIVITAI_API_KEY in this server’s environment; ask the person first, and check the licence (get_lora) for commercial work. Returns the LoRA name (use it in generate_previews extraLoras for H3, make_image loras for picture families), its family and its trigger words.', { modelId: z.number().int(), versionId: z.number().int().optional() }, (a) => civitai.download(a))
+// the Recommended shelf: tested H3 LoRAs, pinned to one file and checked by SHA-256 (recommended.js)
+let recInstaller = null
+const recNames = () => new Comfy(readSettings(BASE).comfyUrl).objectInfo('LoraLoaderModelOnly').then((i) => i.LoraLoaderModelOnly?.input?.required?.lora_name?.[0] || [], () => [])
+tool('recommended_loras', "The LoRAs page's Recommended shelf: tested MiniMax H3 LoRAs with what each does, the modes it works in, how to prompt it, its trigger word, suggested strength, licence and maker's page, and whether it's already in this computer's ComfyUI (onDisk: its name for generate_previews extraLoras). Turnaround is for make_turnaround only; it breaks motion in a normal shot.", {}, async () => {
+  const onDisk = recommendedOnDisk(await recNames())
+  return { items: RECOMMENDED.map((r) => ({ ...r, onDisk: onDisk[r.id] || null, download: recInstaller?.status()?.[r.id] || null })) }
+})
+tool('download_recommended_lora', "Download one Recommended LoRA (recommended_loras id) into this computer's ComfyUI, loras/MiniMax H3/Recommended, checked against its pinned SHA-256. Ask the person first. Returns at once; call recommended_loras to follow it.", { id: z.string() }, ({ id }) => {
+  recInstaller ||= new ModelInstaller({ comfy: new Comfy(readSettings(BASE).comfyUrl), manifest: recommendedManifest() })
+  return recInstaller.enqueue([id])[id]
+})
+const turnarounds = new Turnarounds({ dataDir: DATA, studio: () => studio })
+tool('make_turnaround', "A turnaround sheet: five views of a character turning around, from their face picture (characterId) or any picture of them, with matlod's Turnaround LoRA and the H3 Contact Sheet nodes (turnaround_status says if both are here). size is per view: 512 (about a minute on a 4090), 768 or 1024. strength defaults to 1.3, which turns front, three-quarter, profile; 1 barely turns. Each sheet gets a new seed unless one is given; some seeds roll the camera sideways instead of turning, so look at the views and make another if it tilts. Waits for the render and returns the five view files and a strip.", { characterId: z.string().optional(), picture: z.string().optional(), size: z.number().int().optional(), seed: z.number().int().optional(), strength: z.number().min(0.5).max(1.6).optional() }, ({ characterId, picture, size, seed, strength }) => turnarounds.make({ characterId, picture, size, seed, strength }))
+tool('turnaround_status', 'Whether turnaround sheets can be made here: the H3 Contact Sheet nodes (install_node_packs, then restart ComfyUI) and the Turnaround LoRA (download_recommended_lora rec-turnaround). Also lists the sheets made, for a character when characterId is given.', { characterId: z.string().optional() }, async ({ characterId }) => ({ ...(await turnarounds.status()), sheets: turnarounds.list(characterId || null) }))
+tool('list_my_loras', `The LoRAs ComfyUI can load, with what IV Studio knows about each: its model family (${FAMILY_IDS.join(', ')}, or null when unknown), Civitai name, trigger words, preview, and the person’s favourite and default strength. family narrows the list; h3Only is the old switch for family h3.`, { family: z.enum([...FAMILY_IDS, 'all']).optional(), h3Only: z.boolean().optional() }, async ({ family, h3Only }) => {
+  const want = family || (h3Only === false ? 'all' : 'h3')
+  return { items: (await civitai.yours()).filter((x) => want === 'all' || x.family === want) }
+})
+tool('set_lora_family', `Say which model family an installed LoRA is for, when IV Studio guessed wrong or couldn't tell (family null puts it back to the guess). One of: ${FAMILY_IDS.join(', ')}.`, { name: z.string(), family: z.enum(FAMILY_IDS).nullable() }, ({ name, family }) => civitai.setPrefs(name, { family }))
 tool('identify_lora', 'Find an installed LoRA on Civitai by its file’s SHA-256 (name from list_my_loras): its Civitai name, base model, trigger words and a preview. Takes a few seconds per GB.', { name: z.string() }, ({ name }) => civitai.identify(name))
 
 const catalog = new CharacterCatalog({ studio, voices, resourcesDir: resourcesDir() })

@@ -1,10 +1,11 @@
 // Starting ComfyUI from IV Studio (Settings → ComfyUI, the title bar's Start button, and on launch when
-// "Start ComfyUI when IV Studio opens" is on). IV Studio doesn't install or own ComfyUI: it starts the
-// person's own launcher, the same thing they'd double-click, and waits until ComfyUI answers.
+// "Start ComfyUI when IV Studio opens" is on). It starts the person's own launcher, the same thing they'd
+// double-click, and waits until ComfyUI answers. (A PC with no ComfyUI can get the official portable build from
+// Setup: comfyinstall.js. That one is then started the same way, from its run_nvidia_gpu.bat.)
 // A launcher is a shortcut (.lnk), a portable install's .bat, or the ComfyUI Desktop app's .exe. On Linux it's a
 // shell script beside ComfyUI, or ComfyUI's main.py, run with the venv's Python. On a Mac it's also the ComfyUI
 // Desktop app (ComfyUI.app), opened as Finder would.
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -165,7 +166,78 @@ export function comfyHome(file, { readLink = null, appData = process.env.APPDATA
 }
 
 // The ComfyUI Desktop app updates ComfyUI and ComfyUI-Manager itself (comfyupdate.js updates only its node packs).
-export const isDesktopLauncher = (file) => !!file && /^(ComfyUI\.(exe|app)|Comfy Desktop\.app)$/i.test(path.basename(file))
+// the file name, whichever OS wrote the path (a Windows path read on Linux or a Mac keeps its backslashes)
+export const isDesktopLauncher = (file) => !!file && /^(ComfyUI\.(exe|app)|Comfy Desktop\.app)$/i.test(String(file).split(/[\\/]/).pop())
+
+// ---------- a ComfyUI that is already starting ----------
+// ComfyUI answers only once it has loaded (often a minute or more), so "nothing answers" doesn't mean "not
+// running". Before starting one, IV Studio looks for a ComfyUI of the same install that is already running but
+// not answering yet (another IV Studio window, one closed and reopened while ComfyUI booted, or one started by
+// hand), and waits for it instead of starting a second.
+
+// The processes that could be a ComfyUI: Python running main.py, or the Desktop app (Comfy Desktop.app or the older
+// ComfyUI.app on a Mac). [{ pid, exe, cmd }]
+export async function comfyProcesses({ platform = process.platform, run = execFileText } = {}) {
+  try {
+    if (platform === 'win32') {
+      const ps = "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'main\\.py' -or $_.Name -eq 'ComfyUI.exe' } | Select-Object ProcessId,ExecutablePath,CommandLine | ConvertTo-Json -Compress"
+      const out = (await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps])).trim()
+      if (!out) return []
+      const list = [].concat(JSON.parse(out))
+      return list.map((p) => ({ pid: p.ProcessId, exe: p.ExecutablePath || '', cmd: p.CommandLine || '' }))
+    }
+    const out = await run('ps', ['-axo', 'pid=,command='])
+    return out
+      .split('\n')
+      .map((l) => l.trim().match(/^(\d+)\s+(.*)$/))
+      .filter(Boolean)
+      .map(([, pid, cmd]) => ({ pid: Number(pid), exe: cmd.split(/\s+/)[0], cmd }))
+      .filter((p) => /main\.py\b/.test(p.cmd) || /(ComfyUI|Comfy Desktop)\.app\/Contents\/MacOS\//.test(p.cmd))
+  } catch {
+    return [] // can't tell: IV Studio starts ComfyUI as before
+  }
+}
+
+const execFileText = (cmd, args) =>
+  new Promise((resolve, reject) => execFile(cmd, args, { windowsHide: true, timeout: 20000, maxBuffer: 8 << 20 }, (err, out) => (err ? reject(err) : resolve(String(out)))))
+
+// The port a ComfyUI command line listens on: its --port, else ComfyUI's default.
+export const portOf = (cmd) => Number((/--port[=\s]+(\d+)/.exec(cmd || '') || [])[1]) || 8188
+
+// The ComfyUI process that would answer at this address, or null: a main.py on the same port that is this install's
+// (its Python or path is in the launcher's folder, from comfyHome) or mentions ComfyUI. Two ComfyUIs can't share a
+// port, so starting another there would fail anyway. The Desktop app is matched by its own program, whatever its port.
+export function sameComfy(procs, { home = null, url = 'http://127.0.0.1:8188', launcher = null } = {}) {
+  const norm = (p) => String(p || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+  const h = norm(home)
+  let port = 8188
+  try {
+    port = Number(new URL(url).port) || 8188
+  } catch {}
+  const desktop = isDesktopLauncher(launcher)
+  const app = (p) => desktop && /(^|\/)(comfyui\.(exe|app)|comfy desktop\.app)/.test(norm(p.exe) + ' ' + norm(p.cmd)) && !/main\.py/.test(norm(p.cmd))
+  const onPort = (p) => /main\.py/.test(norm(p.cmd)) && (desktop || portOf(p.cmd) === port)
+  const mine = (p) => !!h && (norm(p.exe).startsWith(h + '/') || norm(p.cmd).includes(h + '/'))
+  // this install's own first, then any ComfyUI on that port
+  return procs.find(app) || procs.find((p) => onPort(p) && mine(p)) || procs.find((p) => onPort(p) && /comfy/.test(norm(p.exe) + ' ' + norm(p.cmd))) || null
+}
+
+// IV Studio notes when it last started ComfyUI (a launcher's Python takes a moment to appear), so a window
+// opened straight after doesn't start another in that gap.
+export const LAUNCH_GRACE_MS = 90 * 1000
+export function recentLaunch(file, now = Date.now()) {
+  try {
+    const at = JSON.parse(fs.readFileSync(file, 'utf8')).at
+    return now - at < LAUNCH_GRACE_MS ? at : null
+  } catch {
+    return null
+  }
+}
+export function noteLaunch(file, launcher, now = Date.now()) {
+  try {
+    fs.writeFileSync(file, JSON.stringify({ at: now, launcher }))
+  } catch {}
+}
 
 // Starts a launcher as a double-click would, in its own window, so ComfyUI keeps running when IV Studio
 // closes. Through PowerShell's Start-Process (the Windows shell), not as IV Studio's child: a child process
@@ -269,4 +341,51 @@ export async function waitUp(url, { timeoutMs = 6 * 60 * 1000, every = 2000 } = 
     await new Promise((r) => setTimeout(r, every))
   }
   throw new Error('ComfyUI didn’t answer within 6 minutes. Check its window for errors.')
+}
+
+// ---------- restarting (Setup and Settings → Restart ComfyUI) ----------
+// What to stop for a ComfyUI process: on Windows a portable ComfyUI runs inside the console of its .bat, which
+// would sit on "Press any key" after Python ends, so the .bat's cmd.exe goes too (with everything under it).
+// parent: { pid, name, cmd } of the process's parent, or null.
+export function stopTarget(proc, parent = null, platform = process.platform) {
+  if (!proc?.pid) return null
+  if (platform === 'win32' && parent?.pid && /^cmd\.exe$/i.test(parent.name || '') && /\.(bat|cmd)\b/i.test(parent.cmd || '')) return parent.pid
+  return proc.pid
+}
+
+// Stops one ComfyUI (a comfyProcesses entry) and its console. Resolves when the command ran.
+export async function stopComfy(proc, { platform = process.platform, run = execFileText } = {}) {
+  if (!proc?.pid) throw new Error('No ComfyUI process to stop.')
+  if (platform === 'win32') {
+    let parent = null
+    try {
+      const ps = `$p = Get-CimInstance Win32_Process -Filter "ProcessId=${Number(proc.pid)}"; if ($p) { Get-CimInstance Win32_Process -Filter "ProcessId=$($p.ParentProcessId)" | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress }`
+      const out = (await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps])).trim()
+      if (out) {
+        const j = JSON.parse(out)
+        parent = { pid: j.ProcessId, name: j.Name || '', cmd: j.CommandLine || '' }
+      }
+    } catch {}
+    const pid = stopTarget(proc, parent, platform)
+    await run('taskkill', ['/PID', String(pid), '/T', '/F']).catch(() => {})
+    return { pid, console: pid !== proc.pid }
+  }
+  try {
+    process.kill(proc.pid, 'SIGTERM')
+  } catch {}
+  await new Promise((r) => setTimeout(r, 4000))
+  try {
+    process.kill(proc.pid, 'SIGKILL')
+  } catch {}
+  return { pid: proc.pid, console: false }
+}
+
+// Until nothing answers at the address (ComfyUI has stopped), or false after timeoutMs.
+export async function waitDown(url, { timeoutMs = 30000, every = 1000, up = comfyUp } = {}) {
+  const t0 = Date.now()
+  while (Date.now() - t0 < timeoutMs) {
+    if (!(await up(url, 2000))) return true
+    await new Promise((r) => setTimeout(r, every))
+  }
+  return false
 }

@@ -10,7 +10,11 @@ import './styles.css'
 import './studio.css'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
+import ChatWindow from './components/ChatWindow'
 import { loadPlatform } from './platform'
+
+// the chat popped out into its own window opens this page at #chat (main process openChatWindow)
+const chatOnly = window.location.hash === '#chat'
 
 // The platform comes from the main process (app:info) before the first render, so a Mac's shortcuts and hints
 // are right from the first paint. It never rejects: if app:info fails the platform is unknown and the window
@@ -19,7 +23,7 @@ loadPlatform().then(() =>
   createRoot(document.getElementById('root')).render(
     <StrictMode>
       <ErrorBoundary>
-        <App />
+        {chatOnly ? <ChatWindow /> : <App />}
       </ErrorBoundary>
     </StrictMode>
   )

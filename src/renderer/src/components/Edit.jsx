@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import Hero from './Hero'
+import Stage from './Stage'
+import QuickBar from './AudioQuick'
 import TileDelete from './TileDelete'
 import { fileUrl, timecode } from './edit/model'
 import { groupBy, whenGroup } from './Library'
@@ -24,7 +25,9 @@ export function EditList({ openEdit, notify }) {
   const groups = groupBy(shown, (e) => whenGroup(e.updatedAt))
   return (
     <div className="edits shelf-page">
-      <Hero art="edit" title="Edit" kicker="Infinite Variance" />
+      <Stage effect="snip" art="edit" title="Edit" kicker="Infinite Variance">
+        <QuickBar search label="Search edits" placeholder="Search your edits" value={q} onChange={setQ} results=".shelf-bar" found={shown.length} noun="edit" alt={{ label: '+ New edit', onClick: create }} />
+      </Stage>
       <p className="lede">
         Cut your shots and sequences together.
         <span className="lede-small dim">A multi-track timeline with trims, fades, titles and sound, played live and exported as one MP4.</span>
@@ -33,10 +36,6 @@ export function EditList({ openEdit, notify }) {
         <span className="shelf-count mono">
           {list ? `${list.length} edit${list.length === 1 ? '' : 's'}` : ''}
         </span>
-        <input className="list-search" type="search" value={q} placeholder="Search edits" onChange={(e) => setQ(e.target.value)} aria-label="Search edits" />
-        <button className="btn btn-primary shelf-new" onClick={create}>
-          + New edit
-        </button>
       </div>
       {list === null && <Loading label="Loading your edits" />}
       {list?.length === 0 && (

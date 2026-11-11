@@ -8,7 +8,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { checkPrompt } from '../src/service/graph.js'
-import { cleanSequenceLoras, retakeGraph, SEQUENCE_DEFAULTS, takeGraph } from '../src/service/sequence.js'
+import { cleanSequenceLoras, retakeGraph, SEQUENCE_DEFAULTS, takeGraph, takeShot } from '../src/service/sequence.js'
 import { Studio } from '../src/service/studio.js'
 
 let passed = 0
@@ -140,6 +140,20 @@ test('changing an earlier shot still makes later shots stale', () => {
   const v = studio.sequenceView(s0.id)
   assert.equal(v.shots[0].stale, true)
   assert.equal(v.shots[1].fresh, false)
+})
+
+// GitHub #14: with a voice attached, H3 Multishot writes the ref2va sections itself, so a shot goes as plain text
+const written = 'integrated_multimodal_description: [Shot 1] Live-action. {char} sits and says <d>[English] Late again.</d>\n\noverall_soundscape: Rain on the roof.\n\nnon_diegetic_music: N/A'
+test('a take with a voice sends each shot without section names, its sound folded in', () => {
+  assert.equal(takeShot(written, { wrapped: true }), '[Shot 1] Live-action. {char} sits and says <d>[English] Late again.</d>\n\nThe sound: Rain on the roof.')
+  assert.equal(takeShot('Just a paragraph.', { wrapped: true }), 'Just a paragraph.')
+  const { graph } = takeGraph({ template, seq: { ...seqBase, shots: [{ prompt: written }, { prompt: written }] }, character: tess, name: 't', voiceRef: 'iv_studio/v.wav' })
+  assert.ok(!/integrated_multimodal_description|overall_soundscape|non_diegetic_music/.test(graph.take.inputs.script))
+  assert.ok(graph.take.inputs.script.includes('t3ss4 sits'))
+})
+test('a take with no reference sends each shot as written', () => {
+  const { graph } = takeGraph({ template, seq: { ...seqBase, shots: [{ prompt: written }] }, character: tess, name: 't' })
+  assert.ok(graph.take.inputs.script.startsWith('integrated_multimodal_description: [Shot 1]'))
 })
 
 fs.rmSync(dataDir, { recursive: true, force: true })

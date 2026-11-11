@@ -144,14 +144,14 @@ export class Music {
 
   // Each engine's models, found on this ComfyUI by file name (the manifest's name or one of its alts).
   async status() {
-    if (this.studio.comfy.remote && !this.studio.comfy.hosted) return { remote: true, ready: false, engines: MUSIC_ENGINES.map((e) => ({ ...e, ready: false, missing: [] })) }
     let info, stats
     try {
-      ;[info, stats] = await Promise.all([this.studio.comfy.objectInfo(), this.studio.comfy.systemStats()])
+      // the person's own cloud: its saved model lists, and no GPU woken to ask for its memory
+      ;[info, stats] = await Promise.all([this.studio.comfy.objectInfo(), this.studio.comfy.ownCloud ? {} : this.studio.comfy.systemStats()])
     } catch (err) {
       return { error: err.message, ready: false, engines: MUSIC_ENGINES.map((e) => ({ ...e, ready: false, missing: [] })) }
     }
-    const gpu = findGpu(stats.devices)
+    const gpu = findGpu(stats?.devices)
     const engines = MUSIC_ENGINES.map((e) => {
       const nodes = e.id === 'minimax' ? ['MiniMaxMusic3TextEncode', 'EmptyMiniMaxMusic3LatentAudio'] : ['TextEncodeAceStepAudio1.5', 'EmptyAceStep1.5LatentAudio']
       const files = {}
@@ -191,7 +191,7 @@ export class Music {
       if (!(bpm >= 30 && bpm <= 300)) throw new Error('Tempo is 30 to 300 BPM.')
     }
     const st = await this.status()
-    if (st.remote) throw new Error('Music runs on this computer\'s ComfyUI. Switch to "This computer" in Settings to make music.')
+    if (st.error) throw new Error(st.error)
     const eng = st.engines.find((e) => e.id === engine)
     if (eng.missingNodes?.length) throw new Error(`This ComfyUI has no ${eng.missingNodes.join(', ')} node. Update ComfyUI (0.33 or newer has it).`)
     if (eng.missing.length) throw new Error(`${spec.label} needs ${eng.missing.map((m) => m.label).join(', ')}. Download ${eng.missing.length === 1 ? 'it' : 'them'} on the Music page.`)
@@ -262,7 +262,7 @@ export class Music {
     const tone = key || read.key || MUSIC_DEFAULTS.key
 
     const st = await this.status()
-    if (st.remote) throw new Error('Music runs on this computer\'s ComfyUI. Switch to "This computer" in Settings to make music.')
+    if (st.error) throw new Error(st.error)
     const eng = st.engines.find((e) => e.id === 'ace')
     if (eng.missingNodes?.length) throw new Error(`This ComfyUI has no ${eng.missingNodes.join(', ')} node. Update ComfyUI (0.33 or newer has it).`)
     if (eng.missing.length) throw new Error(`Remix uses ACE-Step 1.5 Turbo, which needs ${eng.missing.map((m) => m.label).join(', ')}. Download ${eng.missing.length === 1 ? 'it' : 'them'} on the Music page.`)

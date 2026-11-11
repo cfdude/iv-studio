@@ -6,9 +6,16 @@
 // A picture set is a ComfyUI job (a project with tool 'image'); when it finishes its pictures are copied
 // into the app data's images/ folder, where the Library, the MCP server and Create's gallery find them.
 import { randomUUID } from 'node:crypto'
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { comboOptions } from './setup.js'
+import { comboOptions, modelOptions, resolveModel } from './setup.js'
+import ffmpegStatic from 'ffmpeg-ffprobe-static'
+import { probe } from './media.js'
+import { DEPTH_OUTPUTS, PICTURE_TOOLS, RELIGHT, depthGraph, inpaintGraph, relightGraph, relightText, removeBgGraph, upscaleGraph } from './picturetools.js'
+
+// the bundled ffprobe, outside the asar in a packaged app (an upscale reads the picture's size)
+const FFPROBE = ffmpegStatic.ffprobePath?.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
 
 // unet: the family's checkpoints, by their folder or name in ComfyUI's diffusion_models.
 // te / vae: the text encoder and VAE the official template uses, then compatible ones, first found wins.
@@ -92,7 +99,7 @@ export const IMAGE_FAMILIES = [
     id: 'zimage',
     label: 'Z-Image Turbo',
     unet: /z[-_ ]?image/i,
-    te: { type: 'lumina2', files: ['qwen_3_4b.safetensors'] },
+    te: { type: 'lumina2', files: ['qwen_3_4b_fp8_mixed.safetensors', 'qwen_3_4b.safetensors', 'qwen_3_4b_bf16.safetensors'] },
     vae: ['ae.safetensors', 'Z-ImageVAE.safetensors'],
     steps: 8,
     cfg: 1,
@@ -120,6 +127,30 @@ export const IMAGE_FAMILIES = [
     loras: /sdxl|\bxl\b|[-_]xl[-_.]|pony|illustrious|noob/i,
     licence: 'CreativeML Open RAIL++-M (SDXL base); fine-tunes have their own',
     note: 'The classic: thousands of fine-tunes and LoRAs on Civitai.'
+  },
+  {
+    // MiniMax-H3-Image, after ComfyUI's two templates (image_minimax_h3_image_t2i and _edit, 2026-11-10): one checkpoint
+    // that makes pictures and edits with up to 16 reference pictures, distilled to 6 steps with no CFG, at 4 to 16 MP
+    // (it's weak below 4). Its text encoder is H3's own Qwen3-VL 32B, unchanged, so any H3 text encoder works.
+    id: 'h3image',
+    label: 'MiniMax H3 Image',
+    unet: /minimax[_ -]?h3[_ -]?image/i,
+    te: { type: 'minimax', files: ['qwen3vl_32b_minimax_h3_int8_convrot.safetensors', 'qwen3vl_32b_minimax_h3_int4_convrot.safetensors', 'qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors', 'qwen3vl_32b_minimax_h3_bf16.safetensors'] },
+    vae: ['minimax_h3_image_vae_fp16.safetensors'],
+    steps: 6,
+    cfg: 1,
+    sampler: 'euler',
+    edit: true,
+    maxRefs: 16,
+    node: 'MiniMaxH3ImageConditioning',
+    sizes: [4, 8, 16],
+    defaultMp: 4,
+    noNegative: true,
+    loras: /minimax ?h3[ _-]?image|h3[ _-]?image/i,
+    licence: 'MiniMax-H3-Image Community License',
+    note: 'Big, detailed pictures (up to 16 MP) that follow long descriptions closely; edits with up to 16 pictures. Needs a lot of memory at 16 MP. Edits with the int8 download come out heavily over-sharpened, even in ComfyUI’s own template; new pictures are clean.',
+    // MiniMax's own prompt guide (skills/h3-image-prompt-writing), in short, for whoever writes the prompt
+    tips: 'Describe the finished picture in plain English, around one clear focus: what is in it, where things are (left/right, front/back), light, style and medium. Keep every name, count and detail asked for. Put any words that should appear in the picture in quotes, exactly as written. For an edit, call the pictures <Picture 1>, <Picture 2> in the order given, say what stays (for example "<Picture 1> is fully preserved."), then describe the finished result rather than giving an order. No negative prompt.'
   },
   {
     // a frame from a very short MiniMax H3 render (text mode, as a shot's first pass): pictures in the look of your H3
@@ -162,10 +193,11 @@ const writeJson = (file, value) => {
 }
 const DONE = ['success', 'error', 'cancelled']
 
-// Width and height for an aspect at about this many megapixels, on a 32-pixel grid every family accepts.
+// Width and height for an aspect at about this many megapixels, on a 32-pixel grid every family accepts. Most
+// families stop at 4 MP; MiniMax H3 Image works best at 16 (its own table: 4096x4096, 5472x3072, 6272x2688...).
 export function imageSize(aspect, megapixels) {
   const ar = IMAGE_ASPECTS[aspect] || 1
-  const px = Math.max(0.25, Math.min(4, Number(megapixels) || 1)) * 1024 * 1024
+  const px = Math.max(0.25, Math.min(20, Number(megapixels) || 1)) * 1024 * 1024
   const w = Math.round(Math.sqrt(px * ar) / 32) * 32
   const h = Math.round(Math.sqrt(px / ar) / 32) * 32
   return { width: w, height: h }
@@ -295,6 +327,22 @@ export function imageGraph({ family, mode = 'generate', unet, te, vae, loras = [
     const enc = add('TextEncodeQwenImage21', inputs)
     const latent = mode === 'edit' ? repeat([enc, 2]) : [add('EmptyLatentImage', { width, height, batch_size: batch }), 0]
     save(ksample(cached, [enc, 0], [enc, 1], latent))
+  } else if (family === 'h3image') {
+    // ComfyUI's MiniMax-H3-Image templates: H3 Image conditioning (the prompt, the size and, for an edit, the
+    // reference pictures as <Picture 1>, <Picture 2>...) gives the conditioning and the empty latent; no CFG, so the
+    // negative is zeroed; 6 steps of euler. An edit's pictures are scaled to the size asked for (it's weak below 4 MP),
+    // on a 32-pixel grid, and the result takes the first picture's shape.
+    const inputs = { clip, vae: vaeOut, prompt, width, height }
+    if (mode === 'edit') {
+      const imgs = loadRefs().map((img) => [add('ImageScaleToTotalPixels', { image: img, upscale_method: 'area', megapixels, resolution_steps: 32 }), 0])
+      imgs.forEach((img, i) => (inputs[`images.image_${i + 1}`] = img))
+      if (!keepAspect) {
+        const size = add('GetImageSize', { image: imgs[0] })
+        ;[inputs.width, inputs.height] = [[size, 0], [size, 1]]
+      }
+    }
+    const cond = add('MiniMaxH3ImageConditioning', inputs)
+    save(ksample(model, [cond, 0], [add('ConditioningZeroOut', { conditioning: [cond, 0] }), 0], repeat([cond, 1])))
   } else if (family === 'zimage') {
     const shifted = [add('ModelSamplingAuraFlow', { model, shift: 3 }), 0]
     const pos = encode(prompt)
@@ -316,8 +364,8 @@ export class Images {
   // What each family can do on this ComfyUI: its checkpoints, the text encoder and VAE found for it, what's
   // missing, and whether it can edit.
   async status() {
-    // a GPU of the person's own (Modal, RunPod) has no picture models; Comfy Cloud has its own, read like this PC's
-    if (this.studio.comfy.remote && !this.studio.comfy.hosted) return { remote: true, families: IMAGE_FAMILIES.map((f) => ({ ...strip(f), ready: false, models: [], missing: [] })) }
+    // the person's own cloud (Modal, RunPod) answers from its saved lists plus the models it can download (one pinned
+    // model per family, cloud.json); Comfy Cloud has its own, read like this PC's
     let info
     try {
       info = await this.studio.comfy.objectInfo()
@@ -351,6 +399,8 @@ export class Images {
         editNote = edit ? null : !nodes ? 'Krea 2 edits need the comfyui-krea2edit nodes.' : 'Krea 2 edits need the Krea 2 Identity Edit LoRA (krea2_identity_edit) in ComfyUI’s loras folder.'
       }
       if (f.id === 'flux3' && !info.ReferenceMultiLatent) [edit, editNote] = [false, 'Flux 3 Klein edits need a newer ComfyUI.']
+      // a family built on a node newer than this ComfyUI (MiniMax H3 Image, 2026-11-10)
+      if (f.node && !info[f.node]) missing.push(`ComfyUI's ${f.label} support (update ComfyUI)`)
       // H3 stills need H3's turbo LoRA and ComfyUI's own H3 nodes
       let turbo = null
       if (f.turbo) {
@@ -358,9 +408,17 @@ export class Images {
         if (!turbo) missing.push('the DMAD 4-step turbo LoRA (Settings → Setup)')
         if (!info.MiniMaxH3ImageToVideo || !info.LTXVSeparateAVLatent) missing.push('ComfyUI’s MiniMax H3 nodes (update ComfyUI)')
       }
-      return { ...strip(f), models, te, vae, editLora, turbo, ready: models.length > 0 && !missing.length, missing, edit: edit && models.length > 0 && !missing.length, editNote }
+      return { ...strip(f), models, te, vae, editLora, turbo, ready: models.length > 0 && !missing.length, missing, edit: edit && models.length > 0 && !missing.length, canEdit: f.edit !== false, editNote }
     })
-    return { families, aspects: Object.keys(IMAGE_ASPECTS), defaults: IMAGE_DEFAULTS }
+    // what each family downloads from Settings → Setup (models.json pictureFamilies), and which of those files this
+    // ComfyUI already has, so a family that isn't set up can say what it needs and get it in one click (GitHub #22)
+    const manifest = this.studio.manifest?.models || []
+    for (const f of families) {
+      f.setup = manifest
+        .filter((m) => m.pictureFamilies?.includes(f.id))
+        .map((m) => ({ id: m.id, label: m.label, size: m.size || 0, present: !!resolveModel(m, modelOptions(info, m) || [])?.file, gated: m.gated || null }))
+    }
+    return { families, aspects: Object.keys(IMAGE_ASPECTS), defaults: IMAGE_DEFAULTS, remote: !!this.studio.comfy?.remote }
   }
 
   // Queues a set of pictures. request: { mode: generate|edit, model (a checkpoint), prompt, negative, loras
@@ -371,7 +429,6 @@ export class Images {
     const text = String(prompt || '').trim()
     if (!text) throw new Error(mode === 'edit' ? 'Say what to change in the picture.' : 'Describe the picture first.')
     const st = await this.status()
-    if (st.remote) throw new Error('Pictures render on this computer’s ComfyUI or on Comfy Cloud. Switch on the Cloud page to make them.')
     if (st.error) throw new Error(st.error)
     const fam = st.families.find((f) => f.models.includes(model)) || st.families.find((f) => f.id === familyOfModel(String(model || ''))?.id)
     if (!fam) throw new Error(`"${model}" isn't an image model IV Studio knows. Pick one from list_image_models.`)
@@ -381,9 +438,14 @@ export class Images {
       if (!fam.edit) throw new Error(fam.editNote || `${fam.label} can't edit pictures.`)
       if (!refs.length) throw new Error('Add the picture to edit.')
       if (fam.id === 'krea2' && refs.length > 1) throw new Error('Krea 2 edits one picture at a time.')
-      if (refs.length > (fam.id === 'qwen21' ? 3 : 6)) throw new Error(`${fam.label} takes up to ${fam.id === 'qwen21' ? 3 : 6} reference pictures.`)
+      const most = fam.maxRefs || (fam.id === 'qwen21' ? 3 : 6)
+      if (refs.length > most) throw new Error(`${fam.label} takes up to ${most} reference pictures.`)
     } else if (mode !== 'generate') throw new Error('Mode is generate or edit.')
     const spec = IMAGE_FAMILIES.find((f) => f.id === fam.id)
+    // a family that's weak below its smallest size (MiniMax H3 Image under 4 MP) gets its own default
+    if (spec.sizes && !(Number(megapixels) >= spec.sizes[0])) megapixels = spec.defaultMp || spec.sizes[0]
+    // and the others stay at the 4 MP they were built for
+    if (!spec.sizes) megapixels = Math.min(4, Number(megapixels) || 1)
     const isBase = spec.base && spec.base.match.test(model.split(/[\\/]/).pop())
     const s = seed == null || seed === '' ? Math.floor(Math.random() * 2 ** 31) : Math.floor(Number(seed))
     const usedSteps = Math.round(Number(steps) || (isBase ? spec.base.steps : spec.steps))
@@ -396,7 +458,7 @@ export class Images {
     }
     const id = randomUUID().slice(0, 8)
     const title = String(name || '').trim() || text.split(/[.,\n]/)[0].slice(0, 48)
-    const graph = imageGraph({ family: fam.id, mode, unet: model, te: fam.te, vae: fam.vae, loras: loras.filter((l) => l?.name), prompt: text, negative, width, height, count, seed: s, steps: usedSteps, cfg: usedCfg, refs: uploaded, megapixels: Number(megapixels) || 1, editLora: fam.editLora, turbo: fam.turbo || null, keepAspect: keepAspect && mode === 'edit' && ['flux2', 'flux3'].includes(fam.id), prefix: `iv_studio/images/${slug(title)}_${id}` })
+    const graph = imageGraph({ family: fam.id, mode, unet: model, te: fam.te, vae: fam.vae, loras: loras.filter((l) => l?.name), prompt: text, negative, width, height, count, seed: s, steps: usedSteps, cfg: usedCfg, refs: uploaded, megapixels: Number(megapixels) || 1, editLora: fam.editLora, turbo: fam.turbo || null, keepAspect: keepAspect && mode === 'edit' && ['flux2', 'flux3', 'h3image'].includes(fam.id), prefix: `iv_studio/images/${slug(title)}_${id}` })
     const project = this.studio.createProject(`Image · ${title}`, null, null, 'image')
     const job = await this.studio.submitGraph({ kind: `picture:${fam.id}`, graph, projectId: project.id, name: title, plan: { images: true, request: { prompt: text } } })
     const record = { id, name: title, mode, family: fam.id, familyLabel: fam.label, model, prompt: text, negative, loras: loras.filter((l) => l?.name), aspect, megapixels: Number(megapixels) || 1, width: mode === 'edit' ? null : width, height: mode === 'edit' ? null : height, count: Math.max(1, Math.min(4, Math.round(count))), seed: s, steps: usedSteps, cfg: usedCfg, refs, ...(tag ? { tag } : {}), projectId: project.id, jobId: job.id, status: job.status, files: [], createdAt: now() }
@@ -439,6 +501,143 @@ export class Images {
     return next
   }
 
+  // A video's last frame as a picture in the Library (a finished version's "Use the last frame"): read exactly,
+  // not a seek near the end. ffmpeg writes every frame of the final second over the same file, so the file left
+  // is the last one. A cloud render is downloaded first. Kept as its own set ("Last frame"), ready to be a
+  // shot's first frame or a picture to edit.
+  async lastFrame({ file, name } = {}) {
+    // the same video's frame, saved before and still there, is used again rather than saved twice
+    const key = typeof file === 'string' ? file : file?.path || file?.url || null
+    const had = key && this.all().find((r) => r.mode === 'frame' && r.source === key && r.files?.[0] && fs.existsSync(r.files[0]))
+    if (had) return had
+    const src = await this.studio.localCopy(file, path.join(this.dir, '_comfy'))
+    if (!src || !fs.existsSync(src)) throw new Error('That video is not on this PC.')
+    const id = randomUUID().slice(0, 8)
+    const title = String(name || '').trim() || `${path.basename(src, path.extname(src)).replace(/_\d+$/, '').replace(/[_-]+/g, ' ').slice(0, 40)} · last frame`
+    fs.mkdirSync(this.dir, { recursive: true })
+    const out = path.join(this.dir, `${slug(title)}_${id}.png`)
+    const ffmpeg = ffmpegStatic.ffmpegPath?.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
+    await new Promise((resolve, reject) => {
+      const p = spawn(ffmpeg, ['-v', 'error', '-y', '-sseof', '-1', '-i', src, '-map', '0:v:0', '-update', '1', '-c:v', 'png', out], { windowsHide: true })
+      const err = []
+      p.stderr.on('data', (d) => err.push(d))
+      p.on('error', reject)
+      p.on('close', (code) => (code === 0 && fs.existsSync(out) ? resolve() : reject(new Error(`Couldn't read the last frame${err.length ? `: ${String(Buffer.concat(err)).trim().split('\n').pop()}` : '.'}`))))
+    })
+    if (path.dirname(src) === path.join(this.dir, '_comfy')) fs.rmSync(src, { force: true })
+    const info = await probe(FFPROBE, out).catch(() => null)
+    const t = now()
+    const record = { id, name: title, mode: 'frame', family: 'frame', familyLabel: 'Last frame', model: null, prompt: '', loras: [], width: info?.width || null, height: info?.height || null, count: 1, seed: null, source: key, status: 'success', files: [out], createdAt: t, finishedAt: t }
+    this.saveAll([record, ...this.all()])
+    return record
+  }
+
+  // ---------- Tools: one-step fixes for a picture (picturetools.js) ----------
+  // Which tools this ComfyUI can run, and what each still needs (manifest ids, downloaded on Setup or here).
+  async toolsStatus() {
+    let info, st
+    try {
+      ;[info, st] = await Promise.all([this.studio.comfy.objectInfo(), this.status()])
+    } catch (err) {
+      return { error: err.message, tools: PICTURE_TOOLS.map((t) => ({ ...t, ready: false, missing: [] })) }
+    }
+    const opt = (cls, input) => comboOptions(info, cls, input) || []
+    const find = (id) => {
+      const m = this.studio.manifest.models.find((x) => x.id === id)
+      if (!m) return null
+      const [cls, input] = m.loader.split('.')
+      const opts = opt(cls, input)
+      return [m.match, ...(m.alt || [])].map((n) => opts.find((o) => o.split(/[\\/]/).pop() === n)).find(Boolean) || null
+    }
+    const need = (ids) => ids.map((id) => ({ id, file: find(id) })).filter((x) => !x.file).map((x) => {
+      const m = this.studio.manifest.models.find((y) => y.id === x.id)
+      return { id: x.id, label: m?.label || x.id, size: m?.size || 0, folder: m?.folder }
+    })
+    const flux3 = st.families?.find((f) => f.id === 'flux3')
+    const dits = opt('SeedVR2LoadDiTModel', 'model')
+    const tools = PICTURE_TOOLS.map((t) => {
+      if (t.id === 'inpaint') return { ...t, ready: !!flux3?.ready && !!info.ReferenceMultiLatent, missing: [], note: flux3?.ready ? null : 'Needs Flux 3 Klein (its model, text encoder and VAE), as for pictures.' }
+      if (t.id === 'relight') {
+        const missing = need(['relight_unet', 'relight_te', 'relight_vae', 'relight_lightning', 'relight_lora'])
+        return { ...t, ready: !missing.length && !!info.TextEncodeQwenImageEditPlus, missing }
+      }
+      if (t.id === 'removebg') {
+        const missing = need(['birefnet'])
+        return { ...t, ready: !missing.length && !!info.RemoveBackground, missing }
+      }
+      if (t.id === 'depth') {
+        const missing = need(['moge'])
+        return { ...t, ready: !missing.length && !!info.MoGeInference, missing }
+      }
+      if (t.id === 'upscale') return { ...t, ready: !!info.SeedVR2VideoUpscaler && dits.length > 0, missing: [], note: info.SeedVR2VideoUpscaler ? null : 'Needs the SeedVR2 node pack: Install missing node packs on Setup.' }
+      return { ...t, ready: false, missing: [] }
+    })
+    return { tools, files: { birefnet: find('birefnet'), moge: find('moge'), relight_unet: find('relight_unet'), relight_te: find('relight_te'), relight_vae: find('relight_vae'), relight_lightning: find('relight_lightning'), relight_lora: find('relight_lora'), dit: ['seedvr2_ema_3b_fp16.safetensors', 'seedvr2_ema_3b_fp8_e4m3fn.safetensors', 'seedvr2_ema_3b-Q8_0.gguf'].find((d) => dits.includes(d)) || dits[0] || null }, flux3: flux3 ? { unet: flux3.models[0], te: flux3.te, vae: flux3.vae } : null, relight: RELIGHT, depthOutputs: DEPTH_OUTPUTS }
+  }
+
+  // Runs one tool on a picture. request: { tool, image (a local picture), mask (inpaint: a picture, white = change),
+  // prompt (inpaint), light/direction/quality/brightness/color/details (relight), scale 2|4 (upscale),
+  // output (depth), seed, name }. The result joins the gallery like any set (mode 'tool').
+  async tool({ tool, image, mask = null, prompt = '', light, direction, quality, brightness, color, details, scale = 2, output = 'depth_colored', seed = null, name } = {}) {
+    const t = PICTURE_TOOLS.find((x) => x.id === tool)
+    if (!t) throw new Error(`Tool is one of ${PICTURE_TOOLS.map((x) => x.id).join(', ')}.`)
+    if (!image || !fs.existsSync(image)) throw new Error('Pick the picture first.')
+    const st = await this.toolsStatus()
+    if (st.error) throw new Error(st.error)
+    if (st.error) throw new Error(st.error)
+    const ts = st.tools.find((x) => x.id === tool)
+    if (!ts.ready) throw new Error(ts.missing?.length ? `${t.label} needs ${ts.missing.map((m) => m.label).join(', ')}. Download on Setup.` : ts.note || `${t.label} can’t run on this ComfyUI.`)
+    const text = String(prompt || '').trim()
+    if (tool === 'inpaint' && !text) throw new Error('Say what the painted part should become.')
+    if (tool === 'inpaint' && (!mask || !fs.existsSync(mask))) throw new Error('Paint over the part to change first.')
+    const s = seed == null || seed === '' ? Math.floor(Math.random() * 2 ** 31) : Math.floor(Number(seed))
+    const id = randomUUID().slice(0, 8)
+    const src = path.basename(image).replace(/\.[^.]+$/, '')
+    const title = String(name || '').trim() || `${t.label} · ${src}`.slice(0, 60)
+    const prefix = `iv_studio/images/${slug(title)}_${id}`
+    const up = await this.studio.comfy.upload(image, 'iv_studio/images')
+    let graph
+    let request = { tool }
+    if (tool === 'removebg') graph = removeBgGraph({ image: up, model: st.files.birefnet, prefix })
+    else if (tool === 'depth') {
+      if (!DEPTH_OUTPUTS.some(([v]) => v === output)) throw new Error(`Output is one of ${DEPTH_OUTPUTS.map(([v]) => v).join(', ')}.`)
+      const size = await probe(FFPROBE, image).catch(() => null)
+      graph = depthGraph({ image: up, model: st.files.moge, output, longest: Math.max(size?.width || 0, size?.height || 0), prefix })
+      request.output = output
+    } else if (tool === 'upscale') {
+      const factor = Number(scale) === 4 ? 4 : 2
+      const size = await probe(FFPROBE, image).catch(() => null)
+      const short = Math.min(size?.width || 1024, size?.height || 1024)
+      const resolution = Math.min(4096, Math.round((short * factor) / 16) * 16)
+      graph = upscaleGraph({ image: up, dit: st.files.dit, resolution, prefix })
+      request = { ...request, scale: factor, resolution }
+    } else if (tool === 'relight') {
+      const words = relightText({ light, direction, quality, brightness, color, details })
+      graph = relightGraph({ image: up, unet: st.files.relight_unet, te: st.files.relight_te, vae: st.files.relight_vae, lightning: st.files.relight_lightning, relight: st.files.relight_lora, text: words, seed: s, prefix })
+      request.prompt = words
+    } else if (tool === 'inpaint') {
+      const m = await this.studio.comfy.upload(mask, 'iv_studio/images')
+      graph = inpaintGraph({ image: up, mask: m, unet: st.flux3.unet, te: st.flux3.te, vae: st.flux3.vae, text, seed: s, prefix })
+      request.prompt = text
+    }
+    const project = this.studio.createProject(`Image · ${title}`, null, null, 'image')
+    const job = await this.studio.submitGraph({ kind: `picture:tool-${tool}`, graph, projectId: project.id, name: title, plan: { images: true, request: { prompt: request.prompt || t.label } } })
+    const record = { id, name: title, mode: 'tool', tool, family: `tool-${tool}`, familyLabel: t.label, prompt: request.prompt || '', request, refs: [image], ...(mask ? { mask } : {}), count: 1, seed: s, projectId: project.id, jobId: job.id, status: job.status, files: [], createdAt: now() }
+    this.saveAll([record, ...this.all()])
+    return record
+  }
+
+  // A mask painted in the window (a PNG data URL), saved beside the gallery for an inpaint.
+  saveMask(dataUrl) {
+    const m = /^data:image\/png;base64,(.+)$/.exec(String(dataUrl || ''))
+    if (!m) throw new Error('That mask isn’t a PNG picture.')
+    const dir = path.join(this.dir, '_masks')
+    fs.mkdirSync(dir, { recursive: true })
+    const file = path.join(dir, `mask_${randomUUID().slice(0, 8)}.png`)
+    fs.writeFileSync(file, Buffer.from(m[1], 'base64'))
+    return file
+  }
+
   // tagged sets (a film's storyboard sketches) belong to their page and stay out of the gallery
   list = ({ all = false } = {}) => Promise.all(this.all().filter((r) => all || !r.tag).map((r) => this.refresh(r)))
 
@@ -471,5 +670,5 @@ export class Images {
 
 // what the window and agents see of a family spec (no regular expressions)
 function strip(f) {
-  return { id: f.id, label: f.label, licence: f.licence, note: f.note, edit: f.edit === true, loraPattern: f.loras.source, steps: f.steps, cfg: f.cfg, maxRefs: f.id === 'krea2' ? 1 : f.id === 'qwen21' ? 3 : 6 }
+  return { id: f.id, label: f.label, licence: f.licence, note: f.note, edit: f.edit === true, loraPattern: f.loras.source, steps: f.steps, cfg: f.cfg, maxRefs: f.maxRefs || (f.id === 'krea2' ? 1 : f.id === 'qwen21' ? 3 : 6), sizes: f.sizes || null, defaultMp: f.defaultMp || null, noNegative: !!f.noNegative, tips: f.tips || null }
 }

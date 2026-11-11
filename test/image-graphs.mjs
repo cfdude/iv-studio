@@ -23,7 +23,13 @@ const check = (g, label) => {
 assert.deepEqual(imageSize('1:1', 1), { width: 1024, height: 1024 })
 assert.deepEqual(imageSize('16:9', 1), { width: 1376, height: 768 })
 let built = 0
-for (const f of IMAGE_FAMILIES)
+const skipped = []
+for (const f of IMAGE_FAMILIES) {
+  // a family built on a node newer than this ComfyUI (MiniMax H3 Image) can't be checked here until it's updated
+  if (f.node && !info[f.node]) {
+    skipped.push(`${f.label} (this ComfyUI has no ${f.node}: update ComfyUI to check it)`)
+    continue
+  }
   for (const mode of ['generate', ...(f.edit ? ['edit'] : [])]) {
     for (const count of [1, 3]) {
       const g = imageGraph({ family: f.id, mode, unet: 'x.safetensors', te: 't.safetensors', vae: 'v.safetensors', loras: [{ name: 'a.safetensors', strength: 0.8 }], prompt: 'a red fox', width: 1024, height: 1024, count, seed: 1, steps: f.steps, cfg: f.cfg, refs: mode === 'edit' ? ['iv_studio/images/a.png', 'iv_studio/images/b.png'].slice(0, f.id === 'krea2' ? 1 : 2) : [], megapixels: 1, editLora: f.edit === 'lora' ? 'krea2_identity_edit.safetensors' : null, prefix: 'iv_studio/images/test' })
@@ -32,4 +38,6 @@ for (const f of IMAGE_FAMILIES)
     }
     console.log(`ok  ${f.label}: ${mode}`)
   }
+}
 console.log(`${built} graphs check out against this ComfyUI`)
+for (const s of skipped) console.log(`SKIPPED ${s}`)

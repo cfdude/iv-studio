@@ -104,7 +104,11 @@ kbd {
 
 /* ---------- shell ---------- */
 
+/* position + clip: nothing inside can make the window itself scroll (a hidden switch input that got
+   focus once scrolled the title bar and sidebar off screen, GitHub #13) */
 .app {
+  position: relative;
+  overflow: clip;
   height: 100%;
   display: grid;
   grid-template-columns: 210px 1fr;
@@ -461,6 +465,7 @@ select {
 }
 
 .toggle {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 12px;

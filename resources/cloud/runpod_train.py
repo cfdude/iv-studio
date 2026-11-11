@@ -24,6 +24,7 @@ import hashlib
 import hmac
 import json
 import os
+import shlex
 import shutil
 import signal
 import subprocess
@@ -41,7 +42,8 @@ WS = Path(os.environ.get("IV_WORKSPACE", "/workspace"))
 IDLE = int(os.environ.get("IV_IDLE_SECONDS", "1800"))
 START_LIMIT = int(os.environ.get("IV_START_LIMIT", "1800"))  # nothing started this long after boot: gone
 MAX_HOURS = float(os.environ.get("IV_MAX_HOURS", "12"))  # a stuck run still ends
-FIZGIG_COMMIT = os.environ.get("IV_FIZGIG_COMMIT", "4b3f07f")
+# the commit comes from IV Studio (FIZGIG in src/service/training.js); this default is only for running it by hand
+FIZGIG_COMMIT = os.environ.get("IV_FIZGIG_COMMIT", "8630fca0c5d7932d73fe7387fd7c8a4dc99d9467")
 FIZGIG = Path(os.environ.get("IV_FIZGIG_DIR", "/opt/Fizgig"))
 MODELS = {
     "minimax_h3_fl2va_pruned_int8_convrot.safetensors": 20_970_379_616,
@@ -101,17 +103,18 @@ def train():
             if not os.environ.get("IV_SKIP_SETUP"):
                 if not (FIZGIG / "src" / "fizgig").exists():
                     set_stage("setup", f"Getting Fizgig {FIZGIG_COMMIT}")
-                    for c in (f"git clone https://github.com/shootthesound/Fizgig {FIZGIG}", f"cd {FIZGIG} && git checkout {FIZGIG_COMMIT}", f"cd {FIZGIG} && python3 uv_install_deps.py requirements.txt $VIRTUAL_ENV"):
+                    fizgig_q, commit_q = shlex.quote(str(FIZGIG)), shlex.quote(FIZGIG_COMMIT)
+                    for c in (f"git clone https://github.com/shootthesound/Fizgig {fizgig_q}", f"cd {fizgig_q} && git checkout {commit_q}", f"cd {fizgig_q} && python3 uv_install_deps.py requirements.txt $VIRTUAL_ENV"):
                         if run_log(c, log, env=env):
                             raise RuntimeError(f"setting up Fizgig failed: {c}")
                 bad = missing_models()
                 if bad:
                     set_stage("models", f"Downloading the H3 training files into your volume (about 42 GB, the first time only): {', '.join(bad)}")
                     (WS / "models").mkdir(parents=True, exist_ok=True)
-                    if run_log(f"python3 -m fizgig.scripts.fetch_models --family minimax --models-dir {WS / 'models'}", log, env=env, cwd=str(FIZGIG)) or missing_models():
+                    if run_log(f"python3 -m fizgig.scripts.fetch_models --family minimax --models-dir {shlex.quote(str(WS / 'models'))}", log, env=env, cwd=str(FIZGIG)) or missing_models():
                         raise RuntimeError("the H3 training files didn't download completely")
             set_stage("training", "Training")
-            code = run_log(f"bash {run_dir / 'train.sh'}", log, env=env, cwd=str(run_dir))
+            code = run_log(f"bash {shlex.quote(str(run_dir / 'train.sh'))}", log, env=env, cwd=str(run_dir))
         if state["stage"] == "stopped":
             return
         if code:

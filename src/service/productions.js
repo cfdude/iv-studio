@@ -17,7 +17,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { probe } from './media.js'
 import { ASPECTS } from './plan.js'
-import { DEFAULT_LOCAL_MODEL, ollamaJson, writeHarness, writeLocal } from './prompter.js'
+import { DEFAULT_LOCAL_MODEL, writeHarness, writeLocal } from './prompter.js'
+import { askWriter, continuityCheck, coverageRules, promptVariants, rewritePrompt, shotListCsv, shotListMarkdown } from './filmcraft.js'
 import { parseScript, sceneText } from './screenplay.js'
 import { applyOps } from './timeline.js'
 
@@ -72,6 +73,21 @@ const SHOT_SCHEMA = {
 export { withLine }
 
 // A shot with no line says so, or H3 may give someone words ("Thank you.") of its own. Speaker tags go too.
+// The film's look as words for the writers: the person's notes, the Lookbook's look language and the chosen
+// cinematography (Slate's setups, kept on the look as { id, label, snippet }).
+export function lookWords(look = {}) {
+  return [look.notes, look.lookbook?.words, ...(look.setups || []).map((s) => s.snippet)]
+    .map((t) => String(t || '').trim())
+    .filter(Boolean)
+    .join(' ')
+}
+const HISTORY = 20
+// Keeps a shot's current prompt in its history (newest first, at most 20) before it changes.
+function remember(sh, why) {
+  if (!sh.prompt) return
+  sh.history = [{ prompt: sh.prompt, why, at: new Date().toISOString() }, ...(sh.history || [])].slice(0, HISTORY)
+}
+
 export function withSilence(prompt) {
   if (/<d>/.test(prompt) || /nobody speaks/i.test(prompt)) return prompt
   const quiet = String(prompt).replace(/\s*\(S\d+\)/g, '')
@@ -470,11 +486,11 @@ export class Productions {
       p.name && p.name !== 'Untitled film' ? `Title: ${p.name}` : '',
       castNames.length ? `Cast: ${castNames.join(', ')}` : '',
       `Beats: exactly ${beats} in all, for about ${p.targetSeconds} seconds of film.`,
-      p.look?.notes ? `Look: ${p.look.notes}` : ''
+      lookWords(p.look) ? `Look: ${lookWords(p.look)}` : ''
     ]
       .filter(Boolean)
       .join('\n')
-    const out = await ollamaJson({ system: SCRIPT_RULES, user, schema: scriptSchema(beats), model: this.model(), cpu: await this.studio().gpuBusy().catch(() => false), temperature: 0.6 })
+    const out = await askWriter(this.writer(), { system: SCRIPT_RULES, user, schema: scriptSchema(beats), cpu: await this.studio().gpuBusy().catch(() => false), temperature: 0.6 })
     if (p.name && p.name !== 'Untitled film') out.title = ''
     const q = this.setScript(id, scriptText(out))
     // the writer's one line on each place fills a place the person hasn't described yet
@@ -520,9 +536,13 @@ export class Productions {
       // the scene's share of the film's length, by how much script it has
       const size = (s) => sceneText(s).length
       const share = Math.max(6, Math.round((p.targetSeconds * size(sc)) / Math.max(1, p.scenes.reduce((n, s) => n + size(s), 0))))
-      const user = [`Film: ${p.name}${p.logline ? `. ${p.logline}` : ''}`, castNames.length ? `Cast: ${castNames.join(', ')}` : '', loc?.description ? `${loc.name}: ${loc.description}` : '', p.look?.notes ? `Look: ${p.look.notes}` : '', `Seconds for this scene: about ${share} (${Math.max(1, Math.round(share / 6))} shots or so).`, `Scene:\n${sceneText(sc)}`].filter(Boolean).join('\n')
-      const out = await ollamaJson({ system: SHOT_RULES, user, schema: SHOT_SCHEMA, model: this.model(), cpu })
-      const shots = (out.shots || []).map((s) => ({
+      const user = [`Film: ${p.name}${p.logline ? `. ${p.logline}` : ''}`, castNames.length ? `Cast: ${castNames.join(', ')}` : '', loc?.description ? `${loc.name}: ${loc.description}` : '', lookWords(p.look) ? `Look: ${lookWords(p.look)}` : '', `Seconds for this scene: about ${share} (${Math.max(1, Math.round(share / 6))} shots or so).`, `Scene:\n${sceneText(sc)}`].filter(Boolean).join('\n')
+      // a coverage plan (Slate's): exactly its shots, in its order, each named by its slot
+      const plan = sc.coverage?.shots?.length ? sc.coverage : null
+      const people = [...new Set(p.cast.map((c) => this.character(c.characterId)?.name?.split(/\s+/)[0] || c.as).filter(Boolean))]
+      const out = await askWriter(this.writer(), { system: plan ? `${SHOT_RULES}\n\n${coverageRules(plan, { people })}` : SHOT_RULES, user, schema: SHOT_SCHEMA, cpu })
+      if (plan) out.shots = (out.shots || []).slice(0, plan.shots.length)
+      const shots = (out.shots || []).map((s, k) => ({
         id: id6(),
         action: String(s.action || '').trim(),
         staging: String(s.staging || '').trim(),
@@ -536,7 +556,8 @@ export class Productions {
         prompt: '',
         character: this.mainCharacter(p, s),
         projectId: null,
-        voiceLine: null
+        voiceLine: null,
+        ...(plan?.shots[k] ? { slot: plan.shots[k].slot } : {})
       }))
       this.patch(id, (q) => {
         const t = q.scenes.find((s) => s.id === sid)
@@ -622,7 +643,7 @@ export class Productions {
       sh.ends ? `It ends with: ${dot(sh.ends)}` : '',
       others.length ? `Also in the shot: ${others.join(', ')}.` : '',
       sh.line ? `${sh.speaker || 'They'} says exactly these words: "${sh.line}"` : 'No one speaks.',
-      p.look?.notes ? `Look: ${p.look.notes}.` : '',
+      lookWords(p.look) ? `Look: ${lookWords(p.look).replace(/[.\s]+$/, '')}.` : '',
       'It is one continuous take with no cuts: write a single [Shot 1].'
     ]
       .filter(Boolean)
@@ -636,9 +657,83 @@ export class Productions {
     const prompt = oneTake(withLine(written, ch && first(ch.name) === first(sh.speaker) ? '{char}' : sh.speaker, sh.line))
     this.patch(id, (q) => {
       const t = q.scenes.find((s) => s.id === sceneId)?.shots.find((s) => s.id === shotId)
-      if (t) t.prompt = prompt
+      if (t) (remember(t, 'written again'), (t.prompt = prompt))
     })
     return prompt
+  }
+
+  // ---------- film craft (filmcraft.js, after Sam Wasserman's Slate) ----------
+  // A scene's coverage plan: { id, label, shots: [{ slot, size, angle, movement, intent, promptGuidance }] } from
+  // Slate's list (the caller looks it up), or null for the planner's own choice. The scene's shots are planned again.
+  setCoverage(id, sceneId, plan) {
+    return this.patch(id, (p) => {
+      const sc = p.scenes.find((s) => s.id === sceneId)
+      if (!sc) throw new Error('No such scene.')
+      sc.coverage = plan?.shots?.length ? { id: plan.id, label: plan.label, shots: plan.shots } : null
+      if (sc.shots.length) sc.stale = true
+    })
+  }
+  // The film's shot list: 'md' or 'csv'.
+  shotList(id, format = 'md', { prompts } = {}) {
+    const p = this.get(id)
+    const q = { ...p, scenes: p.scenes.map((sc) => ({ ...sc, coverage: sc.coverage?.label || '' })) }
+    return format === 'csv' ? shotListCsv(q, { prompts: prompts ?? true }) : shotListMarkdown(q, { prompts: !!prompts })
+  }
+  shotContext(p, sc, sh) {
+    return { film: [p.name, p.logline].filter(Boolean).join('. '), scene: sc.heading || sc.location || '', look: lookWords(p.look), spec: [sh.slot, sh.camera, `${sh.seconds} s`].filter(Boolean).join(', ') }
+  }
+  // A director's note or one of Tighten, Enrich, Distill, Stronger shot, New angle on a shot's prompt, with the
+  // person's writer. The old prompt goes into the shot's history (Undo). Returns { prompt, reply, missing }.
+  async reworkShot(id, sceneId, shotId, { tool = 'note', note = '', keep = [] } = {}) {
+    const p = this.get(id)
+    const sc = p.scenes.find((s) => s.id === sceneId)
+    const sh = sc?.shots.find((s) => s.id === shotId)
+    if (!sh) throw new Error('No such shot.')
+    const r = await rewritePrompt(this.writer(), { prompt: sh.prompt, tool, note, context: { ...this.shotContext(p, sc, sh), keep }, cpu: await this.studio().gpuBusy().catch(() => false) })
+    this.setShotPrompt(id, sceneId, shotId, r.prompt, tool === 'note' ? `note: ${note.slice(0, 60)}` : tool)
+    return r
+  }
+  async shotVariants(id, sceneId, shotId) {
+    const p = this.get(id)
+    const sc = p.scenes.find((s) => s.id === sceneId)
+    const sh = sc?.shots.find((s) => s.id === shotId)
+    if (!sh) throw new Error('No such shot.')
+    return promptVariants(this.writer(), { prompt: sh.prompt, context: this.shotContext(p, sc, sh), cpu: await this.studio().gpuBusy().catch(() => false) })
+  }
+  // A new prompt for a shot, the old one kept in its history; why says what made it.
+  setShotPrompt(id, sceneId, shotId, prompt, why = 'edited') {
+    return this.patch(id, (q) => {
+      const t = q.scenes.find((s) => s.id === sceneId)?.shots.find((s) => s.id === shotId)
+      if (!t) throw new Error('No such shot.')
+      if (String(prompt) === t.prompt) return
+      remember(t, why)
+      t.prompt = String(prompt)
+    })
+  }
+  // Puts a prompt from the shot's history back (the current one goes into the history in its place).
+  restoreShotPrompt(id, sceneId, shotId, index = 0) {
+    return this.patch(id, (q) => {
+      const t = q.scenes.find((s) => s.id === sceneId)?.shots.find((s) => s.id === shotId)
+      const h = t?.history?.[index]
+      if (!h) throw new Error('Nothing to go back to.')
+      t.history.splice(index, 1)
+      remember(t, 'before going back')
+      t.prompt = h.prompt
+    })
+  }
+  // A script supervisor's read of a scene's shots; kept on the scene as continuity { issues, at, writer }.
+  async checkContinuity(id, sceneId) {
+    const p = this.get(id)
+    const sc = p.scenes.find((s) => s.id === sceneId)
+    if (!sc) throw new Error('No such scene.')
+    const i = p.scenes.indexOf(sc)
+    const shots = sc.shots.map((sh, j) => ({ name: `${i + 1}.${j + 1}`, prompt: sh.prompt, action: sh.action, staging: sh.staging, ends: sh.ends }))
+    const issues = await continuityCheck(this.writer(), { scene: sc.heading || sc.location || '', look: lookWords(p.look), shots, cpu: await this.studio().gpuBusy().catch(() => false) })
+    this.patch(id, (q) => {
+      const t = q.scenes.find((s) => s.id === sceneId)
+      if (t) t.continuity = { issues, at: now(), writer: this.writer()?.engine || 'local' }
+    })
+    return issues
   }
 
   // ---------- shots ----------
@@ -670,6 +765,7 @@ export class Productions {
       // (a seated pair stood up mid-take when the board had them standing), so it's set aside until redrawn
       const looks = ['action', 'staging', 'camera', 'stage'].some((k) => patch[k] !== undefined && JSON.stringify(patch[k]) !== JSON.stringify(sh[k] ?? null))
       if (looks && (sh.sketch || sh.sketchSet)) sh.sketchStale = true
+      if (patch.prompt !== undefined && patch.prompt !== sh.prompt) remember(sh, patch.why || 'edited')
       for (const k of ['action', 'staging', 'camera', 'ends', 'characters', 'speaker', 'line', 'seconds', 'prompt', 'character', 'stage', 'continues']) if (patch[k] !== undefined) sh[k] = patch[k]
       if (sh.continues && i === 0) sh.continues = false // the first shot of a scene has nothing to carry on from
       // a staging board's plan becomes the shot's words, unless the words were given too
@@ -792,7 +888,6 @@ export class Productions {
     const images = this.images()
     if (!images) throw new Error(`${what} need IV Studio on this computer.`)
     const st = await images.status()
-    if (st.remote) throw new Error(`${what} render on this computer’s ComfyUI. Switch to "This computer" on the Cloud page to make them.`)
     if (st.error) throw new Error(st.error)
     const ready = (ids, edit) => ids.map((f) => st.families.find((x) => x.id === f && x.ready && x.models.length && (!edit || x.edit))).find(Boolean)
     const editor = ready(['flux2', 'flux3'], true)

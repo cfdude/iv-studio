@@ -2,5 +2,8 @@
   "_note": "Links the app shows. runpodSignup: Matt's RunPod referral link (2026-11-07); where RunPod sign-up shows, a short note says signing up through it supports IV Studio. modalSignup: set to the Modal referral/affiliate link once Matt has one; while it is null the Cloud page uses Modal's normal sign-up page and does not mention supporting IV Studio.",
   "website": "https://infinitevariance.ai",
   "runpodSignup": "https://runpod.io?ref=mdq1gvh6",
-  "modalSignup": null
+  "modalSignup": null,
+  "_note2": "usageUrl: where opted-in anonymous usage counts are sent (src/service/usage.js). betaUrl: where the cloud beta signup posts an email address. Both point at the iv-studio-signals Edge Function on the IV Academy Supabase project (approved and deployed by Matt 2026-11-10; set the same day on his OK). Counting still sends nothing unless the person turns it on, and the beta only sends an address typed and joined. Test copies (IV_STUDIO_USER_DATA) ignore these and use IV_STUDIO_USAGE_URL / IV_STUDIO_BETA_URL instead. Empty either one to switch it off.",
+  "usageUrl": "https://utajiwjbzrpwjtbcsnly.supabase.co/functions/v1/iv-studio-signals/usage",
+  "betaUrl": "https://utajiwjbzrpwjtbcsnly.supabase.co/functions/v1/iv-studio-signals/beta"
 }

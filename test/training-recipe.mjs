@@ -1,4 +1,4 @@
-// The training recipe: options, estimates and the train.sh each makes (checked against Fizgig 4b3f07f's flags),
+// The training recipe: options, estimates and the train.sh each makes (checked against Fizgig 4b3f07f's and 9.3.2's flags),
 // a bash syntax check of every script, and a real run of the budget stop with stand-in commands.
 // node test/training-recipe.mjs
 import assert from 'node:assert/strict'

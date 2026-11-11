@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Inspector from './Inspector'
+import { useSelection } from '../../selection'
 import Preview from './Preview'
 import ProjectBin from './ProjectBin'
 import SourceMonitor from './SourceMonitor'
 import Timeline from './Timeline'
 import { ContextMenu, GenDialog, PickDialog } from './Generate'
+import { ClipFxDialog } from './ClipFx'
 import { ask } from '../Confirm'
 import Help from '../Help'
 import { editorKeyAction, focusKey, modChord } from '../../../../shared/platform'
 import { usePlatform } from '../../platform'
+import { askAgent, useAgentName } from '../ChatPanel'
 import { FRAME, clipEnd, clipFor, clipLength, describeChange, editLength, editPoints, insert, newId, nextTrackId, overwrite, remove, split, timecode, titleClip, tracksOf, videoLayers } from './model'
 
 // Panel sizes, remembered between sessions: bin and effect-controls widths, the source monitor's share
@@ -70,10 +73,14 @@ const fitFades = (c) => {
 // An agent edits the same file through the MCP server: its changes appear here with a one-click undo.
 export default function EditEditor({ editId, notify, go, focus, setFocus, characters = [], remakeClip }) {
   const platform = usePlatform()
+  // For Premiere / Resolve (interchange.js): busy, then what was written
+  const [handing, setHanding] = useState(null)
   const [meta, setMeta] = useState(null)
   const [edit, setEdit] = useState(null)
+  const chatAgent = useAgentName()
   const [gens, setGens] = useState([]) // new footage on its way (src/service/editgen.js)
   const [menu, setMenu] = useState(null) // { x, y, items }
+  const [fxFor, setFxFor] = useState(null) // the clip the Effects dialog is open for
   const [genSpec, setGenSpec] = useState(null) // the generate dialog's { kind, clip, next, gap, from, to }
   const [picking, setPicking] = useState(null) // a bridge waiting for its take to be picked
   const [hist, setHist] = useState({ past: [], future: [] })
@@ -178,6 +185,21 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
     window.ivstudio.edits.fullScreen(on).catch(() => {})
   }
 
+  // for the chat: the selected clip and where the playhead is (selection.js)
+  const chatClip = edit?.clips?.find((c) => c.id === selected) || null
+  const chatMedia = chatClip?.media ? edit?.media?.[chatClip.media] : null
+  useSelection(
+    'edit',
+    edit
+      ? {
+          playhead: `${time.toFixed(1)} s`,
+          ...(chatClip
+            ? { clip: `${chatClip.text?.content ? `title "${chatClip.text.content.slice(0, 60)}"` : chatMedia?.name || 'a clip'} on ${chatClip.track}, ${chatClip.start.toFixed(1)} to ${(chatClip.start + (chatClip.out - chatClip.in)).toFixed(1)} s`, ...(chatMedia?.file ? { clipFile: chatMedia.file } : {}) }
+            : {})
+        }
+      : null,
+    [edit?.id, selected, Math.round(time * 2), edit?.clips?.length]
+  )
   if (!edit || !meta) return null
   const tracks = tracksOf(edit)
   const markers = edit.markers || []
@@ -347,6 +369,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
       items.push({ label: 'Cut out…', hint: 'keep only who or what you name', disabled: !video || !!m.alpha, onClick: () => cutOut(clip) })
       items.push({ label: 'Remake this clip…', hint: 'swap who is in it, or change the scene', disabled: !video || m.kind === 'image' || !!m.alpha || clipLength(clip) > 14.3 || !remakeClip, onClick: () => remakeClip({ path: m.path, section: { start: clip.in || 0, length: clipLength(clip) }, kind: 'swap' }) })
       items.push({ label: `Reframe to ${SHAPE_OF[edit.settings.format] || '9:16'}…`, hint: 'draw what lies beyond its edges', disabled: !video || !!m.alpha || shapeFits(m, edit.settings.format), onClick: () => reframe(clip) })
+      items.push({ label: 'Effects…', hint: 'new angle, dub, day to night, clean plate, slow motion', disabled: !video || m.kind === 'image' || !!m.alpha, onClick: () => setFxFor(clip) })
     } else if (gap?.to != null && gap.to - gap.from > FRAME) {
       items.push({ label: `Fill this gap…`, hint: `${(gap.to - gap.from).toFixed(2)} s`, disabled: gap.to - gap.from > 15, onClick: () => setGenSpec({ kind: 'bridge', gap }) })
     } else if (gap) {
@@ -373,7 +396,38 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
       notify(err.message)
     }
   }
-  // A cut-out of a clip (SAM 3 on this PC): only who or what the person names stays, the rest is see-through. It
+  // Effects… (Freefield's apps, freefield.js) on the clip's own stretch. The result takes the clip's place, keeping
+  // its start; one longer than the clip (slow motion) goes on the track above instead, so nothing after it moves.
+  async function runFx(clip, { fx, values, camera = null, size = null, label }) {
+    const m = edit.media[clip.media]
+    notify(`${label}: working on ${m.name}. It takes the clip's place when it's done (a few minutes).`, 'info')
+    try {
+      const r = await window.ivstudio.clipfx.run({ fx, file: m.path, start: clip.in || 0, length: clipLength(clip), values, camera, size, name: `${label} · ${m.name}` })
+      if (!r.media) throw new Error(`${label} made no video.`)
+      const e = editRef.current
+      const len = clipLength(clip)
+      const dur = r.media.duration || len
+      if (dur > len * 1.3) {
+        const all = tracksOf(e)
+        const layers = videoLayers(all)
+        const free = (t) => !t.locked && !e.clips.some((x) => x.track === t.id && x.start < clip.start + dur - 1e-3 && clipEnd(x) > clip.start + 1e-3)
+        let target = layers.slice(layers.findIndex((t) => t.id === clip.track) + 1).find(free)
+        let tracks = e.tracks
+        if (!target) {
+          target = { id: nextTrackId(all, 'video'), kind: 'video' }
+          tracks = [...all, { ...target, label: target.id }]
+        }
+        commit({ media: { ...e.media, [r.media.id]: r.media }, clips: [...e.clips, { ...clipFor(r.media, target.id, clip.start), in: 0, out: dur }], tracks })
+        notify(`${label} done: ${dur.toFixed(1)} s on ${target.id}, over the original.`, 'info')
+      } else {
+        commit({ media: { ...e.media, [r.media.id]: r.media }, clips: e.clips.map((x) => (x.id === clip.id ? { ...x, media: r.media.id, in: 0, out: Math.min(len, dur) } : x)) })
+        notify(`${label} done. Undo brings the original back.`, 'info')
+      }
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+  // A cut-out of a clip (SAM 3 on this computer): only who or what the person names stays, the rest is see-through. It
   // goes on the first video track above the clip that is free over the same stretch (a new one when none is).
   async function cutOut(clip) {
     const m = edit.media[clip.media]
@@ -431,6 +485,22 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
     }
   }
 
+  // the timeline for Premiere, Resolve and Final Cut (interchange.js), with its media, zipped
+  async function exportForEditors() {
+    setPlaying(false)
+    clearTimeout(saveTimer.current)
+    await window.ivstudio.edits.save(edit.id, edit)
+    setHanding({ busy: true })
+    try {
+      const r = await window.ivstudio.edits.interchange(edit.id, { zip: true })
+      setHanding(r)
+      notify(`Ready for Premiere and Resolve: ${r.media.length} file${r.media.length === 1 ? '' : 's'} copied, plus a .zip to send.`, 'info')
+    } catch (err) {
+      setHanding(null)
+      notify(err.message)
+    }
+  }
+
   const addMedia = (m, { place: put = true } = {}) => {
     const e = editRef.current
     // the first file of an empty edit goes straight onto the timeline, so one click is enough to start
@@ -456,6 +526,11 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
           <span className="ed-help">
             <Help page="editor" compact />
           </span>
+          {chatAgent && (
+            <button className="btn btn-small ed-ask" onClick={() => (focus && toggleFocus(false), askAgent({ about: `the edit “${edit.name}” (edit ${edit.id})` }))} title={`Tell ${chatAgent} what to change: “tighten the middle”, “add a song”, “put captions on”. Each change can be undone.`}>
+              Ask {chatAgent}
+            </button>
+          )}
           <button className="btn btn-small" onClick={() => toggleFocus()} title={focus ? 'Back to IV Studio (Esc)' : 'Full-screen workspace (F11)'}>
             {focus ? 'Exit full screen' : '⤢ Full screen'}
           </button>
@@ -474,6 +549,19 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
               Exported · show in folder
             </button>
           )}
+          {handing?.folder && (
+            <button className="link-btn mono" onClick={() => window.ivstudio.files.reveal(handing.xml)}>
+              Show hand-off
+            </button>
+          )}
+          <button
+            className="btn btn-small ed-handoff"
+            disabled={!edit.clips.length || !!handing?.busy}
+            onClick={exportForEditors}
+            title="The timeline as files Premiere Pro, DaVinci Resolve and Final Cut Pro open (XML, FCPXML and an EDL), with every clip copied beside them and zipped to send. Fades and title styling stay behind."
+          >
+            {handing?.busy ? 'Packing…' : 'Premiere / Resolve'}
+          </button>
           <button className="btn btn-primary" disabled={!edit.clips.length || exp?.progress != null} onClick={exportEdit}>
             {exp?.progress != null ? `Exporting ${Math.round(exp.progress * 100)}%` : 'Export MP4'}
           </button>
@@ -660,6 +748,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
           onGen={genClicked}
         />
         {menu && <ContextMenu {...menu} onClose={() => setMenu(null)} />}
+        {fxFor && <ClipFxDialog clipName={edit.media[fxFor.media]?.name || 'Clip'} length={clipLength(fxFor)} clip={{ file: edit.media[fxFor.media]?.path, start: fxFor.in || 0, length: clipLength(fxFor) }} onRun={(spec) => runFx(fxFor, spec)} onClose={() => setFxFor(null)} />}
         {genSpec && <GenDialog edit={edit} spec={genSpec} characters={characters} notify={notify} onStart={startGen} onClose={() => setGenSpec(null)} />}
         {picking && (
           <PickDialog

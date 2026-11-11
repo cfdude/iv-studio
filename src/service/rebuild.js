@@ -18,7 +18,7 @@ import { IMAGE_ASPECTS } from './images.js'
 import { blocking, FIRST_FRAME_LINE, firstLastLine } from './lint.js'
 import { probe } from './media.js'
 import { ASPECTS } from './plan.js'
-import { cpuOptions, DEFAULT_LOCAL_MODEL, ensureOllama, ollamaStatus, ollamaUrl } from './prompter.js'
+import { localChat, localWriterModel } from './prompter.js'
 import { applyOps } from './timeline.js'
 
 export const KINDS = ['ai_video', 'live', 'code_graphics', 'screen', 'still', 'film_clip', 'unsure']
@@ -315,29 +315,17 @@ export class Rebuilds {
     return this.saveReading(id, answers)
   }
   async localWriter({ model, user, images }) {
-    await ensureOllama()
-    const name = model || DEFAULT_LOCAL_MODEL
-    const info = (await ollamaStatus()).models.find((m) => m.name === name)
-    if (!info) throw new Error(`The writer model ${name} isn't in Ollama yet. Install it in Settings → Prompt writer.`)
-    if (!info.vision) throw new Error(`${name} can't see pictures, so it can't read a shot. Choose a vision model, Claude Code or Codex in Settings → Prompt writer.`)
-    const res = await fetch(`${ollamaUrl()}/api/chat`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: name,
-        stream: false,
-        format: answerSchema(),
-        keep_alive: 0,
-        options: { temperature: 0.2, num_ctx: 16384, ...cpuOptions(await this.studio?.gpuBusy?.().catch(() => false)) },
-        messages: [
-          { role: 'system', content: WRITER_SYSTEM },
-          { role: 'user', content: user, images: images.map((im) => im.data) }
-        ]
-      }),
-      signal: AbortSignal.timeout(900000)
+    const { name } = await localWriterModel(model, { needsEyes: 'read a shot' })
+    return localChat({
+      model: name,
+      system: WRITER_SYSTEM,
+      schema: answerSchema(),
+      temperature: 0.2,
+      ctx: 16384,
+      cpu: await this.studio?.gpuBusy?.().catch(() => false),
+      timeoutMs: 900000,
+      messages: [{ role: 'user', content: user, images: images.map((im) => im.data) }]
     })
-    if (!res.ok) throw new Error(`Ollama: ${(await res.text()).slice(0, 300)}`)
-    return JSON.parse(String((await res.json()).message?.content || '{}').replace(/<think>[\s\S]*?<\/think>/gi, ''))
   }
 
   // ---------- 3 the plan ----------

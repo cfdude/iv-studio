@@ -28,6 +28,14 @@ const shortcuts = (platform) => [
   [`${modChord(platform, 'Z')}, ${modChord(platform, 'Y')}`, 'undo, redo']
 ]
 
+// where each export shape is at home, under the edit's settings
+const SHARE_HINT = {
+  '1080p': 'Wide 16:9 suits YouTube, websites and X.',
+  '4k': 'Wide 16:9 at 4K suits YouTube and big screens. The file is large.',
+  vertical: 'Tall 9:16 suits TikTok, Instagram Reels and YouTube Shorts.',
+  square: 'Square 1:1 suits Instagram and Facebook feeds.'
+}
+
 // Effect controls: the selected clip's settings, or (nothing selected) the edit's format, markers and keys.
 export default function Inspector({ clip, media, meta, settings, markers, selMarker, onClip, onSettings, onMarkers, onSeek }) {
   const platform = usePlatform()
@@ -65,6 +73,18 @@ export default function Inspector({ clip, media, meta, settings, markers, selMar
             </div>
           </>
         )}
+        <span className="dim small" title="Adds 'Made with IV Studio' on black for 2.5 seconds after your last clip, in the exported file only. Off unless you turn it on.">
+          End card
+        </span>
+        <div className="segmented ed-seg">
+          <button className={settings.endCard ? '' : 'on'} onClick={() => onSettings({ endCard: false })}>
+            None
+          </button>
+          <button className={settings.endCard ? 'on' : ''} title="Made with IV Studio, for 2.5 seconds after the last clip" onClick={() => onSettings({ endCard: true })}>
+            Made with IV Studio
+          </button>
+        </div>
+        <p className="small dim ed-share-hint">{SHARE_HINT[settings.format] || SHARE_HINT['1080p']}</p>
         <p className="mono label ed-insp-gap">Markers</p>
         {markers.length === 0 && <p className="small dim">Press M to drop one at the playhead.</p>}
         {markers.map((mk) => (

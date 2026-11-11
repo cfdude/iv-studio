@@ -83,4 +83,20 @@ console.log('ok  Modal commands ask for image builder', IMAGE_BUILDER)
   console.log('ok  an older Modal client is updated once, before commands that build or run')
 }
 
+// Shut down GPU answers Modal's "Are you sure?" itself: modal 1.6 aborts without a terminal otherwise
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ivm-'))
+  const cloud = new Cloud({ dataDir: dir, resourcesDir: dir })
+  const ran = []
+  cloud.exec = async (cmd, args) => {
+    ran.push(args)
+    return args[0] === 'container' && args[1] === 'list' ? JSON.stringify([{ container_id: 'ta-1', app_name: 'iv-studio', start_time: 1 }, { container_id: 'ta-2', app_name: 'other-app', start_time: 1 }]) : ''
+  }
+  assert.deepEqual(await cloud.stopGpu(), { stopped: 1 })
+  assert.deepEqual(ran.at(-1), ['container', 'stop', 'ta-1', '--yes'], 'stops only IV Studio’s container, without a prompt')
+  fs.rmSync(dir, { recursive: true, force: true })
+  n++
+  console.log('ok  Shut down GPU stops the container without Modal asking first')
+}
+
 console.log(`\n${n} passed`)

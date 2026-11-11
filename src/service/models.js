@@ -4,6 +4,7 @@
 // (the X-Linked-ETag of an LFS/Xet file). Nothing is deleted except a .part that failed its check.
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { Readable, Transform } from 'node:stream'
@@ -19,12 +20,42 @@ export async function modelTarget(comfy, model) {
   return path.join(dir, ...sub, model.match)
 }
 
+// The person's own Hugging Face login, for gated models (LTX-2.5 and its LoRAs need their licence accepted on
+// Hugging Face, then a logged-in download): HF_TOKEN, else the token `hf auth login` saved (HF_HOME, else
+// ~/.cache/huggingface). Sent only to huggingface.co; never logged or kept by IV Studio.
+// The token saved in IV Studio (Settings → Setup, or the Cloud page) comes first; the window sets it at start and
+// whenever it changes.
+let savedToken = null
+export const setSavedHfToken = (t) => (savedToken = t || null)
+export function hfLoginFrom(env = process.env, home = os.homedir()) {
+  if (savedToken) return 'iv'
+  if (env.HF_TOKEN || env.HUGGING_FACE_HUB_TOKEN) return 'env'
+  try {
+    return fs.readFileSync(path.join(env.HF_HOME || path.join(home, '.cache', 'huggingface'), 'token'), 'utf8').trim() ? 'hf' : null
+  } catch {
+    return null
+  }
+}
+export function hfToken(env = process.env, home = os.homedir()) {
+  if (savedToken) return savedToken
+  const t = env.HF_TOKEN || env.HUGGING_FACE_HUB_TOKEN
+  if (t) return t.trim()
+  const file = path.join(env.HF_HOME || path.join(home, '.cache', 'huggingface'), 'token')
+  try {
+    return fs.readFileSync(file, 'utf8').trim() || null
+  } catch {
+    return null
+  }
+}
+export const authFor = (url, token = hfToken()) => (token && /^https:\/\/huggingface\.co\//.test(url) ? { Authorization: `Bearer ${token}` } : {})
+const GATED = (url) => `This model is gated: open ${url.replace(/\/resolve\/.*/, '')} while logged in to Hugging Face, accept its licence, then add a Read token in Settings → Setup → Optional tools (or run hf auth login) and try again.`
+
 // Size and SHA-256 as Hugging Face publishes them, without downloading.
 export async function upstreamInfo(url) {
-  const res = await fetch(url, { method: 'HEAD', redirect: 'manual' })
+  const res = await fetch(url, { method: 'HEAD', redirect: 'manual', headers: authFor(url) })
   const sha256 = res.headers.get('x-linked-etag')?.replace(/"/g, '')
   const size = Number(res.headers.get('x-linked-size') || res.headers.get('content-length')) || null
-  if (res.status === 401 || res.status === 403) throw new Error('The host refused the download. The model may need its licence accepted on its page first.')
+  if (res.status === 401 || res.status === 403) throw new Error(/huggingface\.co/.test(url) ? GATED(url) : 'The host refused the download. The model may need its licence accepted on its page first.')
   if (res.status >= 400) throw new Error(`The host answered ${res.status}.`)
   return { sha256: /^[0-9a-f]{64}$/.test(sha256 || '') ? sha256 : null, size }
 }
@@ -90,10 +121,10 @@ export class ModelInstaller {
   async download(model, signal) {
     const target = await modelTarget(this.comfy, model)
     if (fs.existsSync(target)) return this.set(model.id, { status: 'done', path: target })
+    // a pinned SHA-256 in the manifest (the Recommended shelf) wins over the one the host publishes (expectedSha256)
     const info = await upstreamInfo(model.url)
     const sha256 = expectedSha256(model, info.sha256)
-    const probed = info.size
-    const size = probed || model.size || null // GitHub's redirect answers the probe with no length
+    const size = info.size || model.size || null // GitHub's redirect answers the probe with no length
     const part = `${target}.part`
     fs.mkdirSync(path.dirname(target), { recursive: true })
 
@@ -109,7 +140,8 @@ export class ModelInstaller {
       await hashFile(part, hash)
     }
     if (!size || received < size) {
-      const res = await fetch(model.url, { headers: received ? { Range: `bytes=${received}-` } : {}, signal })
+      const res = await fetch(model.url, { headers: { ...authFor(model.url), ...(received ? { Range: `bytes=${received}-` } : {}) }, signal })
+      if (res.status === 401 || res.status === 403) throw new Error(/huggingface\.co/.test(model.url) ? GATED(model.url) : `Download failed: the host answered ${res.status}.`)
       if (!res.ok) throw new Error(`Download failed: the host answered ${res.status}.`)
       if (received && res.status !== 206) throw new Error('The host would not resume this download. Delete the .part file and try again.')
       let last = 0

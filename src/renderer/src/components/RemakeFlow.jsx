@@ -47,11 +47,16 @@ export default function RemakeFlow({ kind, video, notify, onStarted }) {
       setBusy(null)
     }
   }
+  // soft mouth (softmouth.js): the source's mouths blurred first, so the new person doesn't mouth its words
+  const [soft, setSoft] = useState(false)
+  useEffect(() => setSoft(false), [video?.path])
   const paintInput = () => (kind === 'swap' ? { people: people.map(({ picture, name, who }) => ({ picture, name, who })) } : { ask })
   const paint = () =>
     step('Painting the frames', async () => {
       setProgress({})
-      const s = session && session.kind === kind ? session : await X.prepare({ video: video.path, section, kind })
+      const src = kind === 'swap' && soft ? (await window.ivstudio.softMouth.make(video.path)).path : video.path
+      // the session was prepared from the softened source or not; a change of mind starts it again (setSoft clears it)
+      const s = session && session.kind === kind ? session : await X.prepare({ video: src, section, kind })
       setSession(s)
       setSession(await X.paint(s.id, paintInput()))
     })
@@ -77,7 +82,7 @@ export default function RemakeFlow({ kind, video, notify, onStarted }) {
       {check && !check.ready && (
         <section className="group replace-missing">
           <div className="group-head">
-            <h2>Needed first</h2>
+            <h2>{check.cloud ? 'Not in the cloud yet' : 'Needed first'}</h2>
           </div>
           <div className="group-body">
             {check.error && <p className="small pink">{check.error}</p>}
@@ -97,6 +102,10 @@ export default function RemakeFlow({ kind, video, notify, onStarted }) {
 
       {kind === 'swap' ? (
         <Step n={2} title="Who goes in" sub="One or two people: your characters, or a picture of who should appear.">
+          <label className="soft-mouth small" title="Blurs the mouths in the source before Remake sees it, so the new person doesn’t mouth the source’s words. For a silent swap, or one you’ll give new words later. Needs the face models (Characters).">
+            <input type="checkbox" checked={soft} onChange={(e) => (setSoft(e.target.checked), setSession(null))} />
+            Soft mouth: the new person doesn’t mouth the source’s words
+          </label>
           <div className="media-actions">
             <button className="btn btn-small" disabled={people.length >= 2} onClick={async () => { const [file] = await window.ivstudio.files.pick('picture'); if (file) addPerson({ picture: file, name: '' }) }}>
               + Picture

@@ -1,10 +1,20 @@
 # ComfyUI in the IV Studio cloud reads models from the iv-studio-models volume, mounted at /models.
+# Each key is a ComfyUI model folder; the folders match models.json's and cloud.json's "folder" (its first part).
 iv_studio_cloud:
   base_path: /models
   diffusion_models: diffusion_models
   text_encoders: text_encoders
   vae: vae
+  vae_approx: vae_approx
   loras: loras
+  checkpoints: checkpoints
+  clip_vision: clip_vision
+  embeddings: embeddings
   latent_upscale_models: latent_upscale_models
   upscale_models: upscale_models
+  background_removal: background_removal
+  geometry_estimation: geometry_estimation
+  frame_interpolation: frame_interpolation
+  model_patches: model_patches
   refmods: refmods
+  seedvr2: SEEDVR2

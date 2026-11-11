@@ -26,7 +26,7 @@ export function UpdateButton({ notify }) {
     )
   if (u?.status === 'available')
     return (
-      <button className="nav-update ready" onClick={() => install(notify)} title={u.portable ? `IV Studio ${u.available} is out. Opens its download page: unzip the new portable zip over this folder; the data folder stays.` : `IV Studio ${u.available} is out. Opens its download page: install it over this copy.`}>
+      <button className="nav-update ready" onClick={() => install(notify)} title={u.portable ? `IV Studio ${u.available} is out, but this copy can't install it itself.${u.why ? ` ${u.why}` : ''} Opens its download page: unzip the new portable zip over this folder; the data folder stays.` : `IV Studio ${u.available} is out. Opens its download page: install it over this copy.${u.why ? ` ${u.why}` : ''}`}>
         ↓ Get {u.available}
       </button>
     )
@@ -51,8 +51,10 @@ export function UpdateSettings({ notify, n }) {
     checking: 'Checking for a new version…',
     current: `You have the newest version.${u.checkedAt ? ` Checked ${when(u.checkedAt)}.` : ''}`,
     available: u.portable
-      ? `IV Studio ${u.available} is out. This portable copy doesn't update itself: download IV-Studio-Portable-win-x64.zip and unzip it over this folder. Your data folder beside IV Studio.exe stays as it is.`
-      : `IV Studio ${u.available} is out. On a Mac it doesn't install itself yet: download it and drag it into Applications over this copy.`,
+      ? `IV Studio ${u.available} is out, but this copy can't install it itself.${u.why ? ` ${u.why}` : ''} Download IV-Studio-Portable-win-x64.zip and unzip it over this folder; your data folder beside IV Studio.exe stays as it is.`
+      : u.why
+        ? `IV Studio ${u.available} is out, but this copy can't install it itself. ${u.why}`
+        : `IV Studio ${u.available} is out. Download it and install it over this copy.`,
     downloading: `Downloading IV Studio ${u.available}… ${Math.round(u.percent || 0)}%`,
     ready: `IV Studio ${u.available} is downloaded. Restart to install it, or it installs when you next quit.`,
     error: `Couldn't check for updates: ${u.error}`
@@ -82,7 +84,7 @@ export function UpdateSettings({ notify, n }) {
       </button>
     )
   return (
-    <SetCard id="updates" n={n} title="Updates" sub={u.portable ? 'Portable copy: IV Studio tells you when a new version is out.' : u.manual ? 'IV Studio tells you when a new version is out.' : 'New versions download in the background and install with one click.'} aside={pill && <Pill tone={tone}>{pill}</Pill>}>
+    <SetCard id="updates" n={n} title="Updates" sub={u.portable ? 'Portable copy: new versions download in the background and install with one click, keeping your data folder.' : u.manual ? 'IV Studio tells you when a new version is out.' : 'New versions download in the background and install with one click.'} aside={pill && <Pill tone={tone}>{pill}</Pill>}>
       <SetField label="This version" hint={line}>
         <div className="set-inline">
           <span className="set-big mono">v{u.version}</span>

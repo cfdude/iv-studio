@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react'
 import { fileUrl } from './edit/model'
-import Hero, { ART } from './Hero'
+import { ART } from './Hero'
+import Stage from './Stage'
+import QuickBar from './AudioQuick'
+import { sendIdea } from './PromptWriter'
 import { Tile, toSets, Viewer } from './MediaLibrary'
 import Loading from './Loading'
+import { AgentPanel, useAgentRun } from './AgentRun'
+import WhatsNew, { NewsChip } from './WhatsNew'
+import { askAgent, useAgentName } from './ChatPanel'
+import { ask } from './Confirm'
 
 // The home page: start something in one click, pick up the latest renders, and the cast with their voices.
 // Each quick-start card shows its page's own banner art.
@@ -18,8 +25,47 @@ const QUICK = [
 ]
 const RECENT = 8
 
+// Your recipes (recipes.js): requests that worked in the chat, saved by its agent when you asked ("save this as a
+// recipe"). A click sends it to the chat again; × takes the button away.
+function Recipes({ notify }) {
+  const [list, setList] = useState([])
+  const agent = useAgentName()
+  useEffect(() => {
+    window.ivstudio.recipes.list().then(setList, () => {})
+    return window.ivstudio.recipes.onChange(setList)
+  }, [])
+  if (!list.length) return null
+  async function remove(r) {
+    if (!(await ask({ title: `Remove “${r.name}”?`, message: 'The button goes from the Dashboard. You can ask the chat to save it again.', confirm: 'Remove it' }))) return
+    try {
+      setList(await window.ivstudio.recipes.remove(r.id))
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+  return (
+    <div className="dash-recipes">
+      <p className="mono small dim">Your recipes{agent ? ` · ${agent} makes them again` : ''}</p>
+      <div className="recipe-row">
+        {list.map((r) => (
+          <span key={r.id} className="recipe">
+            <button className="recipe-go" disabled={!agent} title={agent ? r.instruction : 'Install Claude Code or Codex to use recipes'} onClick={() => askAgent({ text: r.instruction, about: `the recipe “${r.name}”`, send: true })}>
+              <span className="recipe-name">{r.name}</span>
+              {r.note && <span className="small dim">{r.note}</span>}
+            </button>
+            <button className="lora-chip-x recipe-x" aria-label={`Remove the recipe ${r.name}`} onClick={() => remove(r)}>
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard(ctx) {
   const { characters, start, startShotWith, go, notify, info, setup } = ctx
+  const [idea, setIdea] = useState('')
   // a Mac renders H3 on its own Apple GPU (ComfyUI 0.44+) or in the cloud: until one is set up, say so
   const macLocal = info?.platform === 'darwin' && setup && !setup.remote
   const [items, setItems] = useState(null)
@@ -27,6 +73,18 @@ export default function Dashboard(ctx) {
   const [voices, setVoices] = useState([])
   const [ready, setReady] = useState([])
   const [open, setOpen] = useState(null)
+  const [newsOpen, setNewsOpen] = useState(false)
+  // the person's own Claude Code or Codex can make the idea here instead (AgentRun.jsx)
+  const agent = useAgentRun()
+  const agentBusy = agent?.run?.status === 'running'
+  const letAgent = async () => {
+    try {
+      await window.ivstudio.agentRun.start(idea)
+      setIdea('')
+    } catch (err) {
+      notify(err.message)
+    }
+  }
   useEffect(() => {
     window.ivstudio.library.all().then(setItems, (err) => (notify(err.message), setItems([])))
     window.ivstudio.edits.list().then(setEdits, () => {})
@@ -39,25 +97,35 @@ export default function Dashboard(ctx) {
 
   return (
     <div className="dashboard">
-      <Hero title="What if?" kicker="Infinite Variance Studio" help="home" />
-      {/* once after an update: what this version brought (news.js); all of it stays on Settings → Updates */}
-      {ctx.news && (
-        <section className="news-strip" aria-label="What's new">
-          <div className="news-strip-head">
-            <span className="mono small pink">New in {ctx.news.version}</span>
-            <button className="lora-chip-x" aria-label="Dismiss" onClick={ctx.dismissNews}>
-              ×
-            </button>
-          </div>
-          <ul>
-            {ctx.news.items.map((n) => (
-              <li key={n.text} className="small">
-                {n.text}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <Stage effect="pulse" art="eye" title="What if?" kicker="Infinite Variance Studio" help="home">
+        {/* straight into Create, where the prompt writer turns the words into a shot (PromptWriter sendIdea) */}
+        <QuickBar
+          label="What do you want to make?"
+          placeholder="What do you want to make? A fox crossing a frozen lake at dawn…"
+          value={idea}
+          onChange={setIdea}
+          goLabel="Make it"
+          disabled={!idea.trim()}
+          onGo={() => (start('shot'), sendIdea(idea, true), setIdea(''))}
+          after={
+            agent?.pick && (
+              <button
+                className="btn agent-go"
+                disabled={!idea.trim() || agentBusy || agent.cloud}
+                title={agent.cloud ? `${agent.name} only renders on this PC: switch Cloud to This PC to use it` : agentBusy ? `${agent.name} is still working on the last idea` : `${agent.name} writes the prompt and renders the previews here, on this PC`}
+                onClick={letAgent}
+              >
+                Let {agent.name} make it
+              </button>
+            )
+          }
+        />
+      </Stage>
+      <AgentPanel run={agent?.run} go={go} onStop={() => window.ivstudio.agentRun.stop().catch((err) => notify(err.message))} onDismiss={() => window.ivstudio.agentRun.dismiss().catch(() => {})} />
+      {/* once after an update: a small button that opens what this version brought (news.js, WhatsNew.jsx); all of
+          it stays on Settings → Updates */}
+      <NewsChip news={ctx.news} onOpen={() => setNewsOpen(true)} onDismiss={ctx.dismissNews} />
+      {newsOpen && ctx.news && <WhatsNew news={ctx.news} go={go} onClose={() => (setNewsOpen(false), ctx.dismissNews())} />}
       {macLocal && (
         <p className="notice">
           On a Mac, shots render on your Apple GPU through ComfyUI 0.44 or newer, or in the cloud. For the cloud, set up your own RunPod or Modal account, or Comfy Cloud, and IV Studio sends the work there.{' '}
@@ -80,6 +148,7 @@ export default function Dashboard(ctx) {
             </button>
           ))}
         </div>
+        <Recipes notify={notify} />
       </section>
 
       <section className="block">

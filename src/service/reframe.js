@@ -131,7 +131,7 @@ export class Reframes {
     if (!file || !fs.existsSync(file)) throw new Error('Pick a video.')
     if (!SHAPES[shape]) throw new Error(`shape must be ${Object.keys(SHAPES).join(', ')}.`)
     const studio = this.studio()
-    if (studio.comfy.remote) throw new Error('Reframe runs on this computer’s ComfyUI.')
+    if (studio.comfy.hosted) throw new Error('Reframe runs on this computer’s ComfyUI or on your own cloud (RunPod, Modal).')
     const info = await probe(this.edits.ffprobe, file)
     if (info.kind !== 'video') throw new Error('Reframe takes a video; pictures go through Create → Image.')
     const g = reframeGeometry({ width: info.width, height: info.height, shape, megapixels, zoom })
@@ -148,7 +148,10 @@ export class Reframes {
     // The bars start as the shot itself enlarged and heavily blurred: on flat grey, H3 kept the top bar grey.
     await this.edits.run(['-y', '-v', 'error', '-i', file, ...silent, '-filter_complex', `[0:v]fps=24,split[a][b];[a]scale=${g.W}:${g.H}:force_original_aspect_ratio=increase,crop=${g.W}:${g.H},boxblur=40:3[bg];[b]scale=${g.scaled.w}:${g.scaled.h}:flags=lanczos,crop=${g.w}:${g.h}[fg];[bg][fg]overlay=${g.x}:${g.y},format=yuv420p[v];[${info.hasAudio ? '0:a:0' : '1:a:0'}]apad=whole_dur=${dur},atrim=end=${dur}[s]`, '-map', '[v]', '-map', '[s]', '-frames:v', String(frames), '-c:v', 'libx264', '-crf', '12', '-preset', 'fast', '-c:a', 'aac', '-ar', '48000', padded])
     await this.edits.run(['-y', '-v', 'error', '-f', 'lavfi', '-i', `color=c=white:s=${g.W}x${g.H}`, '-vf', `drawbox=x=${g.hole.x}:y=${g.hole.y}:w=${g.hole.w}:h=${g.hole.h}:color=black:t=fill,format=rgb24`, '-frames:v', '1', mask])
-    const graph = reframeGraph({ padded, mask: await studio.comfy.upload(mask), prompt: reframePrompt({ shape, about }), seed, prefix: `iv_studio/reframes/${base}` })
+    // on the person's own cloud the padded shot is uploaded and read from ComfyUI's input folder
+    const cloud = studio.comfy.ownCloud
+    const graph = reframeGraph({ padded: cloud ? await studio.comfy.upload(padded) : padded, mask: await studio.comfy.upload(mask), prompt: reframePrompt({ shape, about }), seed, prefix: `iv_studio/reframes/${base}` })
+    if (cloud) graph.load.class_type = 'VHS_LoadVideo'
     const job = await studio.submitGraph({ kind: 'reframe', graph, name: `Reframe to ${shape}`, plan: { reframe: { shape, from: file, filled: g.filled } } })
     let j = job
     for (const end = Date.now() + 30 * 60e3; Date.now() < end; await new Promise((r) => setTimeout(r, 4000))) {

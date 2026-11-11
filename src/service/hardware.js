@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { finishFor, previewFor, speedForTier } from './speed.js'
 
 const GB = 1024 ** 3
 
@@ -109,7 +110,14 @@ export const MODEL_GROUPS = [
   { id: 'finish_up', label: 'Finals without DLSS 5: 2× upscale (Real-ESRGAN)', ids: ['esrgan_x2'], needs: 'video' },
   { id: 'design', label: 'Designing characters (Z-Image)', ids: ['zimage', 'zimage_te', 'zimage_vae'], needs: 'pictures' },
   { id: 'sdxl', label: 'SDXL pictures', ids: ['sdxl_base'], needs: 'pictures' },
+  // MiniMax H3 Image reads text with H3's own text encoder, so it's shared with the video shots
+  { id: 'h3image', label: 'Pictures with MiniMax H3 Image (16 MP, edits with up to 16 pictures)', ids: ['h3image', 'h3image_vae', 'text_encoder'], needs: 'pictures' },
   { id: 'music', label: 'Music (MiniMax Music 3 and ACE-Step)', ids: ['music3_dit', 'music3_te', 'music3_vae', 'ace15'], needs: 'music' },
+  { id: 'sounds', label: 'Sound effects (Stable Audio 3)', ids: ['sa3', 'sa3_te'], needs: 'music' },
+  { id: 'pictools', label: 'Picture tools: relight, remove background, depth', ids: ['relight_unet', 'relight_te', 'relight_vae', 'relight_lightning', 'relight_lora', 'birefnet', 'moge'], needs: 'pictures' },
+  { id: 'effects', label: 'Effects gallery (Wan 2.1 and 24 effect LoRAs)', ids: ['ff_wan2_1_i2v_480p_14b_fp8_scaled', 'ff_umt5_xxl_fp8_e4m3fn_scaled', 'ff_clip_vision_h', 'ff_wan_2_1_vae', 'ff_lightx2v_i2v_14b_480p_cfg_step_distill_rank64_bf16', 'ff_cakeify_16_epochs', 'ff_angry_face_5_epochs', 'ff_crying_20_epochs', 'ff_laughing_15_epochs', 'ff_puppy_50_epochs', 'ff_wan21_penqi_000003500', 'ff_money_000003000', 'ff_crush_20_epochs', 'ff_deflate_20_epochs', 'ff_electrify_50_epochs', 'ff_explode_30_epochs', 'ff_inflate_20_epochs', 'ff_rotate_20_epochs', 'ff_squish_18', 'ff_360_orbit', 'ff_arc_shot', 'ff_wan21_i2v_rotation_000003750', 'ff_car_chase', 'ff_crane_down', 'ff_crane_overhead', 'ff_crane_up', 'ff_crash_zoom_in', 'ff_wan_21_i2v_dolly_zoom', 'ff_hero_run'], needs: 'video' },
+  { id: 'ltx', label: 'Dub, VFX, Transformations and Transitions (LTX-2.5)', ids: ['ff_ltx_2_5_22b_distilled_transformer_comfy_int8_convrot', 'ff_gemma4_12b_with_proj_ltx_2_5_comfy_int8_convrot', 'ff_ltx_2_5_video_vae_bf16', 'ff_ltx_2_5_audio_vae_bf16', 'ff_ltx_2_3_22b_ic_lora_dubit_0_9', 'ff_ltx2_3_transition', 'ff_ltx_2_5_22b_ic_lora_sdr_to_hdr_1_0', 'ff_ltx_2_5_22b_ic_lora_sdr_to_hdr_scene_emb', 'ff_ltx_2_5_22b_ic_lora_clean_plate_1_0', 'ff_ltx_2_5_22b_ic_lora_day_to_night_0_9', 'ff_ltx_2_5_22b_ic_lora_water_simulation_0_9'], needs: 'video' },
+  { id: 'slowmo', label: 'Smooth and slow motion (FILM)', ids: ['ff_film_net_fp16'], needs: 'video' },
   { id: 'replace', label: 'Replace: masks and descriptions', ids: ['sam31', 'describer'], needs: 'video' },
   { id: 'remake_swap', label: 'Replace: swapping people', ids: ['remake_swap'], needs: 'video' },
   { id: 'remake_edit', label: 'Replace: changing the scene', ids: ['remake_edit'], needs: 'video' },
@@ -147,7 +155,7 @@ const TIERS = {
   top: { title: 'This computer can do everything, fast', summary: 'Render shots, pictures, music and voices here, finish at full size, and train characters on this computer.', renderOn: 'local' },
   all: { title: 'This computer can do everything', summary: 'Render shots, pictures, music and voices here and finish at full size. Big jobs take a few minutes.', renderOn: 'local' },
   most: { title: 'This computer can make shots, a little smaller', summary: 'Shots, pictures, music and voices all run here. Keep finals at 1 to 1.5 MP; use the cloud for the biggest jobs.', renderOn: 'both' },
-  some: { title: 'Pictures here, video in the cloud', summary: 'Pictures, music and voices run here. Video shots are slow on this card, so make them in the cloud.', renderOn: 'both' },
+  some: { title: 'Pictures here, video in the cloud', summary: 'Pictures, music and voices run here. Video shots are slow on this card: make them in the cloud, or here on the Low memory speed preset.', renderOn: 'both' },
   cloud: { title: 'Make video in the cloud', summary: 'This computer has no NVIDIA card with enough memory for video. Shots render on RunPod, Modal or Comfy Cloud; IV Studio still edits, plans and organises here.', renderOn: 'cloud' }
 }
 
@@ -182,8 +190,8 @@ export function recommend(scan) {
     const state = t.id === 'top' || t.id === 'all' ? 'great' : t.id === 'most' ? 'good' : t.id === 'some' ? 'ok' : 'weak'
     const say = {
       great: 'Enough memory for MiniMax H3 at full size, SeedVR2 and training.',
-      good: 'Runs H3. Previews at 0.4 MP and finals up to 1.5 MP fit comfortably.',
-      ok: 'Pictures, music and voices fit. H3 video works but is slow here.',
+      good: 'Runs H3. The Balanced speed preset fits: 0.4 MP previews, finals at 1 MP upscaled 2x.',
+      ok: 'Pictures, music and voices fit. H3 video works but is slow here; use the Low memory speed preset.',
       weak: 'Too little memory for H3 video. Pictures at small sizes may work.'
     }[state]
     verdicts.push({ id: 'gpu', label: 'Graphics card', value: `${g.name} · ${fmt(g.vram)}`, state, say })
@@ -260,11 +268,16 @@ export function recommend(scan) {
   verdicts.push({ id: 'writer', label: 'Prompt writer', value: { claude: 'Claude Code', codex: 'Codex', local: ins.ollama ? 'Local (Ollama)' : 'Not set up' }[writer], state: writer === 'local' && !ins.ollama ? 'ok' : 'good', say: writerSay })
 
   // what to set
-  const finalMp = t.id === 'top' || t.id === 'all' ? 2 : t.id === 'most' ? 1.5 : 1
+  // a speed preset (speed.js) from the tier: its preview size, steps and takes, and its finish. A Mac's tiers come
+  // from unified memory (tierOf) and map the same way: all Quality, most Balanced, some Low memory, cloud Balanced.
+  // None of the presets is NVIDIA-only; what finishes the shot is the enhancer above (a Mac never gets SeedVR2 or DLSS 5).
+  const speed = speedForTier(t.id)
+  const preview = previewFor(speed)
   const prefs = {
-    previewMp: t.id === 'top' ? 0.6 : 0.4,
-    quality: t.id === 'top' || t.id === 'all' ? 'standard' : 'draft',
-    finalMp,
+    speed,
+    previewMp: preview.megapixels,
+    quality: preview.steps === 4 ? 'draft' : 'standard',
+    finalMp: finishFor(speed).megapixels,
     enhancer,
     enhanceResolution: t.id === 'top' ? 1440 : 1080,
     ...(enhancer === 'upscale' ? { upscale2x: true, fps: 48 } : {})

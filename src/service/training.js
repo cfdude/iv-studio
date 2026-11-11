@@ -14,6 +14,7 @@ import { Cloud } from './cloud.js'
 import { probe } from './media.js'
 import { comboOptions } from './setup.js'
 import { readSettings } from './paths.js'
+import { checkH3Terms } from './terms.js'
 import { GPUS as RENDER_GPUS, RunPod } from './runpod.js'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -34,7 +35,17 @@ const VOLUME = 'iv-studio-train'
 // RunPod: the training volume (the H3 training files are about 42 GB; datasets and checkpoints take the rest) and
 // Fizgig's own published image, which has its Python and CUDA ready.
 const RP_VOLUME_GB = 80
-const RP_IMAGE = 'ghcr.io/shootthesound/fizgig:latest'
+// Fizgig, the trainer, pinned in one place: the commit the recipe's flags were checked against (v9.3.2), the image
+// built from it (Modal builds on it), and Fizgig's RunPod template, which RunPod training pods are created from so
+// the time supports Fizgig through RunPod's template programme. RunPod's REST v1 keeps a pod linked to its template
+// (v2 only copies the settings), so those pods go through v1. Fizgig 9 runs CUDA 13.4 PyTorch: the template only
+// takes CUDA 13 hosts. Keep train_app.py's FIZGIG_COMMIT and image in step (test/training-runpod.mjs checks).
+export const FIZGIG = {
+  commit: '8630fca0c5d7932d73fe7387fd7c8a4dc99d9467',
+  version: '9.3.2',
+  image: 'ghcr.io/shootthesound/fizgig:9.3.2@sha256:aa84fc35f72ae0e5cdee10a018415d23c0bd4c0a4c55c234187a256ec167719a',
+  template: 'bdrdew7hxw'
+}
 const RP_PREFIX = 'iv-train'
 
 // Where each design still is set. Clothes and light vary so neither welds to the trigger.
@@ -91,7 +102,7 @@ export function estimate({ items, epochs, gpu = 'B200', detail = 'normal', where
 // Enough steps to learn a face from a small set without burning money on a big one (Claire: ~3,500).
 export const defaultEpochs = (items) => Math.max(40, Math.min(120, Math.round(2800 / Math.max(1, items))))
 
-// ---------- the recipe (what the Train step offers; every flag checked against Fizgig 4b3f07f) ----------
+// ---------- the recipe (what the Train step offers; every flag checked against Fizgig 4b3f07f and 9.3.2, 8630fca) ----------
 // Presets: Quick is Fizgig's own "MiniMax H3 Fast" (rank 8, a shorter run, tends to come out more flexible);
 // Standard is what Tess and Theo trained with; Thorough runs half as long again, for big sets.
 export const TRAIN_PRESETS = {
@@ -673,6 +684,8 @@ export class Trainings {
   async startTraining(id, { gpu, epochs, options, more } = {}) {
     if (this.runs.size || this.localRunning()) throw new Error('A character is already training. One at a time.')
     const t = this.get(id)
+    // training makes an H3 LoRA: the H3 terms first (terms.js)
+    await checkH3Terms(null, 'training')
     const where = trainOptions(more ? t.train?.options : options).where
     if (more && t.train?.where && t.train.where !== where) throw new Error('Train more runs where the run was trained.')
     if (where === 'modal' && !(await this.cloud.workspace())) throw new Error('Sign in to Modal on the Cloud page first (steps 1 and 2).')
@@ -907,24 +920,29 @@ export class Trainings {
     let last
     for (const g of order) {
       try {
+        // from Fizgig's template (its image and CUDA 13 hosts), with IV Studio's own start command, volume and port
         const pod = await rp.req('/pods', {
           method: 'POST',
+          v1: true,
           json: {
             name: `${RP_PREFIX}-${mode}-${Date.now().toString(36)}`,
-            image: RP_IMAGE,
-            cloud: 'SECURE',
-            gpu: { id: g, count: 1, minCudaVersion: '12.8' },
+            templateId: FIZGIG.template,
+            cloudType: 'SECURE',
+            computeType: 'GPU',
+            gpuTypeIds: [g],
+            gpuCount: 1,
             dataCenterIds: [vol.dataCenter],
-            disk: 60,
-            mounts: { network: [{ volumeId: vol.id, path: '/workspace' }] },
+            containerDiskInGb: 60,
+            networkVolumeId: vol.id,
+            volumeMountPath: '/workspace',
             ports: ['8189/http'],
-            env: { IV_TOKEN: token, IV_RUN: runName, IV_MODE: mode, IV_IDLE_SECONDS: mode === 'serve' ? '300' : '1800', IV_BUNDLE: bundle },
-            entrypoint: ['bash', '-c'],
-            cmd: ['mkdir -p /opt/iv && echo "$IV_BUNDLE" | base64 -d | tar -xz -C /opt/iv && exec python3 /opt/iv/runpod_train.py']
+            env: { IV_TOKEN: token, IV_RUN: runName, IV_MODE: mode, IV_IDLE_SECONDS: mode === 'serve' ? '300' : '1800', IV_FIZGIG_COMMIT: FIZGIG.commit, IV_BUNDLE: bundle },
+            dockerEntrypoint: ['bash', '-c'],
+            dockerStartCmd: ['mkdir -p /opt/iv && echo "$IV_BUNDLE" | base64 -d | tar -xz -C /opt/iv && exec python3 /opt/iv/runpod_train.py']
           }
         })
         if (mode === 'train' && g !== gpu) this.onLog?.(`${gpu} was taken in ${vol.dataCenter}; started a ${g} instead.`)
-        return { id: pod.id, url: RunPod.url(pod.id), token, gpu: g, perHour: pod.cost, dataCenter: vol.dataCenter, volumeId: vol.id, mode }
+        return { id: pod.id, url: RunPod.url(pod.id), token, gpu: g, perHour: pod.costPerHr ?? pod.cost, dataCenter: vol.dataCenter, volumeId: vol.id, mode, template: pod.templateId || null }
       } catch (err) {
         last = err
         if (!(err.status >= 400 && err.status < 500 && /capacity|available|no (gpu|machine|instance)|stock|resources/i.test(err.message))) throw err
