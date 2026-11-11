@@ -69,6 +69,17 @@ describe('fake ComfyUI: more routes', () => {
     assert.deepEqual(h.outputs, {})
   })
 
+  test('setOutputs gives a finished job the outputs the test chose, from its graph, until it is cleared', async () => {
+    fake.setOutputs((graph, id) => (graph[1].class_type === 'Mask' ? { mask: { text: [id] } } : undefined))
+    const a = await comfy.submit({ 1: { class_type: 'Mask', inputs: {} } })
+    const b = await comfy.submit({ 1: { class_type: 'Other', inputs: {} } })
+    assert.deepEqual((await comfy.req(`/history/${a}`))[a].outputs, { mask: { text: [a] } })
+    assert.deepEqual(Object.keys((await comfy.req(`/history/${b}`))[b].outputs), ['1'], 'undefined keeps the default picture')
+    fake.setOutputs(null)
+    const c = await comfy.submit({ 1: { class_type: 'Mask', inputs: {} } })
+    assert.deepEqual(Object.keys((await comfy.req(`/history/${c}`))[c].outputs), ['1'])
+  })
+
   describe('ComfyUI-Manager', () => {
     test('/manager/version and policy answer plain text, and managerInfo reads them', async () => {
       assert.equal(await managerReq(comfy, '/manager/version', { text: true }), 'V3.37')

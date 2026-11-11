@@ -121,7 +121,7 @@ export async function startFakeComfy({ devices = 'cuda', os = 'linux', version =
     }
     state.history[id] = {
       prompt: [0, id, prompt, extra || {}, []],
-      outputs: { 1: { images: [{ filename: 'fake_00001_.png', subfolder: '', type: 'output' }] } },
+      outputs: state.outputsFor?.(prompt, id) ?? { 1: { images: [{ filename: 'fake_00001_.png', subfolder: '', type: 'output' }] } },
       status: { status_str: 'success', completed: true, messages: [] }
     }
   }
@@ -277,6 +277,9 @@ export async function startFakeComfy({ devices = 'cuda', os = 'linux', version =
     setObjectInfo: (info) => (state.objectInfo = info),
     setModels: (m) => (state.models = m),
     setView: (buf) => (state.view = buf),
+    // What a finished prompt saved: fn(prompt, id) returns the history outputs for it (or undefined for the default
+    // picture). For the tools that wait for their own job, which a test cannot reach in between. null clears it.
+    setOutputs: (fn) => (state.outputsFor = fn),
     // The next n prompts sit in the queue instead of finishing.
     holdNextPrompt: (n = 1) => (state.hold = n),
     // Complete every held job, as if ComfyUI got to it.
