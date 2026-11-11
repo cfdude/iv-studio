@@ -475,6 +475,35 @@ export function installElectronStubs(electron, { answers = {}, tempDir = os.tmpd
   return electron
 }
 
+// The shape of an argument: key names and types, never values (so the trace holds no prompt, path or key).
+// { b: 1, a: 'x' } -> '{a:string,b:number}'; a list is '[]' when empty, else '[<shape of its first item>]'. A key that is
+// a generated id (8 or more hex characters, as in the edit's `media` map) is written `<id>`, so a run's own ids do not
+// change the shape.
+export function shapeOf(v) {
+  if (v === null) return 'null'
+  if (Array.isArray(v)) return v.length ? `[${shapeOf(v[0])}]` : '[]'
+  if (typeof v === 'object') return `{${Object.keys(v).map((k) => [/^[0-9a-f]{8,}$/.test(k) ? '<id>' : k, shapeOf(v[k])]).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, sh]) => `${k}:${sh}`).join(',')}}`
+  return typeof v
+}
+
+// Wraps ipcMain.handle so that each call to a channel is recorded, in order, as one JSON line in `file`:
+// { channel, args } (the argument shapes, without Electron's event). The real handler runs unchanged. This is the
+// page tier's channel trace (design D10): `window.ivstudio` is made by contextBridge, and the main process is where
+// every call arrives, whoever made it. Test code, not product code.
+export function installIpcTrace(ipcMain, { file }) {
+  const real = ipcMain.handle.bind(ipcMain)
+  ipcMain.handle = (channel, listener) =>
+    real(channel, (event, ...args) => {
+      try {
+        fs.appendFileSync(file, `${JSON.stringify({ channel, args: `[${args.map(shapeOf).join(',')}]` })}\n`)
+      } catch {
+        /* the run folder is gone */
+      }
+      return listener(event, ...args)
+    })
+  return ipcMain
+}
+
 // On macOS Electron's 'home', 'videos' and the other user folders do NOT follow $HOME (they come from the account
 // record), so a pinned HOME would still leave app.getPath('videos') at the person's real ~/Movies. This points each one
 // at a folder inside the temp home, and returns { name: folder }.
@@ -524,6 +553,7 @@ if (!state.loaded) {
       const answers = JSON.parse(fs.readFileSync(path.join(here, 'dialog-answers.json'), 'utf8'))
       const electron = require('electron')
       installElectronStubs(electron, { answers, tempDir: path.join(state.runDir, 'dialogs') })
+      installIpcTrace(electron.ipcMain, { file: path.join(state.runDir, 'ipc-trace.jsonl') })
       pinElectronPaths(electron.app, process.env.HOME)
       electronApp = electron.app
     } catch (e) {

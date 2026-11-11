@@ -20,7 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { modalConfigPath } from '../../src/service/cloud.js'
 import { scanHardware } from '../../src/service/hardware.js'
-import { applyEnvPolicy, checkNode, ELECTRON_FOLDERS, guardState, installElectronStubs, pinElectronPaths, readElectronPaths } from '../fakes/guard.mjs'
+import { applyEnvPolicy, checkNode, ELECTRON_FOLDERS, guardState, installElectronStubs, installIpcTrace, pinElectronPaths, readElectronPaths, shapeOf } from '../fakes/guard.mjs'
 import { registerPort, registerProgram, unregisterPort, unregisterProgram } from '../fakes/ports.mjs'
 import { withShims } from '../fakes/shims.mjs'
 
@@ -486,5 +486,50 @@ describe('guard: what the page tier adds', () => {
     }
     assert.equal(app.getPath('videos'), path.join(home, 'Movies'))
     assert.deepEqual(readElectronPaths(app).userData, '/tmp/ud')
+  })
+})
+
+describe('guard: the channel trace', () => {
+  test('shapeOf gives key names and types, never values', () => {
+    assert.equal(shapeOf('secret'), 'string')
+    assert.equal(shapeOf(3), 'number')
+    assert.equal(shapeOf(null), 'null')
+    assert.equal(shapeOf(undefined), 'undefined')
+    assert.equal(shapeOf([]), '[]')
+    assert.equal(shapeOf([{ b: 1, a: 'x' }, { c: true }]), '[{a:string,b:number}]')
+    // a map keyed by generated ids (8 or more hex characters) has the same shape whichever ids a run made
+    assert.equal(shapeOf({ media: { ddb1db9c: { id: 'x' } } }), '{media:{<id>:{id:string}}}')
+    assert.equal(shapeOf({ media: { a8c75d01: { id: 'x' } } }), shapeOf({ media: { ddb1db9c: { id: 'x' } } }))
+    assert.equal(shapeOf({ deadbeef: 1, name: 'x' }), '{<id>:number,name:string}')
+    assert.equal(shapeOf({ prompt: 'a long prompt', character: 'tess', nested: { n: 1, list: [] } }), '{character:string,nested:{list:[],n:number},prompt:string}')
+  })
+
+  test('ipcMain.handle is wrapped: each call records its channel and argument shape in order, then runs the real handler', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ipc-trace-'))
+    const file = path.join(dir, 'ipc-trace.jsonl')
+    const registered = {}
+    const ipcMain = { handle: (channel, fn) => void (registered[channel] = fn) }
+    installIpcTrace(ipcMain, { file })
+    ipcMain.handle('render:plan', async (e, ...args) => ({ ok: true, value: args.length }))
+    ipcMain.handle('queue:list', async () => ({ ok: true, value: [] }))
+    assert.deepEqual(await registered['render:plan']({}, { prompt: 'secret words', n: 2 }, 'tess'), { ok: true, value: 2 })
+    await registered['queue:list']({})
+    await registered['render:plan']({})
+    const lines = fs.readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+    assert.deepEqual(lines.map((l) => [l.channel, l.args]), [['render:plan', '[{n:number,prompt:string},string]'], ['queue:list', '[]'], ['render:plan', '[]']])
+    assert.equal(fs.readFileSync(file, 'utf8').includes('secret words'), false)
+  })
+
+  test('a handler that throws is still recorded, and its error still reaches the caller', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-ipc-trace-'))
+    const file = path.join(dir, 'ipc-trace.jsonl')
+    const registered = {}
+    const ipcMain = { handle: (channel, fn) => void (registered[channel] = fn) }
+    installIpcTrace(ipcMain, { file })
+    ipcMain.handle('x:y', () => {
+      throw new Error('boom')
+    })
+    await assert.rejects(async () => registered['x:y']({}, 1), /boom/)
+    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8').trim()).channel, 'x:y')
   })
 })

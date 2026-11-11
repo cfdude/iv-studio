@@ -10,6 +10,7 @@ import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { evidenceDir, freePort, launchApp, listing, REAL_HOME } from './driver.mjs'
+import { traceRows } from './trace.mjs'
 
 const tmpReal = fs.realpathSync(os.tmpdir())
 const under = (p, dir) => p === dir || p.startsWith(dir + path.sep)
@@ -21,6 +22,7 @@ describe('page tier: the app runs guarded, in temporary folders', () => {
   let before_
   let outsider // a plain local server on a port no fake registered: a real ComfyUI on 8188, say
   const outsiderHits = []
+  traceRows(import.meta.url, () => app)
 
   before(async () => {
     before_ = REAL_FOLDERS.map((d) => listing(d))

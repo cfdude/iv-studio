@@ -217,7 +217,7 @@ export async function launchApp({ name = 'app', fake = null, settings = {}, time
   const copyEvidence = () => {
     const dest = path.join(evidenceDir, name)
     fs.mkdirSync(dest, { recursive: true })
-    for (const f of ['guard-loaded.json', 'guard-refusals.json', 'guard-network-refusals.json', 'guard-trace.json']) {
+    for (const f of ['guard-loaded.json', 'guard-refusals.json', 'guard-network-refusals.json', 'guard-trace.json', 'ipc-trace.jsonl']) {
       if (fs.existsSync(path.join(runDir, f))) fs.copyFileSync(path.join(runDir, f), path.join(dest, f))
     }
     fs.writeFileSync(path.join(dest, 'electron.log'), `args: ${args.join(' ')}\n--- stdout\n${stdout}\n--- stderr\n${stderr}\n`)
@@ -287,6 +287,14 @@ export async function launchApp({ name = 'app', fake = null, settings = {}, time
       refusals: () => app.readJson('guard-refusals.json'),
       networkRefusals: () => app.readJson('guard-network-refusals.json'),
       trace: () => app.readJson('guard-trace.json'),
+      // every channel call the main process handled so far, in order: [{ channel, args }] (argument shapes, no values)
+      ipcTrace: () => {
+        try {
+          return fs.readFileSync(path.join(runDir, 'ipc-trace.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))
+        } catch {
+          return []
+        }
+      },
       // runs an expression in the window and returns its value; a thrown error or a rejected promise throws here
       async evaluate(expression) {
         const r = await cdp.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })

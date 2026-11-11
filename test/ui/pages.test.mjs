@@ -10,6 +10,7 @@ import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { launchApp } from './driver.mjs'
+import { traceRows } from './trace.mjs'
 import { checkRoute, makeFixtures, musicObjectInfo, ROUTES, tempBase, waitFor, writeShinobi, writeSizzle } from './pages.mjs'
 
 const PROMPT = 'integrated_multimodal_description: [Shot 1] A courier runs across a rooftop at dusk.\n\noverall_soundscape: Wind and footsteps.\n\nnon_diegetic_music: N/A'
@@ -28,6 +29,7 @@ describe('page tier: every sidebar page opens', () => {
     return r
   }
   const dataFile = (...p) => path.join(app.data, ...p)
+  traceRows(import.meta.url, () => app)
 
   before(async () => {
     fixtures = makeFixtures(path.join(tempBase(), 'fixtures'))

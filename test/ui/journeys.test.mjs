@@ -11,6 +11,7 @@ import { after, before, describe, test } from 'node:test'
 import { START_MENU } from '../../src/service/startmenu.js'
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { launchApp } from './driver.mjs'
+import { traceRows } from './trace.mjs'
 import { checkRoute, makeFixtures, tempBase, waitFor, writeSizzle } from './pages.mjs'
 
 const PROMPT = 'integrated_multimodal_description: [Shot 1] A courier runs across a rooftop at dusk.\n\noverall_soundscape: Wind and footsteps.\n\nnon_diegetic_music: N/A'
@@ -22,6 +23,7 @@ describe('page tier: the start-menu journeys, to the step before a real render',
   let fixtures
   const results = []
   const api = (name, ...args) => app.evaluate(`window.ivstudio.${name}(${args.map((a) => JSON.stringify(a)).join(', ')})`)
+  traceRows(import.meta.url, () => app)
   const asked = (from) => [...new Set(fake.requests.slice(from).map((r) => `${r.method} ${r.path.split('?')[0]}`))].sort()
 
   // Runs one journey: the menu entry, its page, then its steps. `steps` returns the reads it expects the fake to have
