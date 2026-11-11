@@ -18,8 +18,12 @@ import { projectSettings } from '../../src/service/secrets.js'
 import { SCENE_KINDS, SIZZLE_FORMATS } from '../../src/service/sizzle.js'
 import { DEFAULT_TRACKS } from '../../src/service/timeline.js'
 import { LOCAL_TRAIN, RUNPOD_TRAIN_GPUS, SCENES, TALKS, TRAIN_DEFAULTS, TRAIN_GPUS } from '../../src/service/training.js'
+import { assertHandlerNames } from './main-source.mjs'
 
+// The constants below are what main's handler hands the page. main (src/main/index.js) starts Electron and cannot be
+// imported, so each test also reads main's source and fails if the handler stops handing over these names.
 test('[ipc:music:meta] hands over the two engines, the defaults, the keys and the remix strengths the page offers', () => {
+  assertHandlerNames(assert, 'music:meta', ['MUSIC_ENGINES', 'MUSIC_DEFAULTS', 'ACE_KEYS', 'REMIX'])
   assert.equal(MUSIC_ENGINES[0].id, 'minimax')
   assert.equal(MUSIC_ENGINES.length, 2)
   for (const e of MUSIC_ENGINES) assert.ok(e.label && e.maxSeconds > 0 && e.note, `${e.id} lacks a label, a length or a note`)
@@ -33,6 +37,7 @@ test('[ipc:music:meta] hands over the two engines, the defaults, the keys and th
 })
 
 test('[ipc:loras:meta] hands over the tag buttons, the sort order and the safe and mature Civitai sites', () => {
+  assertHandlerNames(assert, 'loras:meta', ['LORA_TAGS', 'LORA_SORTS', 'CIVITAI_SITES'])
   assert.equal(LORA_TAGS[0].join('|'), '|All', 'the first tag is "All", with no tag value')
   assert.ok(LORA_TAGS.every(([value, label]) => typeof value === 'string' && label))
   assert.deepEqual(LORA_SORTS, ['Most Downloaded', 'Highest Rated', 'Newest'])
@@ -41,6 +46,7 @@ test('[ipc:loras:meta] hands over the tag buttons, the sort order and the safe a
 })
 
 test('[ipc:replace:meta] hands over the resolutions, the character limit, the colour-match tone and where OpenJutsu comes from', () => {
+  assertHandlerNames(assert, 'replace:meta', ['RESOLUTIONS', 'MAX_CHARACTERS', 'DEFAULT_TONE', 'OPENJUTSU'])
   assert.deepEqual(RESOLUTIONS, ['480p', '576p', '736p', '768p', '1080p'])
   assert.equal(MAX_CHARACTERS, 4)
   assert.equal(DEFAULT_TONE.mode, 'Reinhard')
@@ -50,10 +56,12 @@ test('[ipc:replace:meta] hands over the resolutions, the character limit, the co
 })
 
 test('[ipc:remake:meta] hands over the credit line the page shows under a remake', () => {
+  assertHandlerNames(assert, 'remake:meta', ['REMAKE_CREDIT'])
   assert.match(CREDIT, /^Powered by Viggle Remake \(https:\/\/huggingface\.co\/Viggle\/Viggle-Remake\), on MiniMax H3$/)
 })
 
 test('[ipc:training:meta] hands over the GPUs of each place a character can train, the scenes and talks to test with, and the defaults', () => {
+  assertHandlerNames(assert, 'training:meta', ['TRAIN_GPUS', 'RUNPOD_TRAIN_GPUS', 'LOCAL_TRAIN', 'SCENES', 'TALKS', 'TRAIN_DEFAULTS'])
   assert.ok(TRAIN_GPUS.length > 1 && RUNPOD_TRAIN_GPUS.length > 1)
   for (const g of [...TRAIN_GPUS, ...RUNPOD_TRAIN_GPUS, LOCAL_TRAIN]) assert.ok(g.id && g.label && g.perHour >= 0 && g.secPerStep > 0, `${g.id} needs an id, a label, a price and a speed`)
   assert.equal(LOCAL_TRAIN.perHour, 0, 'training on this PC costs nothing')
@@ -64,6 +72,7 @@ test('[ipc:training:meta] hands over the GPUs of each place a character can trai
 })
 
 test('[ipc:sizzle:meta] hands over the three sizes a sizzle reel comes in and the four kinds of scene', () => {
+  assertHandlerNames(assert, 'sizzle:meta', ['SIZZLE_FORMATS', 'SCENE_KINDS'])
   assert.deepEqual(Object.keys(SIZZLE_FORMATS), ['16:9', '9:16', '1:1'])
   for (const [shape, { width, height }] of Object.entries(SIZZLE_FORMATS)) {
     const [w, h] = shape.split(':').map(Number)
@@ -74,6 +83,7 @@ test('[ipc:sizzle:meta] hands over the three sizes a sizzle reel comes in and th
 })
 
 test('[ipc:edits:meta] hands over the default tracks, the export formats and the loudness targets', () => {
+  assertHandlerNames(assert, 'edits:meta', ['DEFAULT_TRACKS', 'FORMATS', 'LOUDNESS'])
   assert.deepEqual(DEFAULT_TRACKS.map((t) => t.id), ['T1', 'V2', 'V1', 'A1', 'A2'])
   assert.deepEqual(Object.keys(FORMATS), ['1080p', '4k', 'vertical', 'square'])
   for (const f of Object.values(FORMATS)) assert.ok(f.width > 0 && f.height > 0 && f.label)

@@ -11,6 +11,7 @@ import { describe, test } from 'node:test'
 import { chooseTarget, copyData, freeBytes, listData, movableEntries, oldCopy, removeOldCopy, verifyCopy, writePointer } from '../../src/service/datafolder.js'
 import { readPointer } from '../../src/service/paths.js'
 import { tempDirReal } from '../fakes/tmp.mjs'
+import { assertCopiesMain } from './main-source.mjs'
 
 const tmp = () => tempDirReal('iv-data-')
 const write = (file, text) => (fs.mkdirSync(path.dirname(file), { recursive: true }), fs.writeFileSync(file, text), file)
@@ -27,6 +28,9 @@ describe('window channels: data folder', () => {
   write(path.join(defaultDir, 'Local Storage', 'leveldb', 'x'), 'the window\'s own file stays put')
 
   test('[ipc:data:size] counts the bytes and files of what IV Studio keeps, not the window\'s own files', async () => {
+    // A copy of main's glue for data:size (main starts Electron, so it cannot be imported); the drift check reads
+    // main's source and fails if the copied logic changes there. main's BASE folder is this test's defaultDir.
+    assertCopiesMain(assert, 'data:size', "const items = await listData(defaultDir) return { bytes: items.reduce((n, i) => n + i.size, 0), files: items.filter((i) => !i.dir).length }", { BASE: 'defaultDir' })
     const items = await listData(defaultDir)
     const r = { bytes: items.reduce((n, i) => n + i.size, 0), files: items.filter((i) => !i.dir).length }
     assert.equal(r.files, 3)

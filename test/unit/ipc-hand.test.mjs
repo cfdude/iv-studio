@@ -20,6 +20,7 @@ import { findFizgig, MODEL_FILES, Trainings } from '../../src/service/training.j
 import { startFakeComfy } from '../fakes/comfyui.mjs'
 import { startFakeGithub, startFakeOllama } from '../fakes/outside.mjs'
 import { tempDirReal } from '../fakes/tmp.mjs'
+import { assertCopiesMain } from './main-source.mjs'
 
 const tmp = () => tempDirReal('iv-hand-')
 const write = (file, text = 'x') => (fs.mkdirSync(path.dirname(file), { recursive: true }), fs.writeFileSync(file, text), file)
@@ -42,7 +43,9 @@ describe('window channels: faces and Fizgig', () => {
       { id: 'blank', name: 'Blank', picture: path.join(dir, 'gone.png') },
       { id: 'tess', name: 'Tess' }
     ])
-    // what main's handler does with the Studio's answers
+    // This is a copy of main's glue for remake:faces. main (src/main/index.js) starts Electron, so its handler cannot be imported;
+    // the drift check below reads main's source and fails if the copied logic changes there.
+    assertCopiesMain(assert, 'remake:faces', "studio.characters().map((c) => ({ id: c.id, name: c.name, characterId: c.id, picture: studio.facePicture(c, resources), lora: !!c.lora })).filter((f) => f.picture)", { "resourcesDir(path.join(app.getAppPath(), 'resources'))": 'resources' })
     const faces = studio.characters().map((c) => ({ id: c.id, name: c.name, characterId: c.id, picture: studio.facePicture(c, resources), lora: !!c.lora })).filter((f) => f.picture)
     assert.deepEqual(faces.map((f) => f.id), ['mine', 'tess'], 'the ready-made Tess shows through the catalogue; the character with a missing file does not')
     assert.equal(faces[0].picture, own)
@@ -64,7 +67,9 @@ describe('window channels: faces and Fizgig', () => {
     t2.face = { file: { url: `${fake.url}/view?filename=face_00001_.png&subfolder=&type=output` } }
     trainings.write(t2)
     const noFace = trainings.create({ name: 'No face yet' })
-    // what main's handler does with the Trainings' and the Studio's answers
+    // A copy of main's glue for replace:characterFaces (main starts Electron, so it cannot be imported); the drift check
+    // reads main's source and fails if the copied logic changes there. main's DATA folder is this test's dir.
+    assertCopiesMain(assert, 'replace:characterFaces', "const out = [] for (const t of trainings.list()) { if (!t.cover) continue try { out.push({ id: t.id, name: t.name, characterId: t.characterId, picture: await studio.localCopy(t.cover, path.join(dir, 'trainings', t.id, 'stills')) }) } catch {} } return out", { DATA: 'dir' })
     const out = []
     for (const t of trainings.list()) {
       if (!t.cover) continue
