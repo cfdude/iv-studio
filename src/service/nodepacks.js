@@ -11,9 +11,10 @@ import { isLocalUrl } from './comfylauncher.js'
 // ComfyUI already has these, built for its own CUDA; a pack's requirements must never replace them.
 const KEEP = /^(torch|torchvision|torchaudio|xformers|triton|triton-windows)\b/i
 
-// Which packs this ComfyUI needs: the ones with any node it doesn't have, leaving out packs for the other OS.
-export function missingPacks(manifest, objectInfo, { linux = false } = {}) {
-  return manifest.node_packs.filter((p) => !(linux && p.windowsOnly) && !(!linux && p.linuxOnly) && p.classes.some((c) => !objectInfo[c]))
+// Which packs this ComfyUI needs: the ones with any node it doesn't have, leaving out packs for the other OS and,
+// when the GPU is known and isn't CUDA (an Apple GPU), packs that only run on CUDA (SeedVR2).
+export function missingPacks(manifest, objectInfo, { linux = false, gpuKind = null } = {}) {
+  return manifest.node_packs.filter((p) => !(linux && p.windowsOnly) && !(!linux && p.linuxOnly) && !(p.cudaOnly && gpuKind && gpuKind !== 'cuda') && p.classes.some((c) => !objectInfo[c]))
 }
 
 // The Python that runs ComfyUI, next to it: the portable build's python_embeded, a venv, or ComfyUI Desktop's .venv.
@@ -107,6 +108,31 @@ export function packVersion(dir) {
     return 0
   }
 }
+// A uv venv has no pip of its own; `uv pip install --python <python>` fills it. Looks for uv on the PATH.
+function whichUv(env = process.env) {
+  const exe = process.platform === 'win32' ? 'uv.exe' : 'uv'
+  for (const d of String(env.PATH || '').split(path.delimiter)) if (d && fs.existsSync(path.join(d, exe))) return path.join(d, exe)
+  return null
+}
+
+// Installs a requirements list with ComfyUI's Python: pip when it has it, else uv, else says so plainly.
+// Returns 'installed' or a sentence for the person.
+export async function installRequirements(python, list, cwd, { run: runner = run, which = whichUv } = {}) {
+  const hasPip = await runner(python, ['-m', 'pip', '--version']).then(() => true, () => false)
+  try {
+    if (hasPip) {
+      await runner(python, ['-m', 'pip', 'install', '-r', list, '--disable-pip-version-check', '--no-warn-script-location'], { cwd })
+      return 'installed'
+    }
+    const uv = which()
+    if (!uv) return 'ComfyUI’s Python has no pip (it is a uv environment) and uv wasn’t found, so its requirements weren’t installed. Install uv, or run `uv pip install --python <ComfyUI’s python> -r requirements.txt` in the pack’s folder.'
+    await runner(uv, ['pip', 'install', '--python', python, '-r', list], { cwd })
+    return 'installed'
+  } catch (err) {
+    return `${hasPip ? 'pip' : 'uv'} couldn’t install all of them: ${err.message}`
+  }
+}
+
 const hasGit = () => run(process.platform === 'win32' ? 'git.exe' : 'git', ['--version']).then(() => true, () => false)
 
 // Installs the packs (each { id or dir, ... } from missingPacks). onProgress gets { dir, label, step, detail }.
@@ -162,12 +188,7 @@ export async function installPacks(packs, { customNodes, python, resourcesDir, o
             say('requirements', kept.join(', '))
             const list = path.join(tmp, `${p.dir}-requirements.txt`)
             fs.writeFileSync(list, kept.join('\n'))
-            try {
-              await run(python, ['-m', 'pip', 'install', '-r', list, '--disable-pip-version-check', '--no-warn-script-location'], { cwd: target })
-              result.requirements = 'installed'
-            } catch (err) {
-              result.requirements = `pip couldn’t install all of them: ${err.message}`
-            }
+            result.requirements = await installRequirements(python, list, target)
           }
         }
         say('done', result.requirements && result.requirements !== 'installed' ? result.requirements : undefined)

@@ -209,7 +209,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
   const chars = items.filter((i) => i.kind === 'character')
   const missingModels = remote ? [] : required.filter((i) => i.status !== 'ok' && !ACTIVE.includes(dl[i.model]?.status))
   const missingBytes = missingModels.reduce((n, i) => n + (i.size || 0), 0)
-  const missingPacks = remote ? [] : packs.filter((i) => i.status !== 'ok' && i.dir && !i.restartNeeded)
+  const missingPacks = remote ? [] : packs.filter((i) => i.status !== 'ok' && i.dir && !i.restartNeeded && !i.loadFailed)
   const waitingPacks = remote ? [] : packs.filter((i) => i.restartNeeded)
   const downloading = Object.values(dl).filter((s) => ACTIVE.includes(s.status)).length
   const errors = Object.entries(dl).filter(([, s]) => s.status === 'error')
