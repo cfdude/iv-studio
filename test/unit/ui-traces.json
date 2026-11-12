@@ -106,7 +106,7 @@
     },
     {
       "channel": "render:plan",
-      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null},{megapixels:number,upscale2x:boolean}]"
+      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null,with:[]},{megapixels:number,upscale2x:boolean}]"
     },
     {
       "channel": "loras:yours",
@@ -114,7 +114,7 @@
     },
     {
       "channel": "render:plan",
-      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null},{megapixels:number,upscale2x:boolean}]"
+      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null,with:[]},{megapixels:number,upscale2x:boolean}]"
     },
     {
       "channel": "timing:estimate",
@@ -208,10 +208,6 @@
     },
     {
       "channel": "remake:faces",
-      "args": "[]"
-    },
-    {
-      "channel": "remake:meta",
       "args": "[]"
     },
     {
@@ -403,7 +399,7 @@
     },
     {
       "channel": "render:plan",
-      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null},{megapixels:number,upscale2x:boolean}]"
+      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null,with:[]},{megapixels:number,upscale2x:boolean}]"
     },
     {
       "channel": "loras:yours",
@@ -411,7 +407,7 @@
     },
     {
       "channel": "render:plan",
-      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null},{megapixels:number,upscale2x:boolean}]"
+      "args": "[{aspect:string,audio:boolean,character:string,engine:string,extraLoras:[],media:[],megapixels:number,mode:string,overlapFrames:number,previews:number,prompt:string,refmods:[],retention:number,sampler:string,scheduler:string,seconds:number,seed:number,speed:string,steps:number,tier:string,voiceLine:null,with:[]},{megapixels:number,upscale2x:boolean}]"
     },
     {
       "channel": "timing:estimate",
@@ -868,10 +864,6 @@
       "args": "[]"
     },
     {
-      "channel": "remake:meta",
-      "args": "[]"
-    },
-    {
       "channel": "remake:check",
       "args": "[string]"
     },
@@ -903,6 +895,10 @@
   "page:settings": [
     {
       "channel": "settings:get",
+      "args": "[]"
+    },
+    {
+      "channel": "chat:status",
       "args": "[]"
     },
     {
