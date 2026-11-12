@@ -42,7 +42,7 @@ import { keychainRefusedText, menuTemplateFor, runpodTokenMissingText } from '..
 import { projectSettings, readSecret, removableSecrets, sealBlockedText, secretStates, tokenClearPatch } from '../service/secrets'
 import { MediaTools } from '../service/media'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
-import { ModelInstaller, hfLoginFrom, setSavedHfToken } from '../service/models'
+import { ModelInstaller, hfLoginFrom, licenceStatus, setSavedHfToken } from '../service/models'
 import { CONTEXT_IR_PRICE, localChat, localWriterModel, normalizeOllamaUrl, ollamaStatus, pullModel, setOllamaSource, unloadOllama } from '../service/prompter'
 import { normalizeApiBase, openaiStatus, parseHeaders, setLlmSource } from '../service/llm'
 import { loadSlate, lookbook, promptVariants, rewritePrompt, writerName } from '../service/filmcraft'
@@ -2837,6 +2837,8 @@ app.whenReady().then(() => {
     setSavedHfToken(unseal(readSettings(BASE).hfToken))
   } catch {}
   handle('models:hfLogin', () => ({ from: hfLoginFrom() }))
+  // which gated models' licences the login has accepted (Setup's "Check licences"); the token never leaves main
+  handle('models:licences', (pages) => licenceStatus(studio.manifest, pages))
   handle('characters:list', async () => (await catalog?.attachVoices().catch(() => {}), studio.characters()))
   // Ready-made characters: bundled picture, LoRA downloaded on request (resources/characters/catalog.json).
   catalog = new CharacterCatalog({ studio, voices, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')) })

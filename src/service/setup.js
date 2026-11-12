@@ -4,7 +4,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { findComfyElsewhere } from './comfylauncher.js'
-import { appleUpscalerCheck, gpuCheck } from './gpu.js'
+import { appleUpscalerCheck, findGpu, gpuCheck } from './gpu.js'
 import { packVersion } from './nodepacks.js'
 
 // Why a ComfyUI request failed, as a Setup item's status, detail and fix:
@@ -102,8 +102,14 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
     } catch {}
   }
   const onDisk = (dir) => !!dir && !!customNodes?.some((d) => fs.existsSync(path.join(d, dir)))
+  // ComfyUI writes __pycache__ into a pack's folder when it imports it, so a pack folder that has one was already
+  // loaded once: if its nodes are still missing, the import failed and another restart won't change that.
+  const triedToLoad = (dir) => !!customNodes?.some((d) => fs.existsSync(path.join(d, dir, '__pycache__')))
+  // a pack for CUDA only (SeedVR2) is never asked of an Apple GPU; no GPU reported (Comfy Cloud, CPU) leaves it alone
+  const gpuKind = findGpu(stats.devices)?.type || null
   // Shots need the packs in the workflow; the others are for one feature each (Sequences, Replace, SeedVR2...).
   for (const pack of manifest.node_packs) {
+    if (pack.cudaOnly && gpuKind && gpuKind !== 'cuda') continue
     if ((linux && pack.windowsOnly) || (!linux && pack.linuxOnly)) {
       // DLSS is Windows-only; on Linux (the cloud) IV Studio finishes with its own upscale + RIFE instead.
       if (pack.windowsOnly && pack.classes.some((c) => missingClasses.includes(c))) items.push({ id: `pack:${pack.label}`, label: pack.label, status: 'warn', detail: 'Windows only. Finals here use a 2× AI upscale and RIFE frame interpolation instead.', kind: 'node_pack', for: pack.for })
@@ -119,6 +125,10 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
     const outdated = pack.bundled && pack.version && customNodes?.some((d) => fs.existsSync(path.join(d, pack.dir)) && packVersion(path.join(d, pack.dir)) < pack.version)
     if (miss.length && outdated) {
       items.push({ id: `pack:${pack.label}`, label: pack.label, status: 'warn', detail: `A newer version comes with IV Studio (missing nodes: ${miss.join(', ')})`, fix: 'Install the missing node packs to update it, then restart ComfyUI.', kind: 'node_pack', for: pack.for, dir: pack.dir })
+      continue
+    }
+    if (miss.length && onDisk(pack.dir) && triedToLoad(pack.dir)) {
+      items.push({ id: `pack:${pack.label}`, label: pack.label, status: core ? 'missing' : 'warn', detail: 'Installed but failed to load. ComfyUI tried and left out its nodes.', fix: 'See ComfyUI’s log (the window or terminal ComfyUI runs in) for the error. A missing Python requirement is the usual cause.', kind: 'node_pack', for: pack.for, dir: pack.dir, loadFailed: true })
       continue
     }
     if (miss.length && onDisk(pack.dir)) {
@@ -150,7 +160,7 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
       continue
     }
     const ok = loras.some((l) => l.replace(/\\/g, '/') === String(c.lora || '').replace(/\\/g, '/'))
-    items.push({ id: `character:${c.id}`, label: `Character: ${c.name}`, status: ok ? 'ok' : 'warn', detail: ok ? c.lora : `LoRA not found: ${c.lora}`, kind: 'character' })
+    items.push({ id: `character:${c.id}`, label: `Character: ${c.name}`, status: ok ? 'ok' : 'warn', detail: ok ? c.lora : `LoRA not found: ${c.lora}`, kind: 'character', download: !ok && c.catalog ? c.id : undefined })
   }
 
   const blocking = items.filter((i) => i.status === 'missing')

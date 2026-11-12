@@ -13,6 +13,7 @@ import { fileUrl } from './edit/model'
 import { AspectGlyph, DropIcon, StepHead } from './CreateKit'
 import { pretty as refmodTitle, RefModIcon, RefModPicker } from './CharacterSources'
 import { lintSeedance } from '../../../service/seedlint'
+import { huntBlockedReason } from '../../../service/huntreason'
 import { confirmSpend, dollars } from './ComfyAccount'
 import { SpeedRow } from './Speed'
 import { finishFor, previewFor, savedSpeed, speedOf } from '../../../service/speed'
@@ -465,6 +466,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
   const counts = ['picture', 'video', 'audio'].map((k) => [k, form.media.filter((m) => m.kind === k).length]).filter(([, n]) => n)
   const priceText = sd && price?.paid ? (price.max - price.min > 0.005 ? `up to ${dollars(price.max)}` : `about ${dollars(price.max)}`) : ''
   const huntLabel = busy ? 'Starting…' : errors.length && !anyway ? `Fix ${errors.length} error${errors.length > 1 ? 's' : ''} first` : sd ? `Hunt ${r?.previews || ''} take${r?.previews > 1 ? 's' : ''}${priceText ? ` · ${priceText}` : ''}` : `Hunt ${r?.previews || ''} preview${r?.previews > 1 ? 's' : ''}`
+  const whyNot = huntBlockedReason({ busy, prompt: form.prompt, plan, planError, setup, sd, errors, anyway })
   const canHunt = !(busy || !form.prompt.trim() || !r || blocked || (errors.length > 0 && !anyway))
 
   return (
@@ -1058,7 +1060,8 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
             </button>
           )}
           {eta?.line && <p className="eta-line small dim">{eta.line}</p>}
-          <button className="btn btn-primary shot-card-go" disabled={!canHunt} onClick={hunt}>
+          {whyNot && <p className="hunt-why small pink">{whyNot}</p>}
+          <button className="btn btn-primary shot-card-go" disabled={!canHunt} title={whyNot || undefined} onClick={hunt}>
             {huntLabel}
           </button>
         </aside>
@@ -1084,7 +1087,8 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
             Render anyway
           </button>
         )}
-        <button className="btn btn-primary" disabled={!canHunt} onClick={hunt}>
+        {whyNot && <span className="hunt-why small pink">{whyNot}</span>}
+        <button className="btn btn-primary" disabled={!canHunt} title={whyNot || undefined} onClick={hunt}>
           {huntLabel}
         </button>
       </section>

@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { driveName } from './hwsummary.js'
 import { finishFor, previewFor, speedForTier } from './speed.js'
 
 const GB = 1024 ** 3
@@ -38,9 +39,26 @@ function nvidiaSmi(platform) {
 
 // Graphics cards from Electron (app.getGPUInfo('complete')), for cards nvidia-smi can't see (AMD, Intel, Apple)
 const VENDORS = { 0x10de: 'nvidia', 0x1002: 'amd', 0x1022: 'amd', 0x8086: 'intel', 0x106b: 'apple' }
+// Chromium names a card through its ANGLE layer: "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified
+// Version)", "ANGLE (NVIDIA, NVIDIA GeForce RTX 4090 (0x00002684) Direct3D11 vs_5_0 ps_5_0, D3D11)". The card's own
+// name is what a person recognises; anything that isn't in that wrapper is left alone.
+export function cleanGpuName(raw) {
+  const m = /^ANGLE \((.*)\)$/s.exec(String(raw || '').trim())
+  if (!m) return raw || null
+  const i = m[1].indexOf(', ')
+  let name = i < 0 ? m[1] : m[1].slice(i + 2)
+  name = name
+    .replace(/,\s*(?:D3D\d+[\w.-]*|OpenGL[^,]*|Vulkan[^,]*|Metal[^,]*|Unspecified Version|Version[^,]*)$/i, '')
+    .replace(/^ANGLE Metal Renderer:\s*/i, '')
+    .replace(/\s+Direct3D\d+.*$/i, '')
+    .replace(/\s*\(0x[0-9a-f]+\)/gi, '')
+    .trim()
+  return name || raw
+}
+
 export function electronGpus(info) {
   const list = info?.gpuDevice || []
-  return list.map((d) => ({ vendor: VENDORS[d.vendorId] || 'other', name: d.deviceString || d.description || null, vram: null, driver: d.driverVersion || null, active: !!d.active }))
+  return list.map((d) => ({ vendor: VENDORS[d.vendorId] || 'other', name: cleanGpuName(d.deviceString || d.description) || null, vram: null, driver: d.driverVersion || null, active: !!d.active }))
 }
 
 // Free space on each drive: Windows drive letters, or the main folders elsewhere (and mounted volumes on a Mac)
@@ -252,10 +270,10 @@ export function recommend(scan) {
   const md = scan.modelsDrive
   if (md) {
     const state = md.free > needBytes + 20 * GB ? 'great' : md.free > needBytes ? 'ok' : 'weak'
-    verdicts.push({ id: 'disk', label: 'Free space', value: `${fmt(md.free)} free on ${md.path}`, state, say: state === 'weak' ? `The recommended downloads need ${fmt(needBytes)}. Free some space there, or move ComfyUI to a bigger drive.` : needBytes ? `Room for the ${fmt(needBytes)} of recommended downloads.` : 'Room to spare.' })
+    verdicts.push({ id: 'disk', label: 'Free space', value: `${fmt(md.free)} free on ${driveName(md.path)}`, state, say: state === 'weak' ? `The recommended downloads need ${fmt(needBytes)}. Free some space there, or move ComfyUI to a bigger drive.` : needBytes ? `Room for the ${fmt(needBytes)} of recommended downloads.` : 'Room to spare.' })
   } else {
     const best = [...(scan.drives || [])].sort((a, b) => b.free - a.free)[0]
-    if (best) verdicts.push({ id: 'disk', label: 'Free space', value: `${fmt(best.free)} free on ${best.path}`, state: best.free > needBytes + 20 * GB ? 'good' : 'ok', say: `No ComfyUI folder yet. Put ComfyUI on ${best.path}, the drive with the most room (H3 alone is about 61 GB).` })
+    if (best) verdicts.push({ id: 'disk', label: 'Free space', value: `${fmt(best.free)} free on ${driveName(best.path)}`, state: best.free > needBytes + 20 * GB ? 'good' : 'ok', say: `No ComfyUI folder yet. Put ComfyUI on ${driveName(best.path)}, the drive with the most room (H3 alone is about 61 GB).` })
   }
 
   // the prompt writer
@@ -282,7 +300,7 @@ export function recommend(scan) {
     enhanceResolution: t.id === 'top' ? 1440 : 1080,
     ...(enhancer === 'upscale' ? { upscale2x: true, fps: 48 } : {})
   }
-  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale and RIFE frame interpolation; DLSS 5 needs an NVIDIA RTX card on Windows, and SeedVR2 isn't available on an Apple GPU yet." })
+  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale and RIFE frame interpolation. SeedVR2 isn't available on an Apple GPU yet." })
   else if (!nvidia || !win) tips.push({ state: 'info', text: `DLSS 5 needs an NVIDIA RTX card on Windows. Finals here use ${nvidia ? 'SeedVR2 or ' : ''}the 2× upscale and RIFE frame interpolation instead.` })
   if (ins.comfyRunning === false && !ins.comfyFound && local) tips.push({ state: 'warn', text: 'No ComfyUI found on this computer. Install ComfyUI (the Desktop app or the portable build) for anything that renders here.' })
   if (!ins.voices && local && nvidia) tips.push({ state: 'info', text: 'Voices are a one-time 12 GB setup on Audio > Voices.' })

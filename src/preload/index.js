@@ -262,7 +262,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
   hardware: { scan: call('hardware:scan'), apply: call('hardware:apply') },
   samplers: call('h3:samplers'),
   h3Models: call('models:h3'),
-  models: { status: call('models:status'), download: call('models:download'), cancel: call('models:cancel'), onUpdate: on('models:update'), hfLogin: call('models:hfLogin') },
+  models: { status: call('models:status'), download: call('models:download'), cancel: call('models:cancel'), onUpdate: on('models:update'), hfLogin: call('models:hfLogin'), licences: call('models:licences') },
   voices: {
     status: call('voices:status'),
     setup: call('voices:setup'),

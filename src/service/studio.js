@@ -11,7 +11,7 @@ import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { Comfy } from './comfy.js'
 import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
-import { SEEDVR2_DEVICE, seedvr2Refusal } from './gpu.js'
+import { SEEDVR2_DEVICE, findGpu, seedvr2Refusal } from './gpu.js'
 import { planFinish, planPreviews } from './plan.js'
 import { defaultEnhancer } from '../renderer/src/finish.js'
 import { applyFinishSpeed, applySpeed } from './speed.js'
@@ -278,7 +278,7 @@ export class Studio {
     // only for which packs suit Linux; this ComfyUI is on this PC, so this PC's system stands in if it's slow to say
     const stats = await this.comfy.systemStats().catch(() => null)
     const os = stats?.system?.os || process.platform
-    const packs = missingPacks(this.manifest, info, { linux: !['nt', 'win32'].includes(os) })
+    const packs = missingPacks(this.manifest, info, { linux: !['nt', 'win32'].includes(os), gpuKind: findGpu(stats?.devices)?.type || null })
     if (!packs.length) return { results: [], restart: false }
     const place = await comfyPlace(this.comfy, folder)
     const results = await installPacks(packs, { ...place, resourcesDir: this.resourcesDir, onProgress })

@@ -60,6 +60,29 @@ export async function upstreamInfo(url) {
   return { sha256: /^[0-9a-f]{64}$/.test(sha256 || '') ? sha256 : null, size }
 }
 
+// Whether the person's Hugging Face login has accepted each gated model's licence: a HEAD on one of the repo's files
+// with the token. A file that answers (or redirects to the download) is accepted; 401/403 needs the licence;
+// anything else (offline, a slow answer, no token to try) is 'unknown'. pages: gated page URLs from models.json
+// (anything else is ignored). Never logs, keeps or returns the token.
+export async function licenceStatus(manifest, pages, { token = hfToken(), fetchImpl = fetch } = {}) {
+  const out = {}
+  for (const page of [...new Set(pages || [])]) {
+    const m = (manifest.models || []).find((x) => x.gated === page && /^https:\/\/huggingface\.co\//.test(x.url || ''))
+    if (!m) continue
+    if (!token) {
+      out[page] = 'unknown'
+      continue
+    }
+    try {
+      const res = await fetchImpl(m.url, { method: 'HEAD', redirect: 'manual', headers: authFor(m.url, token), signal: AbortSignal.timeout(15000) })
+      out[page] = res.status === 401 || res.status === 403 ? 'needs-licence' : res.status < 400 ? 'accepted' : 'unknown'
+    } catch {
+      out[page] = 'unknown'
+    }
+  }
+  return out
+}
+
 async function hashFile(file, hash) {
   await pipeline(fs.createReadStream(file), new Transform({ transform: (chunk, _e, cb) => (hash.update(chunk), cb()) }))
 }

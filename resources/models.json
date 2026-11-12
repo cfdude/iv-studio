@@ -1735,6 +1735,7 @@
       "url": "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler",
       "dir": "seedvr2_videoupscaler",
       "registry": "https://cdn.comfy.org/ainvfx/seedvr2_videoupscaler/2.5.24/node.zip",
+      "cudaOnly": true,
       "for": "SeedVR2 finishing"
     },
     {

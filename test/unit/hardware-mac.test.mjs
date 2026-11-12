@@ -2,7 +2,7 @@
 //   node --test test/unit/hardware-mac.test.mjs
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
-import { recommend, tierOf } from '../../src/service/hardware.js'
+import { cleanGpuName, electronGpus, recommend, tierOf } from '../../src/service/hardware.js'
 
 const GB = 1024 ** 3
 const sizes = { fl2va: 21e9, ref2va: 21e9, text_encoder: 15e9, video_vae: 2.8e9, audio_vae: 0.6e9, dmad: 0.37e9, upscaler: 0.7e9, zimage: 6.2e9, zimage_te: 4e9, zimage_vae: 0.3e9, music3_dit: 4.9e9, music3_te: 9.2e9, music3_vae: 0.2e9, ace15: 10e9, sam31: 3e9, describer: 8e9 }
@@ -92,6 +92,7 @@ describe('the default finisher (SB-23)', () => {
     const tips = recommend(mac(64)).tips.map((t) => t.text).join(' ')
     assert.match(tips, /2× upscale and RIFE frame interpolation/)
     assert.match(tips, /SeedVR2 isn't available on an Apple GPU yet/)
+    assert.doesNotMatch(tips, /DLSS|NVIDIA RTX/, 'a Mac is not told what a Windows card is needed for')
   })
   test('[mcp:scan_hardware] Real-ESRGAN x2 is recommended with the video models on a Mac, as its own download group', () => {
     const r = recommend(mac(64))
@@ -109,5 +110,29 @@ describe('the default finisher (SB-23)', () => {
   })
   test('[mcp:scan_hardware] a card SeedVR2 cannot run on (AMD or Intel) gets the built-in upscale too', () => {
     for (const platform of ['linux', 'win32']) assert.equal(recommend(pc({ platform, vendor: 'amd', name: 'AMD Radeon RX 7900 XTX' })).prefs.enhancer, 'upscale')
+  })
+})
+
+describe('graphics card names from Chromium', () => {
+  const cases = [
+    ['ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)', 'Apple M5 Max'],
+    ['ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Version 14.5 (Build 23F79))', 'Apple M2 Pro'],
+    ['ANGLE (NVIDIA, NVIDIA GeForce RTX 4090 (0x00002684) Direct3D11 vs_5_0 ps_5_0, D3D11)', 'NVIDIA GeForce RTX 4090'],
+    ['ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11-27.20.100.9168)', 'Intel(R) UHD Graphics 630'],
+    ['ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3060/PCIe/SSE2, OpenGL 4.5.0 NVIDIA 535.54)', 'NVIDIA GeForce RTX 3060/PCIe/SSE2']
+  ]
+  test('strips the ANGLE wrapper, the backend and the device id from real-looking strings', () => {
+    for (const [raw, want] of cases) assert.equal(cleanGpuName(raw), want, raw)
+  })
+  test('a name that is not in the wrapper passes through, and nothing stays null', () => {
+    assert.equal(cleanGpuName('AMD Radeon RX 7900 XTX'), 'AMD Radeon RX 7900 XTX')
+    assert.equal(cleanGpuName('Apple M5 Max'), 'Apple M5 Max')
+    assert.equal(cleanGpuName(undefined), null)
+    assert.equal(cleanGpuName('ANGLE (Apple)'), 'Apple')
+  })
+  test('electronGpus applies it', () => {
+    const [g] = electronGpus({ gpuDevice: [{ vendorId: 0x106b, deviceString: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)', active: true }] })
+    assert.equal(g.name, 'Apple M5 Max')
+    assert.equal(g.vendor, 'apple')
   })
 })

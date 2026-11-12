@@ -1,6 +1,6 @@
 // Which updater a copy of IV Studio runs. Kept free of Electron so a test can drive it with stand-ins.
 //
-// The Apple Silicon build (github.com/cfdude/iv-studio) is signed and notarised by its own maintainer, and upstream's
+// The Apple Silicon build (github.com/cfdude/iv-studio) is signed with its own maintainer's Developer ID (not notarised), and upstream's
 // Mac updater (src/main/macupdater.js) would swap in upstream's unsigned build. So on a Mac the updater is OFF: no
 // check, no download, no install on quit, no swap. The person updates by downloading from the releases page.
 // To turn it back on deliberately, launch with IV_STUDIO_MAC_UPDATES=1 (a Mac copy then uses macupdater.js as upstream

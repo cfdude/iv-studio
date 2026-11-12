@@ -5,6 +5,7 @@ import Hero from './Hero'
 import GetComfy from './GetComfy'
 import { StepHead } from './CreateKit'
 import { startTour } from '../tours'
+import { driveName, gbs, summaryOf } from '../../../service/hwsummary'
 import { setSimpleWords, simpleWords } from '../words'
 import { highContrast, setContrast } from '../a11y'
 import { applyAccent } from '../accent'
@@ -28,7 +29,6 @@ const STEPS = [
 ]
 const ART = { hello: '', you: '', pc: 'pc-card', way: 'pc-path', get: 'pc-path', done: '' }
 const GB = 1024 ** 3
-const gbs = (b) => (b / GB >= 1000 ? `${(b / GB / 1024).toFixed(1)} TB` : `${b / GB >= 100 ? Math.round(b / GB) : (b / GB).toFixed(b / GB < 10 ? 1 : 0)} GB`)
 const WRITERS = { claude: 'Claude Code', codex: 'Codex', hermes: 'Hermes', local: 'Local (Ollama)' }
 
 // small line icons, in the app's style
@@ -387,7 +387,7 @@ function scanRows({ scan, rec }) {
     { icon: 'gpu', label: 'Graphics card', value: v.gpu?.value, state: v.gpu?.state },
     { icon: 'ram', label: 'Memory', value: v.ram?.value, state: v.ram?.state },
     { icon: 'cpu', label: 'Processor', value: v.cpu?.value, state: v.cpu?.state },
-    { icon: 'disk', label: 'Drives', value: (scan.drives || []).map((d) => `${d.path.replace(/\\$/, '')} ${gbs(d.free)} free`).join(' · ') || 'Unknown', state: v.disk?.state || 'ok' },
+    { icon: 'disk', label: 'Drives', value: (scan.drives || []).map((d) => `${driveName(d.path)} ${gbs(d.free)} free`).join(' · ') || 'Unknown', state: v.disk?.state || 'ok' },
     { icon: 'pc', label: 'ComfyUI', value: i.comfyRunning ? 'Running' : i.comfyElsewhere ? `Running at ${i.comfyElsewhere.replace(/^https?:\/\//, '')}` : i.comfyFound ? 'Installed, not running' : 'Not found', state: i.comfyRunning ? 'great' : i.comfyElsewhere ? 'good' : i.comfyFound ? 'ok' : 'weak' },
     { icon: 'writer', label: 'Prompt writers', value: [i.claude && 'Claude Code', i.codex && 'Codex', i.ollama && 'Ollama'].filter(Boolean).join(' · ') || 'None yet', state: i.claude || i.codex || i.ollama ? 'good' : 'ok' },
     { icon: 'ram', label: 'Voices', value: i.voices ? 'Set up' : 'Not set up yet', state: i.voices ? 'good' : 'ok' },
@@ -630,7 +630,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, a
             Change…
           </button>
         </div>
-        <p className="wel-note dim small">Renders made on this computer are kept in ComfyUI’s own output folder, on the drive ComfyUI is on{scan.modelsDrive ? ` (${scan.modelsDrive.path.replace(/\\$/, '')})` : ''}.</p>
+        <p className="wel-note dim small">Renders made on this computer are kept in ComfyUI’s own output folder, on the drive ComfyUI is on{scan.modelsDrive ? ` (${driveName(scan.modelsDrive.path)})` : ''}.</p>
       </section>
     </>
   )
@@ -746,7 +746,7 @@ function Get({ isNew, rec, way, pick, setPick, packs, setPacks, installs, scan, 
       </details>
       <div className="wel-get-foot">
         <span className={`mono small ${short ? 'wel-short' : ''}`}>
-          {gbs(bytes)} selected{md ? ` · ${gbs(md.free)} free on ${md.path}` : ''}
+          {gbs(bytes)} selected{md ? ` · ${gbs(md.free)} free on ${driveName(md.path)}` : ''}
           {short ? ' · not enough room' : ''}
         </span>
         {started ? (
@@ -825,11 +825,4 @@ function WelcomeTerms() {
       </button>
     </div>
   )
-}
-
-// what Settings shows afterwards
-function summaryOf(d) {
-  if (!d) return null
-  const g = (d.scan.gpus || [])[0]
-  return { at: d.scan.at, tier: d.rec.tier.id, title: d.rec.tier.title, gpu: g ? `${g.name}${g.vram ? ` · ${gbs(g.vram)}` : ''}` : null, ram: gbs(d.scan.ram), cpu: d.scan.cpu?.model, canTrain: !!d.rec.training?.localReady }
 }

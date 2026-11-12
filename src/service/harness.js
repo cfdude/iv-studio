@@ -159,6 +159,29 @@ function run(command, args, { input, cwd, timeoutMs }) {
   })
 }
 
+// The arguments for one structured answer from Claude Code. The person's own hooks are switched off for it
+// (--settings with disableAllHooks, checked against `claude --help` and a run in a folder whose settings carry a
+// hook): a notification hook that runs osascript would otherwise make macOS ask whether IV Studio may control System
+// Events. Their login, model and other settings still apply, which --bare and --setting-sources would drop.
+export function claudeWriterArgs({ schema, sysFile, model = '', reads = false }) {
+  return [
+    '-p',
+    '--output-format',
+    'json',
+    '--json-schema',
+    JSON.stringify(schema),
+    '--tools',
+    reads ? 'Read' : '',
+    '--strict-mcp-config',
+    '--settings',
+    JSON.stringify({ disableAllHooks: true }),
+    '--no-session-persistence',
+    '--system-prompt-file',
+    sysFile,
+    ...(model ? ['--model', model] : [])
+  ]
+}
+
 // One structured answer from Claude Code or Codex. images: [{ name, data }] (base64 JPEGs), saved into the run's
 // folder; the user text names them. Returns the parsed object.
 export async function harnessJson({ engine, model, system, user, schema, images = [], timeoutMs = 300000 }) {
@@ -171,24 +194,7 @@ export async function harnessJson({ engine, model, system, user, schema, images 
     if (engine === 'claude') {
       const sysFile = path.join(dir, 'system.txt')
       fs.writeFileSync(sysFile, system)
-      const out = await run(
-        exe,
-        [
-          '-p',
-          '--output-format',
-          'json',
-          '--json-schema',
-          JSON.stringify(schema),
-          '--tools',
-          images.length ? 'Read' : '',
-          '--strict-mcp-config',
-          '--no-session-persistence',
-          '--system-prompt-file',
-          sysFile,
-          ...(model ? ['--model', model] : [])
-        ],
-        { input: user, cwd: dir, timeoutMs }
-      )
+      const out = await run(exe, claudeWriterArgs({ schema, sysFile, model, reads: images.length > 0 }), { input: user, cwd: dir, timeoutMs })
       const res = JSON.parse(out)
       if (res.is_error) throw new Error(`Claude Code: ${String(res.result || res.subtype || 'error').slice(0, 300)}`)
       if (res.structured_output) return res.structured_output

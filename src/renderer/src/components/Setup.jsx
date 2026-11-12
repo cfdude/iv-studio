@@ -62,6 +62,32 @@ function ModelAction({ item, dl }) {
   )
 }
 
+// A ready-made character whose LoRA isn't in ComfyUI: the same download as the Characters page (characters:install)
+function CharacterAction({ item, recheck, notify }) {
+  const [pct, setPct] = useState(null)
+  const id = item.download
+  useEffect(() => window.ivstudio.characters.onProgress(({ id: cid, progress }) => cid === id && setPct(Math.round(progress * 100))), [id])
+  if (!id || item.status === 'ok') return <span />
+  async function get() {
+    setPct(0)
+    try {
+      await window.ivstudio.characters.install(id)
+      recheck()
+    } catch (err) {
+      notify(err.message)
+    } finally {
+      setPct(null)
+    }
+  }
+  return (
+    <div className="dl">
+      <button className="btn btn-small" disabled={pct != null} onClick={get}>
+        {pct != null ? `Downloading ${pct}%` : 'Download'}
+      </button>
+    </div>
+  )
+}
+
 const STEP = { copying: 'Copying', downloading: 'Downloading', unpacking: 'Unpacking', requirements: 'Installing its requirements', done: 'Installed', skipped: 'Left alone', failed: 'Failed' }
 
 // Installs every missing node pack into this PC's ComfyUI (nodepacks.js), a line per pack as it goes, then offers
@@ -127,7 +153,7 @@ function NodeInstaller({ missing, recheck, notify }) {
   )
 }
 
-function Row({ i, dl, remote, recheck, notify }) {
+function Row({ i, dl, remote, recheck, notify, licence }) {
   return (
     <li className={i.status}>
       <span className="check-icon">{ICON[i.status]}</span>
@@ -140,6 +166,7 @@ function Row({ i, dl, remote, recheck, notify }) {
               Page and licence
             </button>
           )}
+          {i.status !== 'ok' && licence && licence !== 'unknown' && <span className={`hf-licence ${licence}`}> · {licence === 'accepted' ? 'licence accepted' : 'needs its licence'}</span>}
         </div>
         {i.fix && i.status !== 'ok' && i.kind !== 'model' && <div className="small pink">{i.fix}</div>}
         {i.id === 'comfyui' && i.address && (
@@ -160,7 +187,7 @@ function Row({ i, dl, remote, recheck, notify }) {
           </button>
         )}
       </div>
-      {i.kind === 'model' && !remote ? <ModelAction item={i} dl={dl} /> : <span />}
+      {i.kind === 'model' && !remote ? <ModelAction item={i} dl={dl} /> : i.kind === 'character' && i.download && !remote ? <CharacterAction item={i} recheck={recheck} notify={notify} /> : <span />}
     </li>
   )
 }
@@ -200,6 +227,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
     })
   }, [recheck])
 
+  const [licences, setLicences] = useState({})
   const comfyItem = items.find((i) => i.id === 'comfyui')
   const gpuItem = items.find((i) => i.id === 'gpu')
   const comfyUp = comfyItem?.status === 'ok'
@@ -209,7 +237,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
   const chars = items.filter((i) => i.kind === 'character')
   const missingModels = remote ? [] : required.filter((i) => i.status !== 'ok' && !ACTIVE.includes(dl[i.model]?.status))
   const missingBytes = missingModels.reduce((n, i) => n + (i.size || 0), 0)
-  const missingPacks = remote ? [] : packs.filter((i) => i.status !== 'ok' && i.dir && !i.restartNeeded)
+  const missingPacks = remote ? [] : packs.filter((i) => i.status !== 'ok' && i.dir && !i.restartNeeded && !i.loadFailed)
   const waitingPacks = remote ? [] : packs.filter((i) => i.restartNeeded)
   const downloading = Object.values(dl).filter((s) => ACTIVE.includes(s.status)).length
   const errors = Object.entries(dl).filter(([, s]) => s.status === 'error')
@@ -252,7 +280,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
   const rows = (list) => (
     <ul className="checks setup-rows">
       {list.map((i) => (
-        <Row key={i.id} i={i} dl={dl} remote={remote} recheck={recheck} notify={notify} />
+        <Row key={i.id} i={i} dl={dl} remote={remote} recheck={recheck} notify={notify} licence={i.gated ? licences[i.gated] : undefined} />
       ))}
     </ul>
   )
@@ -349,7 +377,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
               </>
             )}
             {x.id === 'extras' && !remote && optional.some((i) => i.gated && i.status !== 'ok') && (
-              <HfLogin notify={notify} pages={[...new Map(optional.filter((i) => i.gated && i.status !== 'ok').map((i) => [i.gated, { url: i.gated, label: i.name.replace(/ \(.*\)$/, '') }])).values()]} />
+              <HfLogin notify={notify} onLicences={setLicences} pages={[...new Map(optional.filter((i) => i.gated && i.status !== 'ok').map((i) => [i.gated, { url: i.gated, label: i.name.replace(/ \(.*\)$/, '') }])).values()]} />
             )}
             {x.id === 'extras' &&
               groups.map(([area, list]) => {

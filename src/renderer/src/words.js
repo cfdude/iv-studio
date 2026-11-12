@@ -76,6 +76,10 @@ const TERMS = [
   [/\bGPUs\b/g, 'graphics cards'],
   [/\bGPU\b/g, 'graphics card'],
   [/\bRAM\b/g, 'memory'],
+  // already says ComfyUI: "ComfyUI node packs" is "ComfyUI add-ons", not "ComfyUI ComfyUI add-ons"
+  [/\bComfyUI [Cc]ustom nodes\b/g, 'ComfyUI add-ons'],
+  [/\bComfyUI [Nn]ode packs\b/g, 'ComfyUI add-ons'],
+  [/\bComfyUI [Nn]ode pack\b/g, 'ComfyUI add-on'],
   [/\b[Cc]ustom nodes\b/g, 'ComfyUI add-ons'],
   [/\b[Nn]ode packs\b/g, 'ComfyUI add-ons'],
   [/\b[Nn]ode pack\b/g, 'ComfyUI add-on'],

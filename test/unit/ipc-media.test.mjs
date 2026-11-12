@@ -28,10 +28,18 @@ describe('window channels: voices', () => {
     const wav = path.join(dir, 'hello.wav')
     ff('-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', wav)
     const voices = new Voices({ dataDir: path.join(dir, 'data'), resourcesDir: path.resolve('resources'), ffmpeg: ffmpegStatic.ffmpegPath, onLog: () => {} })
-    const leftovers = () => fs.readdirSync(os.tmpdir()).filter((f) => f.startsWith('ivs-asr-'))
-    const before = leftovers()
-    await assert.rejects(() => voices.transcribe(wav), /Set up voices first/)
-    assert.deepEqual(leftovers(), before, 'the 16 kHz copy is removed even when the engine is not there')
+    // a private temp folder: other test files run at the same time and make their own ivs-asr-* copies in the shared one
+    const mine = tmp()
+    const was = process.env.TMPDIR
+    process.env.TMPDIR = mine
+    const leftovers = () => fs.readdirSync(mine).filter((f) => f.startsWith('ivs-asr-'))
+    try {
+      await assert.rejects(() => voices.transcribe(wav), /Set up voices first/)
+      assert.deepEqual(leftovers(), [], 'the 16 kHz copy is removed even when the engine is not there')
+    } finally {
+      if (was === undefined) delete process.env.TMPDIR
+      else process.env.TMPDIR = was
+    }
     await assert.rejects(() => voices.transcribe(path.join(dir, 'gone.wav')), /gone\.wav|No such file|Invalid argument/)
   })
 })

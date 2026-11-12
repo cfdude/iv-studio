@@ -12,7 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
 // The counts on the pinned commit (silicon with upstream v1.1.3 merged, 0d85c97). tools is from the server's own listTools;
 // the design's first figure was a regex count that missed two. A snapshot: change these by hand, on purpose, when the code moves.
-const SNAPSHOT = { tools: 214, handled: 384, exposed: 383, events: 47, routes: 32, journeys: 11 }
+const SNAPSHOT = { tools: 214, handled: 385, exposed: 384, events: 47, routes: 32, journeys: 11 }
 
 describe('surfaces', () => {
   let s

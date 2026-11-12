@@ -15,12 +15,12 @@ describe('window channel map', () => {
   const { mapped, hand, imports } = readMap(root)
   const main = fs.readFileSync(path.join(root, 'src/main/index.js'), 'utf8')
 
-  test('mapped plus hand-listed channels are the 384 handled channels, each once', () => {
+  test('mapped plus hand-listed channels are the 385 handled channels, each once', () => {
     const handled = parseHandled(main).map((h) => h.channel)
     const all = [...mapped.map((m) => m.channel), ...hand.map((h) => h.channel)]
-    assert.equal(handled.length, 384)
-    assert.equal(all.length, 384)
-    assert.equal(new Set(all).size, 384)
+    assert.equal(handled.length, 385)
+    assert.equal(all.length, 385)
+    assert.equal(new Set(all).size, 385)
     assert.deepEqual([...all].sort(), [...handled].sort())
   })
 
