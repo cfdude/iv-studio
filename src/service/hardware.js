@@ -38,9 +38,26 @@ function nvidiaSmi(platform) {
 
 // Graphics cards from Electron (app.getGPUInfo('complete')), for cards nvidia-smi can't see (AMD, Intel, Apple)
 const VENDORS = { 0x10de: 'nvidia', 0x1002: 'amd', 0x1022: 'amd', 0x8086: 'intel', 0x106b: 'apple' }
+// Chromium names a card through its ANGLE layer: "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified
+// Version)", "ANGLE (NVIDIA, NVIDIA GeForce RTX 4090 (0x00002684) Direct3D11 vs_5_0 ps_5_0, D3D11)". The card's own
+// name is what a person recognises; anything that isn't in that wrapper is left alone.
+export function cleanGpuName(raw) {
+  const m = /^ANGLE \((.*)\)$/s.exec(String(raw || '').trim())
+  if (!m) return raw || null
+  const i = m[1].indexOf(', ')
+  let name = i < 0 ? m[1] : m[1].slice(i + 2)
+  name = name
+    .replace(/,\s*(?:D3D\d+[\w.-]*|OpenGL[^,]*|Vulkan[^,]*|Metal[^,]*|Unspecified Version|Version[^,]*)$/i, '')
+    .replace(/^ANGLE Metal Renderer:\s*/i, '')
+    .replace(/\s+Direct3D\d+.*$/i, '')
+    .replace(/\s*\(0x[0-9a-f]+\)/gi, '')
+    .trim()
+  return name || raw
+}
+
 export function electronGpus(info) {
   const list = info?.gpuDevice || []
-  return list.map((d) => ({ vendor: VENDORS[d.vendorId] || 'other', name: d.deviceString || d.description || null, vram: null, driver: d.driverVersion || null, active: !!d.active }))
+  return list.map((d) => ({ vendor: VENDORS[d.vendorId] || 'other', name: cleanGpuName(d.deviceString || d.description) || null, vram: null, driver: d.driverVersion || null, active: !!d.active }))
 }
 
 // Free space on each drive: Windows drive letters, or the main folders elsewhere (and mounted volumes on a Mac)
