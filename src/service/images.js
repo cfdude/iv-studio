@@ -50,7 +50,7 @@ export const IMAGE_FAMILIES = [
     edit: true,
     loras: /flux ?3|flux3/i,
     licence: 'FLUX Kommunity License',
-    note: 'Black Forest Labs’ newest open model; edits keep what you don’t mention.'
+    note: 'A newer open model; edits keep what you don’t mention.'
   },
   {
     id: 'krea2',

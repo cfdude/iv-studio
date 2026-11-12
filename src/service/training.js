@@ -106,7 +106,7 @@ export const defaultEpochs = (items) => Math.max(40, Math.min(120, Math.round(28
 // Presets: Quick is Fizgig's own "MiniMax H3 Fast" (rank 8, a shorter run, tends to come out more flexible);
 // Standard is what Tess and Theo trained with; Thorough runs half as long again, for big sets.
 export const TRAIN_PRESETS = {
-  quick: { label: 'Quick', rank: 8, steps: 1500, min: 30, max: 60, note: 'Fizgig’s Fast recipe: likeness in a few hundred steps, and rank 8 tends to stay flexible.' },
+  quick: { label: 'Quick', rank: 8, steps: 1500, min: 30, max: 60, note: 'The fast recipe: likeness in a few hundred steps, and rank 8 tends to stay flexible.' },
   standard: { label: 'Standard', rank: 16, steps: 2800, min: 40, max: 120, note: 'What Tess and Theo trained with.' },
   thorough: { label: 'Thorough', rank: 16, steps: 4200, min: 60, max: 160, note: 'Half as long again, for a big set or when Standard looks unfinished.' }
 }
@@ -788,7 +788,7 @@ export class Trainings {
     return { files: found, missing }
   }
   async localReady() {
-    if (!this.fizgig()) throw new Error('Fizgig isn’t on this computer. Install it (github.com/shootthesound/Fizgig), then pick its folder on the Train step, or train on Modal or RunPod.')
+    if (!this.fizgig()) throw new Error('The trainer isn’t on this computer. Get it from the Train step (Get the trainer), then pick its folder there, or train on Modal or RunPod.')
     const { missing } = await this.localFiles()
     if (missing.length) throw new Error(`These H3 training files aren’t in this computer’s ComfyUI: ${missing.join(', ')}. Get them on Setup, or train in the cloud.`)
   }

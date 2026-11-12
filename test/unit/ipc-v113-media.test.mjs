@@ -353,7 +353,7 @@ describe('window channels: sounds', () => {
     assert.deepEqual(await sounds.list(), [], 'no sounds yet')
     await assert.rejects(() => sounds.create({ description: 'A door.' }), /^Error: This ComfyUI has no EmptyLatentAudio, VAEDecodeAudio, SaveAudio, CLIPLoader \(stable_audio\)\. Update ComfyUI\.$/)
     await withInfo({ ...NODES, CheckpointLoaderSimple: combo('ckpt_name', ['other.safetensors']), CLIPLoader: node({ clip_name: [['other.safetensors']], type: [['stable_audio']] }) }, () =>
-      assert.rejects(() => sounds.create({ description: 'A door.' }), /^Error: Stable Audio 3 needs Stable Audio 3 \(medium\) and Stable Audio 3 text encoder \(T5Gemma\)\. Download them on the Sounds page\.$/)
+      assert.rejects(() => sounds.create({ description: 'A door.' }), /^Error: Sounds need Stable Audio 3 \(medium\) and Stable Audio 3 text encoder \(T5Gemma\)\. Download them on the Sounds page\.$/)
     )
     await withInfo(soundInfo(), async () => {
       savesAudio(2)

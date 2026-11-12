@@ -1,3 +1,4 @@
+import { isHarness } from './harness.js'
 // Audio -> Sounds: sound effects, ambiences, one-shots and short loops from a description, with Stability AI's
 // Stable Audio 3 (medium) on this PC's ComfyUI. The graph is ComfyUI's own Stable Audio 3 template (the one Freefield's
 // Sound Effects app is built from, github.com/neuregex/freefield, MIT), without its Qwen prompt expander: IV Studio's
@@ -100,7 +101,7 @@ export class Sounds {
     const system = `${WRITE_RULES[k.id]}\nAlso give its length in whole seconds (${SOUND_LIMITS.min} to ${SOUND_LIMITS.max}): impacts and clicks 1-3, actions 3-6, ambiences 10-30, loops one or two bars.\nAnswer as JSON: {"description": "...", "seconds": n}.`
     const user = `The sound: ${words}`
     const w = writerOf(s)
-    const engine = w.engine === 'claude' || w.engine === 'codex' ? w.engine : 'local'
+    const engine = isHarness(w.engine) ? w.engine : 'local'
     const out = engine === 'local' ? await ollamaJson({ system, user, schema: WRITE_SCHEMA, model: s.ollamaModel || undefined, cpu: await this.studio.gpuBusy?.().catch(() => false) }) : await harnessJson({ engine, model: w.model, system, user, schema: WRITE_SCHEMA })
     const description = String(out?.description || '').trim()
     if (!description) throw new Error('The writer gave nothing back. Try again.')
@@ -120,7 +121,7 @@ export class Sounds {
     const st = await this.status()
     if (st.error) throw new Error(st.error)
     if (st.missingNodes?.length) throw new Error(`This ComfyUI has no ${st.missingNodes.join(', ')}. Update ComfyUI.`)
-    if (st.missing.length) throw new Error(`Stable Audio 3 needs ${st.missing.map((m) => m.label).join(' and ')}. Download ${st.missing.length === 1 ? 'it' : 'them'} on the Sounds page.`)
+    if (st.missing.length) throw new Error(`Sounds need ${st.missing.map((m) => m.label).join(' and ')}. Download ${st.missing.length === 1 ? 'it' : 'them'} on the Sounds page.`)
     const id = randomUUID().slice(0, 8)
     const s = seed == null || seed === '' ? Math.floor(Math.random() * 2 ** 31) : Math.floor(Number(seed))
     const title = String(name || '').trim() || text.split(/[.,;\n]/)[0].slice(0, 48)

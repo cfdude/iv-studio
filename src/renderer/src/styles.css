@@ -7,8 +7,16 @@
   --line-strong: rgba(241, 237, 229, 0.28);
   --paper: #f1ede5;
   --paper-dim: rgba(241, 237, 229, 0.7);
-  --pink: #f19dac;
   --red: #f44859;
+  --accent-rgb: 244, 72, 89;
+  --pink: #f19dac;
+  --pink-rgb: 241, 157, 172;
+  --accent-pale: #ffd6dc;
+  --accent-pale-rgb: 255, 214, 220;
+  --red-hi: #f47b8a;
+  --red-lo: #7a1c2a;
+  --accent-ink-rgb: 36, 18, 22;
+  --accent-deep-rgb: 60, 18, 24;
   --display: 'Barlow Condensed', 'Barlow', Impact, sans-serif;
   --cream: #f4ecdc; /* the "What If?" lettering */
   --body: 'DM Sans', Arial, sans-serif;
@@ -211,7 +219,7 @@ kbd {
 
 .notice {
   border-left: 2px solid var(--red);
-  background: rgba(244, 72, 89, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   padding: 10px 14px;
   margin: 14px 0 0;
 }
@@ -554,4 +562,133 @@ select {
 :root.ul .link-btn {
   text-decoration: underline !important;
   text-underline-offset: 3px;
+}
+
+/* Scroll bars in the app's colours: a slim cream thumb on a clear track that turns IV red while held. Chromium's own
+   ::-webkit-scrollbar parts, because the standard scrollbar-color can't round the thumb or inset it. */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(241, 237, 229, 0.16);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  min-height: 40px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(241, 237, 229, 0.34);
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--red);
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+:root.hc ::-webkit-scrollbar-thumb {
+  background-color: rgba(241, 237, 229, 0.4);
+}
+
+/* The accent colour (accent.js). Red is the default; the others swap the accent variables, and turn the artwork's
+   reds to the chosen colour with a hue shift, so the same pictures serve every colour. */
+:root[data-accent='blue'] {
+  --red: #3d8bff;
+  --accent-rgb: 61, 139, 255;
+  --pink: #9cc4ff;
+  --pink-rgb: 156, 196, 255;
+  --accent-pale: #d6e6ff;
+  --accent-pale-rgb: 214, 230, 255;
+  --red-hi: #6fa8ff;
+  --red-lo: #173a75;
+  --accent-ink-rgb: 16, 24, 40;
+  --accent-deep-rgb: 18, 34, 62;
+}
+:root[data-accent='blue'] .hero-eye,
+:root[data-accent='blue'] .nav::before,
+:root[data-accent='blue'] .quick-art,
+:root[data-accent='blue'] .workflow-art,
+:root[data-accent='blue'] .set-pc-art,
+:root[data-accent='blue'] .stage-art,
+:root[data-accent='blue'] .brand-logo,
+:root[data-accent='blue'] .wel-art,
+:root[data-accent='blue'] .app-art {
+  filter: hue-rotate(-140deg) saturate(1.05);
+}
+:root[data-accent='purple'] {
+  --red: #a06bff;
+  --accent-rgb: 160, 107, 255;
+  --pink: #cdb6ff;
+  --pink-rgb: 205, 182, 255;
+  --accent-pale: #e6dcff;
+  --accent-pale-rgb: 230, 220, 255;
+  --red-hi: #b88cff;
+  --red-lo: #3d2378;
+  --accent-ink-rgb: 26, 18, 40;
+  --accent-deep-rgb: 40, 24, 66;
+}
+:root[data-accent='purple'] .hero-eye,
+:root[data-accent='purple'] .nav::before,
+:root[data-accent='purple'] .quick-art,
+:root[data-accent='purple'] .workflow-art,
+:root[data-accent='purple'] .set-pc-art,
+:root[data-accent='purple'] .stage-art,
+:root[data-accent='purple'] .brand-logo,
+:root[data-accent='purple'] .wel-art,
+:root[data-accent='purple'] .app-art {
+  filter: hue-rotate(-95deg) saturate(1.05);
+}
+:root[data-accent='orange'] {
+  --red: #ff7a2f;
+  --accent-rgb: 255, 122, 47;
+  --pink: #ffbd8f;
+  --pink-rgb: 255, 189, 143;
+  --accent-pale: #ffe2cc;
+  --accent-pale-rgb: 255, 226, 204;
+  --red-hi: #ff9a5c;
+  --red-lo: #7a3210;
+  --accent-ink-rgb: 38, 22, 14;
+  --accent-deep-rgb: 64, 32, 14;
+}
+:root[data-accent='orange'] .hero-eye,
+:root[data-accent='orange'] .nav::before,
+:root[data-accent='orange'] .quick-art,
+:root[data-accent='orange'] .workflow-art,
+:root[data-accent='orange'] .set-pc-art,
+:root[data-accent='orange'] .stage-art,
+:root[data-accent='orange'] .brand-logo,
+:root[data-accent='orange'] .wel-art,
+:root[data-accent='orange'] .app-art {
+  filter: hue-rotate(28deg) saturate(1.05);
+}
+/* Dark: no colour at all, greys and white, with the artwork in black and white */
+:root[data-accent='mono'] {
+  --red: #77747e;
+  --accent-rgb: 119, 116, 126;
+  --pink: #cfccd6;
+  --pink-rgb: 207, 204, 214;
+  --accent-pale: #f1f0f4;
+  --accent-pale-rgb: 241, 240, 244;
+  --red-hi: #9a97a1;
+  --red-lo: #3a3840;
+  --accent-ink-rgb: 24, 24, 28;
+  --accent-deep-rgb: 38, 38, 44;
+  --ink: #101012;
+  --ink-2: #18181b;
+  --ink-3: #222226;
+}
+:root[data-accent='mono'] .hero-eye,
+:root[data-accent='mono'] .nav::before,
+:root[data-accent='mono'] .quick-art,
+:root[data-accent='mono'] .workflow-art,
+:root[data-accent='mono'] .set-pc-art,
+:root[data-accent='mono'] .stage-art,
+:root[data-accent='mono'] .brand-logo,
+:root[data-accent='mono'] .wel-art,
+:root[data-accent='mono'] .app-art {
+  filter: grayscale(1) contrast(1.05) brightness(0.9);
 }

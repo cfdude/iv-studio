@@ -90,6 +90,34 @@ function split(prompt) {
   return out
 }
 
+const escapeRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// More than one character in a shot (GitHub #30): the others picked in Create's "Who's in it" (request.with, preset
+// ids; request.character stays the one whose LoRA carries them) join the prompt as @ mentions, which
+// resolveMentions then attaches as their face pictures. Their name in the prompt becomes the mention; someone the
+// prompt doesn't name gets a sentence at the start of [Shot 1]. Returns the request without `with`.
+export function withCast(request, members) {
+  const { with: also, ...rest } = request
+  const ids = [...new Set((also || []).filter((id) => id && id !== 'none' && id !== request.character))]
+  if (!ids.length) return rest
+  let prompt = String(rest.prompt || '')
+  const add = []
+  for (const id of ids) {
+    const m = members.find((x) => x.kind === 'character' && x.id === id)
+    if (!m || mentionsIn(prompt).some((h) => h.toLowerCase() === m.handle.toLowerCase())) continue
+    const names = [...new Set([m.name, m.name.split(/\s+/)[0]])].map(escapeRe).join('|')
+    const re = new RegExp(`(^|[^\\w@<{])(?:${names})\\b`, 'g')
+    if (re.test(prompt)) prompt = prompt.replace(re, `$1@${m.handle}`)
+    else add.push(`@${m.handle}`)
+  }
+  if (add.length) {
+    const line = `${add.length > 1 ? `${add.slice(0, -1).join(', ')} and ${add[add.length - 1]} are` : `${add[0]} is`} also in the shot.`
+    const at = prompt.indexOf('[Shot 1]')
+    prompt = at >= 0 ? `${prompt.slice(0, at + 8)} ${line}${prompt.slice(at + 8)}` : `${prompt.trim()}${prompt.trim() ? ' ' : ''}${line}`
+  }
+  return { ...rest, prompt }
+}
+
 // A request whose prompt has @ mentions -> the request to render: mentions resolved, members' pictures attached.
 // Returns { request, notes: [{ level, message }] }. members: Cast.members(); character: the request's picked preset id.
 export function resolveMentions(request, members) {

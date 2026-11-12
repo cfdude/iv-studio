@@ -106,6 +106,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
     audio: true,
     mode: 'text',
     character: 'none',
+    with: [], // others in the shot (GitHub #30): they come along as their face pictures (cast.js withCast)
     prompt: '',
     aspect: '16:9',
     megapixels: 0.4,
@@ -168,12 +169,13 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
   useEffect(() => {
     // a picked character that was deleted falls back to None (the default)
     if (form.character !== 'none' && !characters.some((c) => c.id === form.character)) set({ character: 'none' })
+    if (form.with?.some((id) => !characters.some((c) => c.id === id))) set({ with: form.with.filter((id) => characters.some((c) => c.id === id)) })
   }, [characters])
 
   const request = useMemo(() => {
     const { projectId, projectName, voiceItem, ...r } = form
     // a Continue shot made here hunts takes and gets the full finish (plan.js continueFull)
-    return { ...r, ...(r.mode === 'continue' && r.engine !== 'seedance' ? { continueFull: true } : {}), speed: speedOfForm(form) || undefined, character: r.character ?? 'none', media: r.media.map((m) => ({ kind: m.kind, file: m.path, ...(m.softMouth ? { softMouth: true } : {}) })) }
+    return { ...r, ...(r.mode === 'continue' && r.engine !== 'seedance' ? { continueFull: true } : {}), speed: speedOfForm(form) || undefined, character: r.character ?? 'none', with: r.engine === 'seedance' ? undefined : (r.with || []).filter((id) => id !== r.character), media: r.media.map((m) => ({ kind: m.kind, file: m.path, ...(m.softMouth ? { softMouth: true } : {}) })) }
   }, [form])
   const speed = request.speed || null
   // a Custom shot finishes like the saved preset (the Finish panel's default too)
@@ -184,8 +186,8 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
   const charName = characters?.find?.((c) => c.id === form.character)?.name
   useSelection(
     'create',
-    { setup: `${sd ? 'Seedance 2.5' : 'MiniMax H3'}, ${form.mode} mode, ${charName || 'no character'}, ${form.aspect}, ${form.seconds} s, ${form.media.length} reference${form.media.length === 1 ? '' : 's'}${form.extraLoras.length ? `, ${form.extraLoras.length} LoRA${form.extraLoras.length === 1 ? '' : 's'}` : ''}, prompt ${form.prompt.trim() ? `${form.prompt.trim().split(/\s+/).length} words` : 'empty'}` },
-    [form.engine, form.mode, form.character, form.aspect, form.seconds, form.media.length, form.extraLoras.length, form.prompt.length > 0, Math.round(form.prompt.length / 40)]
+    { setup: `${sd ? 'Seedance 2.5' : 'MiniMax H3'}, ${form.mode} mode, ${charName || 'no character'}${!sd && form.with?.length ? ` with ${form.with.map((id) => characters.find((c) => c.id === id)?.name).filter(Boolean).join(', ')}` : ''}, ${form.aspect}, ${form.seconds} s, ${form.media.length} reference${form.media.length === 1 ? '' : 's'}${form.extraLoras.length ? `, ${form.extraLoras.length} LoRA${form.extraLoras.length === 1 ? '' : 's'}` : ''}, prompt ${form.prompt.trim() ? `${form.prompt.trim().split(/\s+/).length} words` : 'empty'}` },
+    [form.engine, form.mode, form.character, (form.with || []).join(','), form.aspect, form.seconds, form.media.length, form.extraLoras.length, form.prompt.length > 0, Math.round(form.prompt.length / 40)]
   )
   // the shot has a spoken line (or a voice line): a reference video's mouth can't be softened then (softmouth.js)
   const talks = !!form.voiceLine || /<d>[\s\S]*?\S[\s\S]*?<\/d>/.test(form.prompt || '')
@@ -279,6 +281,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
       tier: asked?.tier || q.tier || f.tier,
       audio: asked?.audio ?? q.audio ?? true,
       character: q.character ?? 'none',
+      with: asked?.with || q.with || [],
       prompt: asked?.prompt ?? q.prompt,
       aspect: q.aspect || f.aspect,
       megapixels: q.megapixels || f.megapixels,
@@ -322,7 +325,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
   // "New shot" with a character from the dashboard
   useEffect(() => {
     if (!incomingCharacter) return
-    set({ character: incomingCharacter })
+    set({ character: incomingCharacter, with: [] })
     clearIncomingCharacter?.()
   }, [incomingCharacter])
 
@@ -415,6 +418,16 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
   }
 
   const char = characters.find((c) => c.id === form.character)
+  // "Who's in it" (GitHub #30): the first one picked leads (their LoRA carries them); clicking more adds them to the
+  // shot, and clicking a picked one takes them out (the next one picked leads). Seedance takes one character.
+  const pickCast = (id) => {
+    if (sd) return set({ character: id, with: [] })
+    const others = form.with || []
+    if (form.character === id) return set({ character: others[0] || 'none', with: others.slice(1) })
+    if (others.includes(id)) return set({ with: others.filter((x) => x !== id) })
+    if (form.character === 'none' || !characters.some((c) => c.id === form.character)) return set({ character: id })
+    set({ with: [...others, id] })
+  }
   // The prompt checker (src/service/lint.js) on every edit; its errors hold back the hunt unless rendered anyway.
   // Seedance's references, in the order the graph attaches them (seedance.js): the person's own, then the
   // character's face, then the voice line
@@ -515,18 +528,25 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
 
           <section className="create-step">
             <StepHead n={steps.who} title="Who's in it" sub={sd ? 'A character comes along as their face picture, so Seedance keeps their look.' : 'A character keeps the same face and voice in every shot. LoRAs add a look, a style or a move; RefMods bring a saved look, voice or place.'} subPlain={sd ? 'Pick a character and their face comes along, so they look the same.' : 'Pick a character and they keep the same face and voice in every shot. Looks add a style or a kind of movement; reference packs bring a saved face, voice or place.'} />
-            <div className="cast-picker" role="radiogroup" aria-label="Character">
-              {characters.map((c) => (
-                <button key={c.id} role="radio" aria-checked={form.character === c.id} className={`cast-chip ${form.character === c.id ? 'on' : ''}`} onClick={() => set({ character: c.id })}>
-                  <span className="cast-chip-face">{faceOf(c) ? <img src={fileUrl(faceOf(c))} alt="" /> : c.name.slice(0, 1)}</span>
-                  <span className="cast-chip-name">{c.name.split(' ')[0]}</span>
-                </button>
-              ))}
-              <button role="radio" aria-checked={form.character === 'none'} className={`cast-chip none ${form.character === 'none' ? 'on' : ''}`} onClick={() => set({ character: 'none' })}>
+            <div className="cast-picker" role="group" aria-label="Characters">
+              {characters.map((c) => {
+                const main = form.character === c.id
+                const also = !sd && (form.with || []).includes(c.id)
+                return (
+                  <button key={c.id} aria-pressed={main || also} className={`cast-chip ${main || also ? 'on' : ''} ${also ? 'also' : ''}`} title={main && !sd ? `${c.name} leads the shot` : also ? `${c.name} comes along as their face picture` : undefined} onClick={() => pickCast(c.id)}>
+                    <span className="cast-chip-face">{faceOf(c) ? <img src={fileUrl(faceOf(c))} alt="" /> : c.name.slice(0, 1)}</span>
+                    <span className="cast-chip-name">{c.name.split(' ')[0]}</span>
+                    {main && !sd && form.with?.length > 0 && <span className="cast-chip-tag mono">lead</span>}
+                  </button>
+                )
+              })}
+              <button aria-pressed={form.character === 'none' && !form.with?.length} className={`cast-chip none ${form.character === 'none' && !form.with?.length ? 'on' : ''}`} onClick={() => set({ character: 'none', with: [] })}>
                 <span className="cast-chip-face">∅</span>
                 <span className="cast-chip-name">Nobody</span>
               </button>
             </div>
+            {!sd && characters.length > 1 && !form.with?.length && <p className="dim small engine-note" data-plain="Click more than one to put them in the shot together.">Click more than one character to put them in the shot together.</p>}
+            {!sd && form.with?.length > 0 && <CastNote lead={char} others={form.with.map((id) => characters.find((c) => c.id === id)).filter(Boolean)} mode={form.mode} faceOf={faceOf} />}
             {sd && <p className="dim small engine-note">Seedance takes a character as their face picture, named in the prompt. LoRAs and RefMods are for H3 only.</p>}
             {!sd && (
             <>
@@ -694,7 +714,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
             <StepHead n={steps.what} title="What happens" sub={sd ? 'Who, what happens, where, the camera and the sound, in plain sentences. Give every reference a job.' : 'Clothes, place, camera, action and the lines. Never the face or voice: the character carries those.'} subPlain={sd ? 'Say who is there, what happens, where, how the camera moves and what we hear. Say what each of your pictures is for.' : 'Describe the clothes, the place, the camera, what happens and what is said. Skip the face and voice: the character already has those.'} />
             <PromptWriter
               listen
-              context={{ engine: form.engine, mode: form.mode, seconds: form.seconds, aspect: form.aspect, character: form.character ?? 'none', media: form.media.map((m) => ({ kind: m.kind, file: m.path })), voiceLine: form.voiceLine || null }}
+              context={{ engine: form.engine, mode: form.mode, seconds: form.seconds, aspect: form.aspect, character: form.character ?? 'none', with: sd ? [] : form.with || [], media: form.media.map((m) => ({ kind: m.kind, file: m.path })), voiceLine: form.voiceLine || null }}
               current={form.prompt}
               names={char ? [char.name, ...characters.filter((c) => c.id !== char.id).map((c) => c.name), 'Someone'] : ['Someone', ...characters.map((c) => c.name)]}
               onPrevis={(clip) => {
@@ -982,7 +1002,10 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
           <dl className="shot-facts">
             <div>
               <dt>Who</dt>
-              <dd>{char ? char.name : 'Nobody in particular'}</dd>
+              <dd>
+                {char ? char.name : 'Nobody in particular'}
+                {!sd && form.with?.length > 0 ? ` with ${form.with.map((id) => characters.find((c) => c.id === id)?.name.split(' ')[0]).filter(Boolean).join(', ')}` : ''}
+              </dd>
             </div>
             {!sd && form.extraLoras.length > 0 && (
               <div>
@@ -1132,5 +1155,20 @@ function ShotFrame({ aspect, media, mode, char, face, seconds }) {
         <span className="shot-frame-len mono">{seconds} s</span>
       </div>
     </div>
+  )
+}
+
+// Who leads and who comes along, under "Who's in it" (GitHub #30).
+function CastNote({ lead, others, mode, faceOf }) {
+  const first = (c) => c.name.split(' ')[0]
+  const list = (cs) => (cs.length > 1 ? `${cs.slice(0, -1).map(first).join(', ')} and ${first(cs[cs.length - 1])}` : first(cs[0]))
+  const faceless = others.filter((c) => !faceOf(c))
+  const pictured = others.filter((c) => faceOf(c))
+  return (
+    <p className="dim small engine-note cast-note">
+      {lead ? `${first(lead)} leads, with their trained look. ` : ''}
+      {pictured.length > 0 && (mode === 'frames' || mode === 'continue' ? `${list(pictured)} ${pictured.length > 1 ? 'are' : 'is'} written as words: ${mode === 'frames' ? 'First / last frame' : 'Continue'} mode can't attach their pictures. Use References mode to keep their look. ` : `${list(pictured)} ${pictured.length > 1 ? 'come' : 'comes'} along as ${pictured.length > 1 ? 'their face pictures' : 'their face picture'}, so the shot renders in References mode. `)}
+      {faceless.length > 0 && `${list(faceless)} ${faceless.length > 1 ? 'have' : 'has'} no face picture, so H3 will imagine them.`}
+    </p>
   )
 }

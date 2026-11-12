@@ -37,7 +37,7 @@ export function zoneWords(az, el) {
   if (Math.abs(az) < 6 && Math.abs(el) < 6) return { tone: 'pink', text: 'A very small move. The model misbehaves when the new view is almost the same as the original.' }
   const z = zoneOf(az, el)
   if (z === 'in' && Math.abs(az) <= 20 && Math.abs(el) <= 10) return { tone: 'ok', text: 'A move H3 follows well. Check the preview: magenta is what it has to invent.' }
-  if (z === 'in') return { tone: 'pink', text: 'Inside the range the CrossView LoRA was checked on, but a big move for most shots: the more magenta in the preview, the more H3 invents or falls back to the original angle.' }
+  if (z === 'in') return { tone: 'pink', text: 'Inside the range the angle model was checked on, but a big move for most shots: the more magenta in the preview, the more H3 invents or falls back to the original angle.' }
   if (z === 'edge') return { tone: 'pink', text: el < -20 ? 'Looking up from below is thin in the training set: expect more invention.' : 'Past the checked range, inside what it was trained on: expect more invention.' }
   return { tone: 'red', text: 'Past the training set: the hidden side is invented.' }
 }
@@ -260,7 +260,7 @@ export function CameraRig({ values, camera, defaults = {}, clip, previewStatus, 
   }
   const zone = zoneWords(az, el)
   const pv = previewStatus
-  const cannot = pv && !pv.ready ? (pv.missingNodes?.length ? 'Needs the CrossView node pack: Setup → Install missing node packs, then restart ComfyUI.' : pv.missingModels?.length ? `Needs ${pv.missingModels.join(', ')}: Setup.` : null) : null
+  const cannot = pv && !pv.ready ? (pv.missingNodes?.length ? 'Needs the camera-angle node pack: Setup → Install missing node packs, then restart ComfyUI.' : pv.missingModels?.length ? `Needs ${pv.missingModels.join(', ')}: Setup.` : null) : null
   return (
     <div className="camera-rig">
       <div className="rig-plans">
@@ -270,7 +270,7 @@ export function CameraRig({ values, camera, defaults = {}, clip, previewStatus, 
       <p className="rig-words">{cameraWords({ azimuth: az, elevation: el, distance: dist, hfov: cam.hfov })}</p>
       <p className={`small rig-zone-note ${zone.tone}`}>
         <span className={`rig-dot ${zoneOf(az, el)}`} /> {zone.text}
-        {Math.abs(dist - 1) > 0.05 && ' Distance isn’t followed reliably by the current CrossView LoRA.'}
+        {Math.abs(dist - 1) > 0.05 && ' Distance isn’t followed reliably by the current angle model.'}
       </p>
 
       <div className="rig-picture">
@@ -289,7 +289,7 @@ export function CameraRig({ values, camera, defaults = {}, clip, previewStatus, 
         ) : (
           <div className="rig-picture-empty">
             <span className="mono small">{state.phase === 'running' ? 'Reading depth and warping…' : 'The shot from here'}</span>
-            <span className="small dim">{state.phase === 'running' ? 'The first time loads MoGe; after that it re-warps as you move.' : 'Preview this angle shows the clip from the new camera, before H3 renders anything.'}</span>
+            <span className="small dim">{state.phase === 'running' ? 'The first time loads the depth model; after that it re-warps as you move.' : 'Preview this angle shows the clip from the new camera, before H3 renders anything.'}</span>
           </div>
         )}
         {live && img && <span className="rig-picture-tag mono">Live · drag to orbit · wheel to move in</span>}
@@ -358,7 +358,7 @@ export function CameraRig({ values, camera, defaults = {}, clip, previewStatus, 
               <input type="range" min={1} max={20} step={0.5} value={cam.depth_ratio ?? 6} onChange={(e) => onCamera({ depth_ratio: Number(e.target.value) })} />
               <span className="mono">{Number(cam.depth_ratio ?? 6).toFixed(1)}</span>
             </div>
-            <span className="small dim">How much parallax the warp gets from depth. MoGe's metric depth mostly sets this itself.</span>
+            <span className="small dim">How much parallax the warp gets from depth. The depth model mostly sets this itself.</span>
           </label>
           <label className="fx-toggle">
             <input type="checkbox" checked={cam.keep_source_aim !== false} onChange={(e) => onCamera({ keep_source_aim: e.target.checked })} />

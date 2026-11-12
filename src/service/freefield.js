@@ -13,17 +13,17 @@ export const CLIP_FX = {
   // New angle starts gentler than Freefield's app (-30° / 20°, a 50° lens): tested on a 4090 with 64 GB, a 15° / 5° move
   // with the lens read from the clip gave a warp H3 follows, while 30° / 15° left most of the frame for H3 to invent
   // and it fell back to the original shot. 0.35 MP fits 5 s in 64 GB of RAM; 0.5 MP ran out of memory there.
-  reshoot: { app: 'reshoot', label: 'New angle', what: 'The same clip filmed from another angle (MiniMax H3 + MoGe + CrossView)', media: 'video', preview: '41', off: 'New angle is left out of 1.1: on a 24 GB card with 64 GB of RAM it fits only short clips at low size, and moves big enough to matter left H3 inventing or falling back to the original angle.', defaults: { azimuth: -15, elevation: 5 }, cameraDefaults: { hfov: 0, keep_source_aim: true }, size: { node: '2', field: 'megapixels', choices: [[0.35, 'Standard'], [0.5, 'Sharper']], default: 0.35 } },
-  dub: { app: 'dub', label: 'Dub', what: 'The person says new words, in any language, with new lip movement (LTX-2.5 + DubIt)', media: 'video' },
-  cleanplate: { app: 'vfx-clean-plate', label: 'Clean plate', what: 'People and moving things taken out, the background rebuilt (LTX-2.5)', media: 'video' },
-  night: { app: 'vfx-day-to-night', label: 'Day to night', what: 'The same shot at night (LTX-2.5)', media: 'video' },
-  water: { app: 'vfx-water', label: 'Add water', what: 'Simulated water that follows the scene (LTX-2.5)', media: 'video' },
-  hdr: { app: 'sdr-hdr', label: 'SDR to HDR', what: 'A 10-bit HLG HDR master and a tone-mapped preview (LTX-2.5)', media: 'video' },
-  removebg: { app: 'video-remove-bg', label: 'Remove background', what: 'The subject over a solid colour, and its matte (BiRefNet)', media: 'video' },
-  smooth: { app: 'smooth', label: 'Smooth or slow motion', what: 'In-between frames: smoother at the same length, or real slow motion (FILM)', media: 'video' },
-  effects: { app: 'effects', label: 'Effects', what: 'A photo becomes a 5-second effect clip (Wan 2.1 + effect LoRAs)', media: 'image' },
-  morph: { app: 'morph', label: 'Transformations', what: 'A photo morphs into a new version of itself, keeping the face (Flux 3 Klein + LTX-2.5)', media: 'image' },
-  transitions: { app: 'transitions', label: 'Transition', what: 'A first frame morphs into a last frame (LTX-2.5)', media: 'image' }
+  reshoot: { app: 'reshoot', label: 'New angle', what: 'The same clip filmed from another angle', media: 'video', preview: '41', off: 'New angle is left out of 1.1: on a 24 GB card with 64 GB of RAM it fits only short clips at low size, and moves big enough to matter left H3 inventing or falling back to the original angle.', defaults: { azimuth: -15, elevation: 5 }, cameraDefaults: { hfov: 0, keep_source_aim: true }, size: { node: '2', field: 'megapixels', choices: [[0.35, 'Standard'], [0.5, 'Sharper']], default: 0.35 } },
+  dub: { app: 'dub', label: 'Dub', what: 'The person says new words, in any language, with new lip movement', media: 'video' },
+  cleanplate: { app: 'vfx-clean-plate', label: 'Clean plate', what: 'People and moving things taken out, the background rebuilt', media: 'video' },
+  night: { app: 'vfx-day-to-night', label: 'Day to night', what: 'The same shot at night', media: 'video' },
+  water: { app: 'vfx-water', label: 'Add water', what: 'Simulated water that follows the scene', media: 'video' },
+  hdr: { app: 'sdr-hdr', label: 'SDR to HDR', what: 'A 10-bit HLG HDR master and a tone-mapped preview', media: 'video' },
+  removebg: { app: 'video-remove-bg', label: 'Remove background', what: 'The subject over a solid colour, and its matte', media: 'video' },
+  smooth: { app: 'smooth', label: 'Smooth or slow motion', what: 'In-between frames: smoother at the same length, or real slow motion', media: 'video' },
+  effects: { app: 'effects', label: 'Effects', what: 'A photo becomes a 5-second effect clip', media: 'image' },
+  morph: { app: 'morph', label: 'Transformations', what: 'A photo morphs into a new version of itself, keeping the face', media: 'image' },
+  transitions: { app: 'transitions', label: 'Transition', what: 'A first frame morphs into a last frame', media: 'image' }
 }
 
 // Freefield's model files that this PC may have as another build: the manifest id IV Studio resolves it through.

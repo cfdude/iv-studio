@@ -55,6 +55,11 @@ export default function LivePip({ items, now, kindLabel, open, onOff }) {
   // where it sits: the left corners sit just past the sidebar (none in the full-screen editor); the top corners sit
   // below the title bar, and in the editor below its own title and buttons (it stays where it was put, never flies off)
   const navRight = Math.max(0, document.querySelector('.nav')?.getBoundingClientRect().right || 0)
+  // the right corners sit left of the chat while it's open in the window (beside the page, or over it on a smaller
+  // window), so the panel never covers the chat's box or its buttons; with no room left of it, the window's edge
+  const chatEl = document.querySelector('.chat-panel:not(.popped)')
+  const chatLeft = chatEl ? Math.round(chatEl.getBoundingClientRect().left) : innerWidth
+  const rightEdge = chatLeft - navRight >= MIN + EDGE * 2 ? Math.min(innerWidth, chatLeft) : innerWidth
   const dock = [...document.querySelectorAll('.go-dock')].find((d) => d.offsetParent !== null)
   const dockTop = dock ? dock.getBoundingClientRect().top : 0
   const place = corner
@@ -64,7 +69,7 @@ export default function LivePip({ items, now, kindLabel, open, onOff }) {
   const bottomGap = dockTop ? Math.max(EDGE, innerHeight - dockTop + 12) : EDGE
   const pos = {
     left: place.endsWith('l') ? navRight + EDGE : 'auto',
-    right: place.endsWith('r') ? EDGE : 'auto',
+    right: place.endsWith('r') ? innerWidth - rightEdge + EDGE : 'auto',
     top: place.startsWith('t') ? topGap : 'auto',
     bottom: place.startsWith('b') ? bottomGap : 'auto'
   }
@@ -72,7 +77,7 @@ export default function LivePip({ items, now, kindLabel, open, onOff }) {
   // the widest it can be here: inside the window beside the sidebar, and short enough to stay below the title bar
   // (and the editor's own top row)
   const maxW = () => {
-    const availW = innerWidth - navRight - EDGE * 2
+    const availW = rightEdge - navRight - EDGE * 2
     const availH = place.startsWith('b') ? innerHeight - bottomGap - topGap : innerHeight - topGap - EDGE
     return Math.max(MIN, Math.min(MAX, availW, (availH - chrome.current) * aspect))
   }
@@ -250,7 +255,7 @@ export default function LivePip({ items, now, kindLabel, open, onOff }) {
           b.classList.add('gesture', 'moving')
           setGesture('move')
         }
-        dx = Math.min(Math.max(dx, 8 - r0.left), innerWidth - 8 - r0.right)
+        dx = Math.min(Math.max(dx, 8 - r0.left), rightEdge - 8 - r0.right)
         dy = Math.min(Math.max(dy, 8 - r0.top), innerHeight - 8 - r0.bottom)
         s.dx = dx
         s.dy = dy
@@ -283,7 +288,7 @@ export default function LivePip({ items, now, kindLabel, open, onOff }) {
         // and a clear flick one way means that way, however big the screen
         const FLICK = 0.9
         const down = thrown && Math.abs(vy) > FLICK ? vy > 0 : cy > innerHeight / 2
-        const right = thrown && Math.abs(vx) > FLICK ? vx > 0 : cx > (navRight + innerWidth) / 2
+        const right = thrown && Math.abs(vx) > FLICK ? vx > 0 : cx > (navRight + rightEdge) / 2
         const next = `${down ? 'b' : 't'}${right ? 'r' : 'l'}`
         save('iv.livePipCorner', next)
         setCorner(next)

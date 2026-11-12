@@ -15,8 +15,8 @@ const EFFECTS = {
     make: (w, h) => ({ flames: [], embers: Array.from({ length: Math.round(w / 8) }, () => ember(w, h, true)) }),
     draw(ctx, s, w, h, t, dt) {
       const glow = ctx.createLinearGradient(0, h, 0, h * 0.2)
-      glow.addColorStop(0, `rgba(244,72,89,${0.45 + 0.08 * Math.sin(t * 3.1)})`)
-      glow.addColorStop(0.35, 'rgba(244,72,89,0.22)')
+      glow.addColorStop(0, rgba(RED, 0.45 + 0.08 * Math.sin(t * 3.1)))
+      glow.addColorStop(0.35, rgba(RED, 0.22))
       glow.addColorStop(1, 'rgba(0,0,0,0)')
       ctx.fillStyle = glow
       ctx.fillRect(0, 0, w, h)

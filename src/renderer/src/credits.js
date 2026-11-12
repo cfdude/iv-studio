@@ -7,7 +7,8 @@ export const CREDITS = [
     group: 'Models',
     note: 'IV Studio bundles no model weights. Each downloads from its own page, under its own licence.',
     items: [
-      { name: 'MiniMax H3', covers: ['fl2va', 'ref2va', 'video_vae', 'audio_vae', 'image:h3'], by: 'MiniMax', use: 'Every shot: video with sound, references, first and last frames, Continue', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3', note: 'Powered by MiniMax H3. ComfyUI’s packaging by Comfy Org.' },
+      { name: 'MiniMax H3', covers: ['fl2va', 'ref2va', 'video_vae', 'audio_vae', 'image:h3', 'train_te', 'train_video_vae'], by: 'MiniMax', use: 'Every shot: video with sound, references, first and last frames, Continue', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3', note: 'Powered by MiniMax H3. ComfyUI’s packaging by Comfy Org.' },
+      { name: 'MiniMax H3 Image Training Adapter', covers: ['train_adapter'], by: 'circlestone labs', use: 'Training a character LoRA on this computer (the trainer reads it alongside H3)', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/circlestone-labs/MiniMax-H3-Image-Training-Adapter' },
       { name: 'MiniMax H3 INT4 ConvRot text encoder', covers: ['text_encoder'], by: 'Merserk', use: 'The compact Qwen3-VL text encoder H3 reads prompts with', url: 'https://huggingface.co/Merserk/MiniMax-H3-INT4-ConvRot' },
       { name: 'MiniMax H3 experimental (DMAD turbo LoRA)', covers: ['dmad'], by: 'Kijai', use: 'Fast previews in 4 to 8 steps', url: 'https://huggingface.co/Kijai/MiniMax-H3-experimental' },
       { name: 'TAEH3', covers: ['taeh3'], by: 'Kijai', use: 'The live step pictures while a shot renders', licence: 'Apache-2.0', url: 'https://huggingface.co/Kijai/MiniMax-H3-TAE' },
@@ -61,13 +62,16 @@ export const CREDITS = [
       { name: 'ComfyUI', by: 'Comfy Org', use: 'Everything that renders: IV Studio is a front end for ComfyUI', licence: 'GPL-3.0', url: 'https://github.com/comfyanonymous/ComfyUI' },
       { name: 'Fizgig', by: 'shootthesound', use: 'Character LoRA training, on this computer, Modal and RunPod. RunPod training pods start from Fizgig’s own template.', url: 'https://github.com/shootthesound/Fizgig' },
       { name: 'Freefield', by: 'Sammir Femat (neuregex)', use: 'The workflows behind Sounds, the picture tools, the editor’s Effects (dub, VFX, slow motion) and Workflows → Effects', licence: 'MIT', url: 'https://github.com/neuregex/freefield' },
+      { name: 'CrossView Warp', by: 'comfyrob', use: 'The camera warp behind New angle (switched off for now)', url: 'https://github.com/comfyrob/ComfyUI-CrossViewWarp' },
+      { name: 'CrossView Warp LoRA', by: 'Cseti', use: 'MiniMax H3’s new-angle LoRA behind New angle (switched off for now)', url: 'https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1' },
       { name: 'OpenKatana', by: 'rk0neki', use: 'Shinobi, the motion-graphics films', licence: 'Apache-2.0', url: 'https://github.com/rk0neki/OpenKatana' },
       { name: 'OpenJutsu', by: 'D3voz', use: 'Replace’s earlier engine, and Finish (faces and colours)', licence: 'MIT', url: 'https://github.com/D3voz/openjutsu' },
       { name: 'Ollama', use: 'Runs the local prompt writer', licence: 'MIT', url: 'https://ollama.com' },
       { name: 'three.js', use: 'Previs: the staging board in motion', licence: 'MIT', url: 'https://threejs.org' },
       { name: 'FFmpeg', use: 'Exports, trims, reels, cut-outs and media checks', licence: 'GPL-3.0 (the bundled builds)', url: 'https://ffmpeg.org', note: 'Windows and Linux: BtbN’s builds. Mac: Martin Riedl’s GPL build.' },
       { name: 'uv', by: 'Astral', use: 'Installs the Python tools (voices, Shinobi, cloud tools)', url: 'https://github.com/astral-sh/uv' },
-      { name: 'Claude Code and Codex', by: 'Anthropic and OpenAI', use: 'Optional prompt writers and reviewers, on your own logins' }
+      { name: 'Claude Code and Codex', by: 'Anthropic and OpenAI', use: 'Optional prompt writers and reviewers, and the chat, on your own logins' },
+      { name: 'Hermes Agent', by: 'Nous Research', use: 'The chat’s third agent, through its Agent Client Protocol server, on your own Hermes', licence: 'MIT', url: 'https://github.com/NousResearch/hermes-agent' }
     ]
   },
   {

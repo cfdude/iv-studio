@@ -21,13 +21,14 @@ const VIEW_KEY = 'iv.setupView'
 // where to find it (GitHub #21: a title alone wasn't enough to decide). First match wins, so the order matters.
 const AREAS = [
   ['Live preview', /live step/i, 'The Live preview switch above the queue', 'Step-by-step pictures of a shot while it renders (a tiny H3 decoder, 0.1 GB).'],
-  ['Picture tools', /relight|remove background|depth maps/i, 'Create → Image → Tools', 'Relight a picture (Qwen Image Edit with a relight LoRA), remove the background of a picture or a video clip (BiRefNet; also in the editor), and depth and normal maps (MoGe).'],
-  ['Replace', /^replace/i, 'Workflows → Replace', 'Swap a person in a video for one of your characters, or change the whole scene in words, keeping the motion and sound (Viggle Remake on MiniMax H3, SAM 3.1 masks, a Qwen3-VL describer).'],
+  ['Picture tools', /relight|remove background|depth maps/i, 'Create → Image → Tools', 'Relight a picture, remove the background of a picture or a video clip (also in the editor), and make depth and normal maps.'],
+  ['Replace', /^replace/i, 'Workflows → Replace', 'Swap a person in a video for one of your characters, or change the whole scene in words, keeping the motion and sound.'],
   ['Picture models', /create → image|pictures/i, 'Create → Image', 'Extra models for making pictures, each with its own look. Flux.2 Klein, Flux 3 Klein, Krea 2, Qwen Image 2.1 and MiniMax H3 Image can also edit a picture you give them. Z-Image Turbo also draws the design stills for training a character. Get only the ones you want: each card in Create → Image says what it needs.'],
   ['Video effects', /dub|clean plate|day to night|water|sdr/i, 'Edit → right-click a clip → Effects…', 'Dub a line into another language with lip sync, Clean plate (remove people), Day to night, Add water and SDR to HDR, on LTX-2.5. Works best with 64 GB of RAM.'],
   ['Photo effects and transitions', /^effects$|transformation|transition/i, 'Workflows → Effects', 'One-click effects that animate a photo (Wan 2.1 480p with a LoRA per effect), plus Transformations and Transitions between two pictures (these also use the LTX-2.5 files from Video effects).'],
-  ['Slow motion', /smooth|slow/i, 'Edit → right-click a clip → Effects…', 'Smooth a choppy clip or slow it down by drawing the frames in between (FILM frame interpolation). Small and fast.'],
-  ['Music and sounds', /music|sound/i, 'Audio → Music and Audio → Sounds', 'Songs with vocals or instrumentals (MiniMax Music 3, ACE-Step 1.5) and sound effects from a description (Stable Audio 3).'],
+  ['Slow motion', /smooth|slow/i, 'Edit → right-click a clip → Effects…', 'Smooth a choppy clip or slow it down by drawing the frames in between. Small and fast.'],
+  ['Music and sounds', /music|sound/i, 'Audio → Music and Audio → Sounds', 'Songs with vocals or instrumentals and sound effects from a description.'],
+  ['Training on this computer', /training characters/i, 'Characters → Train your own → Train a LoRA → This computer', 'The files the trainer needs to train a character LoRA on your own graphics card (with the H3 fl2va model and audio VAE you already have). Not needed to train in the cloud.'],
   ['Places in Projects', /character|angles of a place|projects/i, 'Projects → Cast and places → More angles', 'Draws a place from new camera angles so shots in one room match (a camera-angle LoRA for Qwen Image 2.1, which comes from Picture models).']
 ]
 const areaOf = (i) => AREAS.find(([, re]) => re.test(i.for || ''))?.[0] || 'Other tools'

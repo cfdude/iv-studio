@@ -69,7 +69,7 @@ export function resourcesDir(hint) {
 // comfyApiKey and civitaiKey are stored encrypted by the app (Electron safeStorage); they're never sent to the window.
 // civitaiMature: mature LoRAs from civitai.red on the LoRAs page, off unless the person turns it on.
 // civitaiUnblur: with civitaiMature on, mature previews show without the blur (a second, separate opt-in).
-// promptEngine: 'local' (ollamaModel), 'claude' (claudeModel) or 'codex' (codexModel) writes prompts, or 'contextir',
+// promptEngine: 'local' (ollamaModel), 'claude' (claudeModel), 'codex' (codexModel) or 'hermes' (hermesModel) writes prompts, or 'contextir',
 // or 'openai': an OpenAI-compatible server (llm.js) at openaiUrl with openaiModel; openaiVision: it sees pictures;
 // openaiKey and openaiHeaders ("Name: value" lines) are stored encrypted.
 // '' as a Claude Code or Codex model means the person's own default there.
@@ -84,7 +84,7 @@ export function resourcesDir(hint) {
 // outputFolder / privateFolder: the folder inside ComfyUI's output where renders save, normally and in
 // Incognito ('' = straight into output). Incognito uploads go into the same folder name under input.
 export const PRIVATE_FOLDER = 'IV Private'
-const DEFAULT_SETTINGS = { comfyUrl: 'http://127.0.0.1:8188', window: null, promptEngine: 'local', ollamaUrl: '', ollamaModel: 'huihui_ai/qwen3-vl-abliterated:8b-instruct', claudeModel: '', codexModel: '', openaiUrl: '', openaiModel: '', openaiVision: false, openaiKey: null, openaiHeaders: null, chatBudget: null, comfyApiKey: null, comfyCloudKey: null, comfycloud: null, target: 'local', cloud: null, cloudToken: null, cloudProvider: 'modal', runpod: null, runpodKey: null, runpodToken: null, models: {}, comfyFolder: '', comfyLauncher: '', comfyAutoStart: true, civitaiKey: null, hfToken: null, hfTokenAt: null, civitaiMature: false, civitaiUnblur: false, incognito: false, outputFolder: '', privateFolder: PRIVATE_FOLDER, onboarded: null, hardware: null, shotPrefs: null, speed: null, plainWords: false, highContrast: false, aiLevel: null, fizgigFolder: '', videosFolder: '', textSize: 'normal', reduceMotion: false, focusRings: false, underlineLinks: false, usage: null, betaJoined: false, describeLibrary: true, h3Terms: null, chatWindow: null }
+const DEFAULT_SETTINGS = { comfyUrl: 'http://127.0.0.1:8188', window: null, promptEngine: 'local', ollamaUrl: '', ollamaModel: 'huihui_ai/qwen3-vl-abliterated:8b-instruct', claudeModel: '', codexModel: '', hermesModel: '', chatEngine: '', openaiUrl: '', openaiModel: '', openaiVision: false, openaiKey: null, openaiHeaders: null, chatBudget: null, comfyApiKey: null, comfyCloudKey: null, comfycloud: null, target: 'local', cloud: null, cloudToken: null, cloudProvider: 'modal', runpod: null, runpodKey: null, runpodToken: null, models: {}, comfyFolder: '', comfyLauncher: '', comfyAutoStart: true, civitaiKey: null, hfToken: null, hfTokenAt: null, civitaiMature: false, civitaiUnblur: false, incognito: false, outputFolder: '', privateFolder: PRIVATE_FOLDER, onboarded: null, hardware: null, shotPrefs: null, speed: null, plainWords: false, highContrast: false, aiLevel: null, fizgigFolder: '', videosFolder: '', textSize: 'normal', reduceMotion: false, focusRings: false, underlineLinks: false, accent: 'red', agentName: '', userName: '', usage: null, betaJoined: false, describeLibrary: true, h3Terms: null, chatWindow: null }
 
 // A folder name as ComfyUI takes it: relative to its output (or input) folder, forward slashes, nothing
 // that climbs out of it or that Windows won't allow.
@@ -224,9 +224,18 @@ export function writeSettings(patch, dir = dataDir()) {
 }
 
 // The prompt writer chosen in Settings, as { engine, model }.
+// the prompt writers a person can pick in Settings → Prompt writer
+export const PROMPT_WRITERS = ['local', 'openai', 'claude', 'codex', 'hermes', 'contextir']
 export function writerOf(settings) {
   const engine = settings.promptEngine || 'local'
   // the OpenAI-compatible server writes exactly as the local writer does; only the transport differs (llm.js)
   if (engine === 'openai') return { engine: 'local', provider: 'openai', model: settings.openaiModel || '' }
-  return { engine, model: engine === 'claude' ? settings.claudeModel || '' : engine === 'codex' ? settings.codexModel || '' : settings.ollamaModel }
+  return { engine, model: engine === 'claude' ? settings.claudeModel || '' : engine === 'codex' ? settings.codexModel || '' : engine === 'hermes' ? settings.hermesModel || '' : settings.ollamaModel }
+}
+// The writer for one "Write it for me": Settings' choice, unless the request names a writer. request.engine is the
+// shot's video model (h3 or seedance) since 1.1, so it picks a writer only when it is one (GitHub #23,
+// 'Unknown writer "h3"').
+export function writerFor(settings, request) {
+  const pick = request?.writer || (PROMPT_WRITERS.includes(request?.engine) ? request.engine : null)
+  return writerOf(pick ? { ...settings, promptEngine: pick } : settings)
 }

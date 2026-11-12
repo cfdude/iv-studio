@@ -3,10 +3,13 @@
 //   rm  reduce motion: no animations, transitions or moving stages
 //   fr  clear focus outlines: a thick ring on whatever the keyboard is on
 //   ul  underline links
+import { applyAccent } from './accent'
+
 const CLASSES = { highContrast: 'hc', reduceMotion: 'rm', focusRings: 'fr', underlineLinks: 'ul' }
 export function applyA11y(s = {}) {
   const root = document.documentElement
   for (const [key, cls] of Object.entries(CLASSES)) root.classList.toggle(cls, !!s[key])
+  applyAccent(s.accent)
 }
 export function setContrast(on) {
   document.documentElement.classList.toggle('hc', !!on)

@@ -56,6 +56,36 @@ function dragSplit(e, onMove) {
   window.addEventListener('pointermove', move)
   window.addEventListener('pointerup', up)
 }
+// the razor's mark on its button: the same red katana as its cursor
+const Katana = () => (
+  <svg className="ed-razor-icon" viewBox="0 0 32 32" aria-hidden="true">
+    <path d="M2.5 29.5C8 22.6 13.2 16.9 19.2 11.2L21 13C15.2 18.6 9.3 24.2 2.5 29.5Z" fill="var(--red)" />
+    <path d="M22.2 10 29 3.2" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    <ellipse cx="20.6" cy="11.6" rx="3.4" ry="1.5" transform="rotate(-45 20.6 11.6)" fill="currentColor" />
+  </svg>
+)
+// the other tools' marks, the same shapes as their cursors on the timeline
+const TOOL_ICON = {
+  select: <path className="red" d="M5 3v21l5.6-5.2 3.6 8.4 3.6-1.6-3.6-8.2h7.6Z" fill="var(--red)" />,
+  ripple: (
+    <>
+      <path d="M14 6h3v20h-3" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinejoin="round" />
+      <path className="red" d="M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z" fill="var(--red)" />
+    </>
+  ),
+  roll: (
+    <>
+      <path d="M13 6h-2v20h2 M19 6h2v20h-2" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinejoin="round" />
+      <path className="red" d="M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z" fill="var(--red)" />
+    </>
+  )
+}
+const ToolIcon = ({ id }) =>
+  TOOL_ICON[id] ? (
+    <svg className="ed-tool-icon" viewBox="0 0 32 32" aria-hidden="true">
+      {TOOL_ICON[id]}
+    </svg>
+  ) : null
 const TOOLS = [
   ['select', 'Select', 'V'],
   ['razor', 'Razor', 'C'],
@@ -642,6 +672,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
           <div className="segmented ed-seg ed-toolset" role="radiogroup" aria-label="Tool">
             {TOOLS.map(([id, label, key]) => (
               <button key={id} role="radio" aria-checked={tool === id} className={tool === id ? 'on' : ''} onClick={() => setTool(id)} title={`${label} (${key})`}>
+                {id === 'razor' ? <Katana /> : <ToolIcon id={id} />}
                 {label} <span className="dim mono">{key}</span>
               </button>
             ))}

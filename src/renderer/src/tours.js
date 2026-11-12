@@ -25,12 +25,12 @@ export const TOURS = {
       { go: { page: 'library', section: 'video' }, at: '.shelf-grid', title: 'Shots', text: 'Every shot you have made, with its takes and finals.' },
       { go: { page: 'projects', section: 'video' }, at: '.shelf-bar', title: 'Projects', text: 'A short film from an idea, step by step: story, cast, storyboard, filming and the cut.' },
       { go: { page: 'edits', section: 'video' }, at: '.shelf-bar', title: 'Edit', text: 'A timeline editor for your shots, songs and titles, that can also make new footage right inside the edit.' },
-      { go: { page: 'workflows', section: 'video' }, at: '.workflow-cards', title: 'Workflows', text: 'Tools for after a render: one-take sequences, swapping people, reels cut to a song, and agent-made edits.' },
+      { go: { page: 'workflows', section: 'video' }, at: '.workflow-cards', title: 'Workflows', text: 'Tools for after a render: swapping people, one-take sequences, reels cut to a song, and agent-made edits.' },
       { go: { page: 'characters', section: 'video' }, at: ['.cast-section', '.train-paths'], title: 'Characters', text: 'Your recurring actors, the same in every shot. Add one you have, or train your own.' },
       { go: { page: 'audio', section: 'audio' }, at: '.section-switch', title: 'The sound side', text: 'Visual and Audio switch the sidebar. Audio has Voices, Lines, Music and Sounds.' },
       { go: { page: 'media', section: 'video' }, at: '.nav-library', title: 'Library', text: 'Everything you made, in one place: videos, pictures, songs and voice lines.' },
       { go: { page: 'cloud', section: 'video' }, at: '.cloud-guided', title: 'Cloud', text: 'No strong graphics card? Render on your own cloud GPU account instead.' },
-      { go: { page: 'home', section: 'video' }, at: '.chat-open', title: 'Chat with your agent', text: 'Your own Claude Code or Codex, inside IV Studio. Type or press the mic and talk; it knows what you’re looking at. The Activity tab shows everything any agent did here, with Undo for edits, and it can pop out into its own window.' },
+      { go: { page: 'home', section: 'video' }, at: '.chat-open', title: 'Chat with your agent', text: 'Your own Claude Code, Codex or Hermes, inside IV Studio. Type or talk; it knows what you’re looking at. History keeps earlier conversations, Activity shows what agents did (with Undo), and it can pop out into its own window.' },
       { go: { page: 'settings', section: 'video' }, at: '.settings-tabs', title: 'Settings and Setup', text: 'How IV Studio works for you, and what ComfyUI has and needs.' },
       { go: { page: 'home', section: 'video' }, at: '.hero-help', title: 'Help on every page', text: 'Every page has this How it works button. Click it any time for a walk through that page, the same way as this tour.' }
     ]
@@ -43,7 +43,7 @@ export const TOURS = {
       { at: '.dash-recent', title: 'Your latest work', text: 'The newest things you made. Click one to watch it and step through its versions.' },
       { at: '.cast-cards', title: 'Your cast', text: 'Your characters, with their faces and voices. New shot starts a shot with them already picked.' },
       { at: '.nav', title: 'Every page', text: 'The sidebar has every page. Visual and Audio at the bottom switch between the picture side and the sound side.' },
-      { at: '.chat-open', title: 'Chat with your agent', text: 'Your own Claude Code or Codex, inside IV Studio. Type or press the mic and talk; it knows what you’re looking at. The Activity tab shows everything any agent did here, with Undo for edits, and it can pop out into its own window.' },
+      { at: '.chat-open', title: 'Chat with your agent', text: 'Your own Claude Code, Codex or Hermes, inside IV Studio. Type or talk; it knows what you’re looking at. History keeps earlier conversations, Activity shows what agents did (with Undo), and it can pop out into its own window.' },
       { at: '.engine-badge', title: 'ComfyUI and your GPU', text: 'Whether ComfyUI is ready, and how much of your graphics card and memory is in use. Free memory unloads models when you need room.' },
       { at: '.hero-help', title: 'Help on every page', text: 'This button is on every page. Click it any time to walk through what that page does.' }
     ]
@@ -54,10 +54,11 @@ export const TOURS = {
       { at: '.create-kind', title: 'Video or picture', text: 'Make a shot with sound (Video) or a still picture (Image).' },
       { at: '.engine-switch', title: 'The model', text: 'MiniMax H3 renders on this computer, free. Seedance 2.5 uses your Comfy.org credits: same modes and hunt, and you see the price and confirm first. Hunt in cheap 480p drafts, then finish your pick at 1080p.' },
       { at: 'step:What kind of shot', title: 'What kind of shot', text: 'Text starts from words alone. References, Frames and Continue start from your pictures or a video.' },
-      { at: "step:Who's in it", title: 'Who is in it', text: 'Pick a character so they look and sound the same in every shot. LoRAs and RefMods add a look, a style or a move.' },
+      { at: "step:Who's in it", title: 'Who is in it', text: 'Pick a character so they look and sound the same in every shot. Click more than one to put them in the shot together: the first leads, the others come along as their face pictures. LoRAs and RefMods add a look, a style or a move.' },
       { at: '.create-step:has(.create-drop)', title: 'What it builds on', text: 'Drop pictures or a video here. Add them before writing the prompt, so the writer can see them. A video in References mode can get Soft mouth, so the new face doesn’t mouth the words spoken in it.' },
-      { at: 'step:What happens', title: 'What happens', text: 'Say your idea in plain words and press Write my prompt. Type @ to bring in a character or a saved place. The checker below flags problems and its Fix button mends most of them.' },
-      { at: '.create-craft', title: 'Cinematography and prompt tools', text: '+ Cinematography adds a film stock, lens, light or camera rig. Then a director’s note, Tighten, Enrich or 3 variants reshape the prompt; earlier versions are kept.' },
+      { at: '.starters-open', title: 'Start from an example', text: 'Not sure where to begin? This opens ready-made shots. Pick one and it fills in the prompt, length and shape; then press Hunt or change any word.' },
+      { at: 'step:What happens', title: 'What happens', text: 'Say your idea in plain words and press Write my prompt. Type @ to bring in a character or a saved place. The checker below flags problems and its Fix button mends most of them. Stage it on a board opens a floor plan for placing people and the camera.' },
+      { at: '.create-craft', title: 'Cinematography and prompt tools', text: 'The Cinematography button shows a picture of each film stock, lens, light, camera move and mood; pick any to add it. Then a director’s note, Tighten, Enrich or 3 variants reshape the prompt; earlier versions are kept.' },
       { at: 'step:Shape and size', title: 'Shape and size', text: 'The frame shape, the length, how many previews and their quality. Draft is about twice as fast for trying ideas. With Seedance: 4 to 30 seconds, Draft 480p or 720p/1080p, and the price.' },
       { at: '.speed-row', title: 'Speed', text: 'Presets that trade picture size and steps for time and memory. Fast and Low memory suit smaller graphics cards. Changing the size, steps or takes by hand shows Custom.' },
       { at: ['.shot-card', '.create-dock'], title: 'Your shot', text: 'A summary of what you set up. Hunt renders the previews; you then pick the best one and finish it at full size.' }
@@ -95,7 +96,7 @@ export const TOURS = {
       { at: '.wiz-steps', title: 'Six steps', text: 'Idea, Story, Cast and places, Storyboard, Film it, Watch. You can go back to any step at any time.' },
       { at: '.wiz-page', title: 'This step', text: 'Answer what this step asks. Write it for me drafts the script or the shots if you want a head start.' },
       { at: '.wiz-craft', title: 'Cinematography and Lookbook', text: 'Choose a film stock, lenses, light and camera for the whole film, or name a film or cinematographer: the Lookbook turns it into look language with no names in it. Both go into every shot.' },
-      { at: '.wiz-scene-tools', title: 'Coverage and continuity', text: 'Cover a scene the way a director would: dialogue coverage, an entrance, parallel action and more (from Slate by Sam Wasserman). Check continuity reads every shot like a script supervisor: wardrobe, props, light and screen sides.' },
+      { at: '.wiz-scene-tools', title: 'Coverage and continuity', text: 'Cover a scene the way a director would: dialogue coverage, an entrance, parallel action and more. Check continuity reads every shot like a script supervisor: wardrobe, props, light and screen sides.' },
       { at: '.wiz-panels', title: 'The storyboard', text: 'Every shot is a panel with a sketch. Click one to change what happens, the camera or the line, or to rework its prompt with a director’s note.' },
       { at: '.wiz-shotlist', title: 'Shot list', text: 'Save the shot list as a document, or as CSV for a spreadsheet, for a crew or a schedule.' },
       { at: '.wiz-foot', title: 'Next', text: 'When this step looks right, move on. Play the animatic before filming: it costs seconds, not GPU minutes.' }
@@ -139,7 +140,7 @@ export const TOURS = {
       { at: '.ed-bin', title: 'Your media', text: 'Everything in this edit, plus the whole Library. Add files or a title here.' },
       { at: '.ed-monitor', title: 'Source', text: 'Click something in the bin to see it here. Mark I and O, then press comma to insert or full stop to overwrite at the playhead.' },
       { at: '.ed-effects', title: 'Effect controls', text: 'The selected clip’s settings. With nothing selected, the edit’s own: format, frame rate and loudness.' },
-      { at: '.ed-toolbar', title: 'Tools', text: 'Select (V), Razor (C), Ripple (B) and Roll (N), with snapping and zoom.' },
+      { at: '.ed-toolbar', title: 'Tools', text: 'Select (V), Razor (C), Ripple (B) and Roll (N), with snapping and zoom. The razor turns your pointer into a red katana: a dashed line shows where it will cut, and a click slices the clip in two.' },
       { at: '.ed-tl-wrap', title: 'The timeline', text: 'Drag clips to move and trim them. Right-click a clip to Extend, Retake, Cut out or Reframe it with new footage; right-click a gap to fill it.' },
       { at: '.ed-export', title: 'Export', text: 'Full screen gives you more room (F11, Esc to come back). Export makes the finished video.' },
       { at: '.ed-handoff', title: 'Finish in another editor', text: 'Premiere / Resolve writes the timeline for Premiere Pro, DaVinci Resolve and Final Cut (XML, FCPXML and an EDL), copies every clip beside it and zips it to send. Tracks, trims, volume and markers come over; fades and title styling don’t.' }
@@ -149,7 +150,7 @@ export const TOURS = {
     title: 'Workflows',
     steps: [
       { title: 'Take a video further', text: 'Tools for what comes after a render. Each one works with your IV Studio renders and files.' },
-      { at: '.workflow-cards', title: 'The tools', text: 'Sequences for several shots in one take, Replace to swap who is in a shot, Reel to cut pictures to a song, Shinobi and Sizzle for edits an agent helps make.' }
+      { at: '.workflow-cards', title: 'The tools', text: 'Replace swaps who is in a shot or changes the scene. Sequences, Sizzle, Effects, Reel, Shinobi and Rebuild follow: one-take scenes, films from websites, photo effects, reels and agent edits.' }
     ]
   },
   sequences: {
@@ -286,11 +287,12 @@ export const TOURS = {
       { at: '.set-nav', title: 'Jump around', text: 'Every topic in one list. Click one to jump to it.' },
       { at: '#set-pc', title: 'Your computer', text: 'What your computer can do. Check again re-runs the scan and its recommended defaults.' },
       { at: '.speed-cards', title: 'Speed', text: 'How each new shot starts: Quality, Balanced, Fast or Low memory. The one that suits this computer is marked. Times are from an RTX 4090; smaller cards take longer.' },
-      { at: '#set-access', title: 'Accessibility', text: 'Bigger text, higher contrast, less motion, clear focus outlines and underlined links. Each applies at once.' },
+      { at: '#set-you', title: 'You and your agent', text: 'Your name, your agent’s name, and whether it runs on Claude Code, Codex or Hermes. The chat and the Dashboard use the names.' },
+      { at: '#set-access', title: 'Colour and accessibility', text: 'Pick the app’s colour (red, blue, purple, orange, or Dark for greys only), then bigger text, higher contrast, less motion, clear focus outlines and underlined links. Each applies at once.' },
       { at: '#set-words', title: 'Words', text: 'Simple words: the app talks in everyday words instead of AI terms, for people new to this. Only the words change.' },
       { at: '#set-comfy', title: 'ComfyUI', text: 'Where ComfyUI is (typing localhost:8000 is fine), and whether IV Studio starts it for you when it opens.' },
       { at: '#set-folders', title: 'Folders', text: 'Where finished videos go, on any drive, and where renders save inside ComfyUI.' },
-      { at: '#set-writer', title: 'Prompt writer', text: 'Who writes your prompts: a free local model in Ollama, your own Claude Code or Codex, any OpenAI-compatible server (llama.cpp, vLLM, LM Studio, OpenAI…), or MiniMax’s paid rewriter.' },
+      { at: '#set-writer', title: 'Prompt writer', text: 'Who writes your prompts: a free local model in Ollama, your own Claude Code, Codex or Hermes, any OpenAI-compatible server (llama.cpp, vLLM, LM Studio, OpenAI…), or MiniMax’s paid rewriter.' },
       { at: '#set-account', title: 'Comfy account', text: 'Your Comfy.org key and credits, for ComfyUI’s paid partner models such as Seedance, Kling and Veo. The balance also shows in the title bar, and IV Studio shows the price and asks before anything paid runs.' },
       { at: '#set-agents', title: 'Agents', text: 'Connect Claude Code, Codex or any MCP agent, so it can make shots and edits in IV Studio with you.' },
       { at: '.about-terms', title: 'Terms of use', text: 'IV Studio is Powered by MiniMax H3. Read the rules for H3 here and agree once, before your first H3 render. They apply to everything you make with it.' },

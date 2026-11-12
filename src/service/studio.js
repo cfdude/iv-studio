@@ -1,3 +1,4 @@
+import { isHarness } from './harness.js'
 // IV Studio service: the one place both the studio window and the MCP server go through.
 // Projects, jobs and characters live as JSON in the data folder, so either process can pick up the
 // other's work. ComfyUI does the rendering; this records what was asked, what ran and what came out.
@@ -15,10 +16,10 @@ import { planFinish, planPreviews } from './plan.js'
 import { defaultEnhancer } from '../renderer/src/finish.js'
 import { applyFinishSpeed, applySpeed } from './speed.js'
 import { adaptGraph, capabilities, finishCaps, LIVE_NODE, NO_RIFE, NO_UPSCALER, withLivePreview } from './remote.js'
-import { Cast, resolveMentions } from './cast.js'
+import { Cast, resolveMentions, withCast } from './cast.js'
 import { contextIrGraph, fromContextIr, writeHarness, writeLocal, writeStoryLocal } from './prompter.js'
 import { cleanSequenceLoras, renderOutGraph, retakeGraph, SAVES, SEQUENCE_DEFAULTS, takeGraph, validateSequence } from './sequence.js'
-import { checkSetup, comboOptions, modelFileMap, whyUnreached } from './setup.js'
+import { checkSetup, comboOptions, fileBase, modelFileMap, whyUnreached } from './setup.js'
 import { comfyPlace, installPacks, missingPacks } from './nodepacks.js'
 import { checkUpdates, copySnapshot, MANAGER_PACK, packFolders, readRecord, reenable, restart, undo, update, writeRecord } from './comfyupdate.js'
 import { comfyUp, isDesktopLauncher, isLocalUrl } from './comfylauncher.js'
@@ -238,10 +239,9 @@ export class Studio {
   }
 
   // ---------- setup ----------
-  // The required models this ComfyUI has in another version than IV Studio's own (setup.js modelFileMap), read
-  // from just their loader nodes.
+  // The name this ComfyUI lists each model under (setup.js modelFileMap), read from just their loader nodes.
   async modelFiles() {
-    const classes = [...new Set(this.manifest.models.filter((m) => !m.optional).flatMap((m) => [m.loader, m.altLoader].filter(Boolean).map((l) => l.split('.')[0])))]
+    const classes = [...new Set(this.manifest.models.flatMap((m) => [m.loader, m.altLoader].filter(Boolean).map((l) => l.split('.')[0])))]
     const info = Object.assign({}, ...(await Promise.all(classes.map((c) => this.comfy.objectInfo(c).catch(() => ({}))))))
     return modelFileMap(this.manifest, info, this.models)
   }
@@ -396,7 +396,8 @@ export class Studio {
   // With @ mentions resolved as a render would (cast.js); notes says what they turned into.
   planRender(given, finish) {
     if (given.engine === SEEDANCE) return this.planSeedanceRender(given)
-    const { request, notes } = resolveMentions(applySpeed(given), this.cast.members())
+    const members = this.cast.members()
+    const { request, notes } = resolveMentions(withCast(applySpeed(given), members), members)
     const plan = planPreviews(request, this.characters())
     const out = { resolved: plan.resolved, groups: plan.groups, notes, mode: request.mode }
     if (finish !== false) out.finish = planFinish(plan, { candidate: 1, ...(finish || {}), enhancer: finish?.enhancer || this.defaultFinishEnhancer() }).resolved
@@ -420,7 +421,8 @@ export class Studio {
     // a speed preset (speed.js) fills the preview size, steps and takes the request leaves out
     const asked = applySpeed(given)
     // @ mentions (cast.js): the picked character's becomes {char}; anyone or anywhere else with a picture is attached
-    const { request, notes } = resolveMentions(asked, this.cast.members())
+    const members = this.cast.members()
+    const { request, notes } = resolveMentions(withCast(asked, members), members)
     const unknown = notes.filter((n) => n.level === 'error')
     if (unknown.length) throw new Error(unknown.map((n) => n.message).join(' '))
     const project = projectId ? this.getProject(projectId) : this.createProject(projectName || shotName(request.prompt, this.characters().find((c) => c.id === request.character)))
@@ -441,7 +443,7 @@ export class Studio {
     const unet = this.models[plan.request.mode]
     if (unet) plan.values[`${MODEL_NODES[plan.request.mode]}.unet_name`] = unet
     // the run keeps what was asked as written (mentions and all, media as local files), for "Edit and run again"
-    plan.asked = { prompt: asked.prompt, mode: asked.mode, media: (asked.media || []).map((m) => ({ kind: m.kind, file: m.file || m.path, ...(m.softMouth ? { softMouth: true } : {}) })), voiceLine: asked.voiceLine || null }
+    plan.asked = { prompt: asked.prompt, mode: asked.mode, media: (asked.media || []).map((m) => ({ kind: m.kind, file: m.file || m.path, ...(m.softMouth ? { softMouth: true } : {}) })), voiceLine: asked.voiceLine || null, ...(asked.with?.length ? { with: asked.with } : {}) }
     const run = project.jobs.length + 1
     const name = `${slug(project.name)}_${project.id}_r${run}`
     plan.values['80'] = name
@@ -906,9 +908,11 @@ export class Studio {
   async h3Models() {
     const all = comboOptions(await this.comfy.objectInfo('UNETLoader'), 'UNETLoader', 'unet_name') || []
     const t = this.template
+    // a default names the file as this ComfyUI lists it (top of the folder or in a subfolder; GitHub #29)
+    const listed = (n) => all.find((o) => fileBase(o) === fileBase(n)) || n
     return {
       models: all.filter((n) => /h3|minimax/i.test(n)),
-      defaults: { text: t['101'].inputs.unet_name, frames: t['201'].inputs.unet_name, reference: t['301'].inputs.unet_name, continue: t['601'].inputs.unet_name, take: t['301'].inputs.unet_name, retake: t['301'].inputs.unet_name }
+      defaults: Object.fromEntries(Object.entries({ text: t['101'].inputs.unet_name, frames: t['201'].inputs.unet_name, reference: t['301'].inputs.unet_name, continue: t['601'].inputs.unet_name, take: t['301'].inputs.unet_name, retake: t['301'].inputs.unet_name }).map(([k, v]) => [k, listed(v)]))
     }
   }
 
@@ -936,7 +940,7 @@ export class Studio {
   // request: {idea, mode, seconds, aspect, character, media, sequence, previous}. engine: local | claude | codex |
   // contextir; model: the local model, or the Claude Code or Codex model ('' for the person's own default).
   async writePrompt(request, { engine = 'local', apiKey = null, model } = {}) {
-    const { idea, character: charId = 'none', mode = 'text', seconds = 5, aspect = '16:9', media = [], sequence = false, previous = null } = request
+    let { idea, character: charId = 'none', mode = 'text', seconds = 5, aspect = '16:9', media = [], sequence = false, previous = null } = request
     if (!idea?.trim()) throw new Error('Describe the idea first.')
     // a Seedance 2.5 shot: its own guide and reference names (seedwriter.js); Context IR is H3's own rewriter
     if (request.engine === SEEDANCE) {
@@ -946,8 +950,11 @@ export class Studio {
     }
     const character = charId === 'none' ? null : this.characters().find((c) => c.id === charId) || null
     const files = media.map((m) => ({ kind: m.kind, file: m.file || m.path }))
+    // the others picked in "Who's in it" (GitHub #30): the writer names them, and the render attaches their faces
+    const also = (request.with || []).filter((id) => id !== charId).map((id) => this.characters().find((c) => c.id === id)?.name).filter(Boolean)
+    if (also.length) idea = `${idea.trim()}\n\nAlso in the shot: ${also.join(', ')}. Name them by first name; never describe their face, hair or voice (their pictures carry those).`
     if (engine === 'local') return writeLocal({ idea, mode, seconds, character, sequence, previous, media: files, model, cpu: await this.gpuBusy() })
-    if (engine === 'claude' || engine === 'codex') return writeHarness({ engine, model, idea, mode, seconds, character, sequence, previous, media: files })
+    if (isHarness(engine)) return writeHarness({ engine, model, idea, mode, seconds, character, sequence, previous, media: files })
     if (engine !== 'contextir') throw new Error(`Unknown writer "${engine}".`)
     if (!apiKey) throw new Error('MiniMax Context IR needs a Comfy.org API key. Add it in Settings → Prompt writer.')
     const staged = []
@@ -972,7 +979,7 @@ export class Studio {
   async writeStory({ story, shots = 3, seconds = 10, character: charId = 'none' }, { engine = 'local', model } = {}) {
     if (!story?.trim()) throw new Error('Write the story first.')
     const character = charId === 'none' ? null : this.characters().find((c) => c.id === charId) || null
-    const harness = engine === 'claude' || engine === 'codex'
+    const harness = isHarness(engine)
     return writeStoryLocal({ story, shots: Math.min(8, Math.max(1, shots)), seconds, character, engine: harness ? engine : 'local', model, cpu: harness ? false : await this.gpuBusy() })
   }
 

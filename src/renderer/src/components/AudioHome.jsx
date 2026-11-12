@@ -25,7 +25,6 @@ export default function AudioHome({ go }) {
             <span className="workflow-needs small">
               <span className="mono pink">Needs</span> {t.needs.join(' · ')}
             </span>
-            <span className="mono small dim">{t.credit}</span>
           </button>
         ))}
       </div>

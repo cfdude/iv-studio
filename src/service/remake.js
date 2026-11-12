@@ -1,3 +1,4 @@
+import { isHarness } from './harness.js'
 // Remake: Replace's engine for swapping people and changing the scene, on Viggle Remake
 // (huggingface.co/Viggle/Viggle-Remake, revision 21665fa): two LoRAs on MiniMax H3 (fl2va), merged into int8 files,
 // swap (recast people) and edit (remove or add things, weather, light, setting, style). The source keeps its motion,
@@ -213,12 +214,12 @@ export class Remake {
   // The int8 file for a kind on this ComfyUI (any folder), and what else Remake needs that it lacks.
   async check(kind = 'swap') {
     // Comfy Cloud has no Viggle Remake; the person's own cloud (RunPod, Modal) downloads it the first time it's used
-    if (this.studio.comfy.hosted) return { ready: false, cloud: true, error: 'Replace doesn’t run on Comfy Cloud: it needs Viggle Remake. Use this computer, or your own cloud on RunPod or Modal.', packs: [], models: [], unet: null }
+    if (this.studio.comfy.hosted) return { ready: false, cloud: true, error: 'Replace doesn’t run on Comfy Cloud: it needs its own model there. Use this computer, or your own cloud on RunPod or Modal.', packs: [], models: [], unet: null }
     const info = await this.studio.comfy.objectInfo()
     const unets = comboOptions(info, 'UNETLoader', 'unet_name') || []
     const unet = unets.find((u) => u.replace(/\\/g, '/').split('/').pop() === MODEL[kind]) || null
-    const packs = NODES.filter((c) => !info[c]).length ? [{ name: 'Viggle Remake nodes (Settings → Setup → Install missing node packs)', url: null, missing: NODES.filter((c) => !info[c]) }] : []
-    const models = unet ? [] : [{ name: `Viggle Remake ${kind === 'swap' ? 'swap' : 'edit'} (${MODEL[kind]}, 21 GB)`, where: 'diffusion_models', setup: kind === 'swap' ? 'remake_swap' : 'remake_edit' }]
+    const packs = NODES.filter((c) => !info[c]).length ? [{ name: 'Replace’s nodes (Settings → Setup → Install missing node packs)', url: null, missing: NODES.filter((c) => !info[c]) }] : []
+    const models = unet ? [] : [{ name: `Replace’s ${kind === 'swap' ? 'swap' : 'edit'} model (${MODEL[kind]}, 21 GB)`, where: 'diffusion_models', setup: kind === 'swap' ? 'remake_swap' : 'remake_edit' }]
     return { ready: !packs.length && !models.length, packs, models, unet }
   }
 
@@ -382,14 +383,14 @@ export class Remake {
     const user = [`The source is ${seconds.toFixed(2)} s at 24 fps (${s.n} frames). ${cutsText}`, wanted, `Painted frames: ${keys.map((k, i) => `<Picture ${i + 1}> at ${k.time}`).join(', ')}.`, '', 'Images, in order:', ...images.map((im, i) => `Image ${i + 1} (${im.name}): ${im.label}`)].join('\n')
     const { engine, model } = this.writer()
     let data
-    if (engine === 'claude' || engine === 'codex') data = await harnessJson({ engine, model, system, user: `${user}\n${engine === 'claude' ? 'Open each image file with the Read tool before you write.\n' : ''}\nAnswer with the JSON object only.`, schema: SCHEMA, images, timeoutMs: 600000 })
+    if (isHarness(engine)) data = await harnessJson({ engine, model, system, user: `${user}\n${engine === 'claude' ? 'Open each image file with the Read tool before you write.\n' : ''}\nAnswer with the JSON object only.`, schema: SCHEMA, images, timeoutMs: 600000 })
     else data = await this.local({ system, user, images, model })
     let prompt = assemblePrompt(data)
     let problems = checkRemakePrompt(prompt, { pictures: keys.length, frames: s.frames })
     // one repair pass with the problems named
     if (problems.length) {
       const note = `Your answer had these problems: ${problems.join('; ')}. Answer again with every problem fixed.`
-      data = engine === 'claude' || engine === 'codex' ? await harnessJson({ engine, model, system, user: `${user}\n\n${note}\n\nAnswer with the JSON object only.`, schema: SCHEMA, images, timeoutMs: 600000 }) : await this.local({ system, user: `${user}\n\n${note}`, images, model })
+      data = isHarness(engine) ? await harnessJson({ engine, model, system, user: `${user}\n\n${note}\n\nAnswer with the JSON object only.`, schema: SCHEMA, images, timeoutMs: 600000 }) : await this.local({ system, user: `${user}\n\n${note}`, images, model })
       prompt = assemblePrompt(data)
       problems = checkRemakePrompt(prompt, { pictures: keys.length, frames: s.frames })
     }

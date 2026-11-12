@@ -350,6 +350,23 @@ function ollamaExe() {
   return local && fs.existsSync(local) ? local : null
 }
 
+// How Ollama's server is started. On Windows a detached `ollama serve` has no console of its own, so every model it
+// loads (llama-server.exe, a console program) opens a new terminal window. So: Ollama's own tray app when it's there
+// (it keeps the server and its runners hidden, as when Ollama starts with Windows), else `ollama serve` started through
+// PowerShell with a hidden console that its runners share. Mac and Linux start `ollama serve` in the background.
+export function ollamaStartCommand(exe, platform = process.platform, exists = fs.existsSync) {
+  if (platform !== 'win32') return { command: exe, args: ['serve'] }
+  // Windows paths by Windows rules, so this answers the same on any machine (and in Linux and Mac CI)
+  const tray = path.win32.join(path.win32.dirname(exe), 'ollama app.exe')
+  if (exists(tray)) return { command: tray, args: [] }
+  const q = (s) => `'${String(s).replace(/'/g, "''")}'`
+  return { command: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', `Start-Process -FilePath ${q(exe)} -ArgumentList 'serve' -WindowStyle Hidden`] }
+}
+function startOllamaServer(exe) {
+  const { command, args } = ollamaStartCommand(exe)
+  spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+}
+
 // Starts Ollama's server if it is installed but not running, and waits for it.
 // Unloads whatever Ollama still holds (the title bar's Free memory). Returns the names it unloaded.
 export async function unloadOllama() {
@@ -368,7 +385,7 @@ export async function ensureOllama() {
   if (!ollamaIsLocal()) throw new Error(`Ollama isn't answering at ${ollamaUrl()}. Check the address in Settings → Prompt writer, and that Ollama listens there (OLLAMA_HOST=0.0.0.0).`)
   const exe = ollamaExe()
   if (!exe) throw new Error('Ollama is not installed. Install it from ollama.com, or use MiniMax Context IR.')
-  spawn(exe, ['serve'], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+  startOllamaServer(exe)
   for (let i = 0; i < 30; i++) {
     await new Promise((r) => setTimeout(r, 500))
     if ((await ollamaStatus()).running) return true
@@ -601,19 +618,80 @@ export async function writeHarness({ engine, model, idea, mode = 'text', seconds
   return keepIdeaMedium(keepIdeaLine(await checked(data, { assembleOpts: { mode, seconds, lastFrame: req.lastFrame }, character, ctx: checkerContext({ mode, seconds, media, character }), again, retry, idea }), idea, character), idea)
 }
 
-function parseJson(text) {
+const UNREADABLE = 'The writer returned something unreadable. Try again.'
+
+// The JSON object in a writer's reply. <think> blocks, ```json fences and words around the object are dropped
+// (OpenAI-compatible servers that can't hold the schema answer like that).
+export function parseJson(text) {
+  const t = String(text || '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .trim()
+    .replace(/^```(?:json)?\s*|\s*```$/g, '')
   try {
-    return JSON.parse(String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, ''))
+    return JSON.parse(t)
   } catch {
-    throw new Error('The writer returned something unreadable. Try again.')
+    const a = t.indexOf('{')
+    const b = t.lastIndexOf('}')
+    try {
+      if (a >= 0 && b > a) return JSON.parse(t.slice(a, b + 1))
+    } catch {}
+    throw new Error(UNREADABLE)
+  }
+}
+
+// An answer cut off before its end (a field that ran on until the writer's token limit): closed after its last
+// complete object, so a shot list keeps every shot that was finished. null when nothing complete is left.
+// The result is marked { _cut: true }.
+export function salvageJson(text) {
+  const t = String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '')
+  const start = t.indexOf('{')
+  if (start < 0) return null
+  const stack = []
+  let inStr = false
+  let esc = false
+  let cut = null
+  for (let i = start; i < t.length; i++) {
+    const c = t[i]
+    if (inStr) {
+      if (esc) esc = false
+      else if (c === '\\') esc = true
+      else if (c === '"') inStr = false
+      continue
+    }
+    if (c === '"') inStr = true
+    else if (c === '{' || c === '[') stack.push(c)
+    else if (c === '}' || c === ']') {
+      stack.pop()
+      if (!stack.length) break
+      // an object finished inside a list: a safe place to close everything still open
+      if (c === '}' && stack[stack.length - 1] === '[') cut = { at: i + 1, open: [...stack] }
+    }
+  }
+  if (!cut) return null
+  const close = cut.open.reverse().map((c) => (c === '{' ? '}' : ']')).join('')
+  try {
+    return { ...JSON.parse(t.slice(start, cut.at) + close), _cut: true }
+  } catch {
+    return null
   }
 }
 
 // Any structured answer from the local writer: system + user text in, an object of `schema`'s shape out
-// (Projects' scene breakdown uses it). Unloads afterwards like every write.
-export async function ollamaJson({ system, user, schema, model, cpu = false, ctx = 16384, temperature = 0.5 }) {
+// (Projects' scene breakdown uses it). Unloads afterwards like every write. An unreadable answer is asked for once
+// more, cooler; with salvage, a second answer that was cut off keeps what it finished (salvageJson) instead of
+// failing (GitHub #27: long scenes of a 5-minute film).
+export async function ollamaJson({ system, user, schema, model, cpu = false, ctx = 16384, temperature = 0.5, maxTokens = 8000, salvage = false }) {
   const { name } = await localWriterModel(model)
-  return localChat({ model: name, system, messages: [{ role: 'user', content: user }], schema, temperature, ctx, maxTokens: 8000, cpu, timeoutMs: 900000 })
+  let last = ''
+  for (let i = 0; i < 2; i++) {
+    last = await localChat({ model: name, system, messages: [{ role: 'user', content: user }], schema, temperature: i ? Math.min(temperature, 0.3) : temperature, ctx, maxTokens, cpu, timeoutMs: 900000, raw: true })
+    try {
+      return parseJson(last)
+    } catch {}
+  }
+  const saved = salvage ? salvageJson(last) : null
+  if (saved) return saved
+  throw new Error(UNREADABLE)
 }
 
 // A short story -> one prompt per shot, written to join as one continuous take. engine: 'local' (Ollama) or a

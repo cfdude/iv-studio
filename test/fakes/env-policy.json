@@ -250,6 +250,12 @@
       "source": "src/service/harness.js:56"
     },
     {
+      "name": "HERMES_HOME",
+      "to": "dir",
+      "why": "Hermes install folder on Windows",
+      "source": "src/service/hermesacp.js"
+    },
+    {
       "name": "MODAL_CONFIG_PATH",
       "to": "missing-file",
       "why": "else the real ~/.modal.toml is read",
@@ -311,6 +317,21 @@
       "name": "IV_TEST_RUN_DIR",
       "why": "page tier only: the run folder the driver makes; with IV_STUDIO_DATA it is what lets IV_STUDIO_UI_HIDDEN hide the windows",
       "source": "src/service/uihidden.js:5"
+    },
+    {
+      "name": "IV_STUDIO_TEST_HERMES",
+      "why": "a test copy switch; a test that wants it sets it itself",
+      "source": "src/main/index.js"
+    },
+    {
+      "name": "IV_STUDIO_BUILD_SHA",
+      "why": "names the commit a build was made from; read once, to label the version",
+      "source": "src/service/buildinfo.js"
+    },
+    {
+      "name": "IV_STUDIO_MAC_UPDATES",
+      "why": "1 turns a Mac copy's self-update back on (off by default on this build); a test that wants it sets it itself",
+      "source": "src/service/updateplan.js"
     }
   ]
 }

@@ -142,13 +142,15 @@ const realAgentsFound = () => {
   const agentPick = () => {
     const found = TEST_COPY && process.env.IV_STUDIO_TEST_AGENT ? { claude: process.env.IV_STUDIO_TEST_AGENT, codex: null } : agentsFound()
     const s = readSettings(BASE)
-    const pick = ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : null
+    // your agent (Settings → You and your agent) when it can run Dashboard ideas (Claude Code or Codex), else the prompt
+    // writer's, else whichever is installed
+    const pick = ['claude', 'codex'].includes(s.chatEngine) && found[s.chatEngine] ? s.chatEngine : ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : null
     return { pick, exe: pick ? found[pick] : null, installed: { claude: !!found.claude, codex: !!found.codex } }
   }
   const agentView = () => (agentRun ? { ...agentRun.state(), renders: agentRenders } : null)
   const agentStatus = () => {
     const { pick, installed } = agentPick()
-    return { pick, name: pick ? AGENT_NAMES[pick] : null, installed, cloud: readSettings(BASE).target === 'cloud', run: agentView() }
+    return { pick, name: pick ? (readSettings(BASE).agentName || '').trim() || AGENT_NAMES[pick] : null, installed, cloud: readSettings(BASE).target === 'cloud', run: agentView() }
   }
   // the takes the run started, as the panel shows them: name, status and progress
   const refreshAgentRenders = async () => {
@@ -187,6 +189,7 @@ const realAgentsFound = () => {
       idea: text,
       mcp,
       model: pick === 'claude' ? s.claudeModel || '' : s.codexModel || '',
+      agentName: (s.agentName || '').trim(),
       extraEnv,
       onChange: (state) => {
         send('agentRun:changed', { ...state, renders: agentRenders })
@@ -217,10 +220,15 @@ const realAgentsFound = () => {
   let chatTurn = null
   let chatRenders = []
   let chatPoll = null
-  const chatFound = () => (TEST_COPY && process.env.IV_STUDIO_TEST_CHAT ? { claude: process.env.IV_STUDIO_TEST_CHAT, codex: null } : agentsFound())
+  const chatFound = () => {
+    if (TEST_COPY && process.env.IV_STUDIO_TEST_CHAT) return { claude: process.env.IV_STUDIO_TEST_CHAT, codex: null, hermes: process.env.IV_STUDIO_TEST_HERMES || null }
+    const { env, home } = agentHome()
+    return { ...agentsFound(), hermes: (TEST_COPY && process.env.IV_STUDIO_TEST_HERMES) || findHermes(env, home) }
+  }
   const chatPreferred = (found) => {
     const s = readSettings(BASE)
-    return ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : null
+    if (['claude', 'codex', 'hermes'].includes(s.chatEngine) && found[s.chatEngine]) return s.chatEngine
+    return ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : found.hermes ? 'hermes' : null
   }
   // The spending limit (spending.js): the chat's MCP server asks this desk before a paid step, and borrows the
   // Comfy.org key from it, with a token that only lives as long as one chat turn.
@@ -267,13 +275,14 @@ const realAgentsFound = () => {
   const chatEngine = (engine) => {
     const found = chatFound()
     const e = engine || chatPreferred(found)
-    if (!e || !AGENT_NAMES[e]) throw new Error('Install Claude Code or Codex first: the chat uses your own.')
+    if (!e || !AGENT_NAMES[e]) throw new Error('Install Claude Code, Codex or Hermes first: the chat uses your own.')
     if (!found[e]) throw new Error(`${AGENT_NAMES[e]} isn't installed on this computer.`)
     return e
   }
   handle('chat:status', () => {
     const found = chatFound()
-    return { installed: { claude: !!found.claude, codex: !!found.codex }, preferred: chatPreferred(found), chat: chatView(), chats: listChats(chatsRoot).slice(0, 10) }
+    const s = readSettings(BASE)
+    return { installed: { claude: !!found.claude, codex: !!found.codex, hermes: !!found.hermes }, preferred: chatPreferred(found), chat: chatView(), chats: listChats(chatsRoot).slice(0, 20), agentName: (s.agentName || '').trim(), userName: (s.userName || '').trim() }
   })
   handle('chat:new', (engine) => {
     if (chatTurn) throw new Error(`${chat.name} is still answering. Stop it first.`)
@@ -349,7 +358,8 @@ const realAgentsFound = () => {
       message: withAttachments(message, attached),
       context: fullContext,
       mcp: mcpCommand(),
-      model: current.engine === 'claude' ? s.claudeModel || '' : s.codexModel || '',
+      model: current.engine === 'claude' ? s.claudeModel || '' : current.engine === 'codex' ? s.codexModel || '' : s.hermesModel || '',
+      names: { agentName: s.agentName, userName: s.userName },
       extraEnv,
       onEvent: (e) => {
         // show_in_app: the window goes there and lights it up (App.jsx)
@@ -756,7 +766,7 @@ describe('agents, the chat, the activity log, batches and recipes', { concurrenc
 
     test('[ipc:chat:status] says which agents are installed, which one the chat prefers, the open chat and the saved ones', () => {
       pinned(d.handlers['chat:status'], d.parts.chatFound, d.parts.chatPreferred)
-      assert.deepEqual(d.handlers['chat:status'](), { installed: { claude: true, codex: false }, preferred: 'claude', chat: null, chats: [] })
+      assert.deepEqual(d.handlers['chat:status'](), { installed: { claude: true, codex: false, hermes: false }, preferred: 'claude', chat: null, chats: [], agentName: '', userName: '' })
     })
 
 

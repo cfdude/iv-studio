@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-export const AGENT_NAMES = { claude: 'Claude Code', codex: 'Codex' }
+export const AGENT_NAMES = { claude: 'Claude Code', codex: 'Codex', hermes: 'Hermes' }
 export const RUN_LIMIT_MS = 45 * 60 * 1000
 export const SERVER = 'iv-studio'
 
@@ -284,11 +284,11 @@ export function applyEvent(state, e) {
 
 // exe: the agent's program (harness.js findHarnesses). mcp: this install's server { command, args, env }.
 // onChange(state) after every change. Returns { state, stop() }.
-export function startAgentRun({ engine, exe, idea, mcp, model = '', extraEnv = {}, onChange = () => {}, limitMs = RUN_LIMIT_MS }) {
+export function startAgentRun({ engine, exe, idea, mcp, model = '', agentName = '', extraEnv = {}, onChange = () => {}, limitMs = RUN_LIMIT_MS }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-studio-agent-'))
   const jobsFile = path.join(dir, 'jobs.txt')
   fs.writeFileSync(jobsFile, '')
-  const env = { ...mcp.env, ...extraEnv, IV_STUDIO_AGENT_RUN: '1', IV_STUDIO_AGENT_JOBS: jobsFile, IV_STUDIO_AGENT_NAME: `${AGENT_NAMES[engine] || 'An agent'} (Dashboard idea)` }
+  const env = { ...mcp.env, ...extraEnv, IV_STUDIO_AGENT_RUN: '1', IV_STUDIO_AGENT_JOBS: jobsFile, IV_STUDIO_AGENT_NAME: `${agentName || AGENT_NAMES[engine] || 'An agent'} (Dashboard idea)` }
   const server = { command: mcp.command, args: mcp.args, env }
   let args
   if (engine === 'claude') {
@@ -300,7 +300,7 @@ export function startAgentRun({ engine, exe, idea, mcp, model = '', extraEnv = {
   } else if (engine === 'codex') args = codexArgs({ mcp: server, dir, model })
   else throw new Error(`Unknown agent "${engine}".`)
 
-  const state = { engine, name: AGENT_NAMES[engine], idea, status: 'running', steps: [], say: null, startedAt: new Date().toISOString(), endedAt: null, jobs: [] }
+  const state = { engine, name: agentName || AGENT_NAMES[engine], idea, status: 'running', steps: [], say: null, startedAt: new Date().toISOString(), endedAt: null, jobs: [] }
   const changed = () => onChange(JSON.parse(JSON.stringify(state)))
   const readJobs = () => {
     try {

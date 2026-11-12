@@ -4,7 +4,7 @@ import { shotName } from '../src/service/studio.js'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { Productions, animaticPlan, asFirstFrame, beatOf, facePrompt, heading, isOutside, oneTake, placePicture, placePrompt, scriptText, sketchPrompt, spokenWords, withLine, withRoom, withSilence, wordMatch } from '../src/service/productions.js'
+import { Productions, animaticPlan, asFirstFrame, beatOf, facePrompt, heading, isOutside, keepLines, oneTake, placePicture, placePrompt, sceneParts, scriptText, shotSchemaFor, sketchPrompt, spokenWords, withLine, withRoom, withSilence, wordMatch } from '../src/service/productions.js'
 import { parseScript } from '../src/service/screenplay.js'
 
 let n = 0
@@ -261,5 +261,62 @@ ok('a continuous shot needs a shot before it in its scene', () => {
   assert.equal(a.continues, false, 'the first shot of a scene has nothing to carry on from')
   assert.equal(b.continues, true)
   fs.rmSync(dir, { recursive: true, force: true })
+})
+ok('#27: a long scene is planned in parts between script elements; each answer is capped by its seconds', () => {
+  const lines = []
+  for (let i = 0; i < 32; i++) lines.push(`Tess picks up part ${i} and turns it under the lamp.\n\n${i % 2 ? 'THEO' : 'TESS'}\nLine number ${i} of the long night.`)
+  const sc = parseScript(`INT. WORKSHOP - NIGHT\n\n${lines.join('\n\n')}`).scenes[0]
+  assert.equal(sceneParts(sc, 50).length, 1, 'a short scene stays whole')
+  assert.equal(sceneParts(sc, 75).length, 1)
+  const parts = sceneParts(sc, 300)
+  assert.equal(parts.length, 5)
+  // every line is in exactly one part, in order, and the seconds add up to about the scene's
+  const all = parts.map((x) => x.text).join('\n')
+  for (let i = 0; i < 32; i++) assert.equal(all.split(`Line number ${i} of`).length - 1, 1, `line ${i}`)
+  assert.ok(all.indexOf('Line number 31') > all.indexOf('Line number 0'))
+  assert.ok(Math.abs(parts.reduce((t, x) => t + x.seconds, 0) - 300) <= 5)
+  assert.match(parts[1].text, /^INT\. WORKSHOP - NIGHT \(continued\)/)
+  assert.equal(shotSchemaFor(60).properties.shots.maxItems, 22)
+  assert.equal(shotSchemaFor(5).properties.shots.maxItems, 4)
+  // each part carries its own script elements, and together they are the scene's, once each, in order
+  assert.deepEqual(parts.flatMap((x) => x.elements), sc.elements)
+  assert.deepEqual(sceneParts(sc, 50)[0].elements, sc.elements)
+})
+ok('#27: every line of the script ends up in a shot; a line the writer left out gets its own shot in place', () => {
+  const d = (who, text) => ({ type: 'dialogue', who, text })
+  const a = (text) => ({ type: 'action', text })
+  const shot = (line, extra = {}) => ({ action: `about: ${line}`, staging: 'Tess left', camera: 'Wide', characters: ['Tess'], speaker: line ? 'Tess' : '', line, seconds: 5, ends: `after ${line}`, ...extra })
+  const script = [a('Tess opens the box.'), d('Tess', 'It still plays.'), a('Theo leans in.'), d('Theo', "Then don't stop now."), a('She winds the key.'), d('Tess', 'One more turn.')]
+  // all there (curly apostrophe, a stray word of punctuation): nothing added
+  let r = keepLines([shot('It still plays!'), shot('Then don’t stop now.'), shot('One more turn.')], script)
+  assert.equal(r.added, 0)
+  assert.equal(r.shots.length, 3)
+  // the middle line dropped: it comes back after the shot of the line before, with the action written before it
+  r = keepLines([shot('It still plays.'), shot(''), shot('One more turn.')], script)
+  assert.equal(r.added, 1)
+  assert.deepEqual(r.shots.map((s) => s.line), ['It still plays.', "Then don't stop now.", '', 'One more turn.'])
+  assert.equal(r.shots[1].speaker, 'Theo')
+  assert.equal(r.shots[1].action, 'Theo leans in.')
+  assert.equal(r.shots[1].staging, 'after It still plays.')
+  assert.ok(r.shots[1].seconds >= 3 && r.shots[1].seconds <= 10)
+  // a speech split over two shots counts; two lines in one shot count
+  const long = [d('Tess', 'She used to wind it every night before bed, and hum along until she fell asleep.')]
+  assert.equal(keepLines([shot('She used to wind it every night before bed,'), shot('and hum along until she fell asleep.')], long).added, 0)
+  assert.equal(keepLines([shot('It still plays. Then don’t stop now. One more turn.')], script).added, 0)
+  // a line said twice needs two shots, next to each other or not
+  const twice = [d('Tess', 'Again.'), d('Tess', 'Again.')]
+  assert.equal(keepLines([shot('Again.')], twice).added, 1)
+  const aba = [d('Tess', 'Hold the light closer.'), d('Theo', 'Slow hands.'), d('Tess', 'Hold the light closer.')]
+  r = keepLines([shot('Hold the light closer.'), shot('Slow hands.')], aba)
+  assert.equal(r.added, 1)
+  assert.deepEqual(r.shots.map((s) => s.line), ['Hold the light closer.', 'Slow hands.', 'Hold the light closer.'])
+  // the writer moved a line earlier: it's there, nothing added
+  assert.equal(keepLines([shot('One more turn.'), shot('It still plays.'), shot('Then don’t stop now.')], script).added, 0)
+  // one word changed in a longer line still counts; a different line doesn't
+  const para = [d('Theo', 'Then we fix it together before the sun comes up.')]
+  assert.equal(keepLines([shot('Then we fix it together before the sun is up.')], para).added, 0)
+  assert.equal(keepLines([shot('Nothing like it.')], para).added, 1)
+  // a plan with no shots at all gets one shot per line
+  assert.equal(keepLines([], script).shots.length, 3)
 })
 console.log(`${n} checks passed`)
