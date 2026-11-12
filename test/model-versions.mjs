@@ -30,6 +30,19 @@ const TEMPLATES = info({
   MinimaxH3LatentUpscaler3D: ['model_name', []]
 })
 
+// GitHub #32: the gated Lightricks files had "****…" as their SHA-256 (Hugging Face masks the hash of a gated file
+// for anyone without access), so every download failed its check and was deleted. Every pinned hash is real hex.
+ok('every pinned SHA-256 in models.json and cloud.json is 64 hex characters', () => {
+  const bad = []
+  const walk = (v, where) => {
+    if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${where}[${i}]`))
+    else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) /^sha256$/i.test(k) && x != null ? !/^[0-9a-f]{64}$/.test(String(x)) && bad.push(`${where}.${k}`) : walk(x, `${where}.${k}`)
+  }
+  walk(manifest, 'models.json')
+  walk(JSON.parse(fs.readFileSync(path.join(ROOT, 'resources', 'cloud', 'cloud.json'), 'utf8')), 'cloud.json')
+  assert.deepEqual(bad, [])
+})
+
 ok('every required model says which other versions count', () => {
   for (const m of manifest.models.filter((m) => !m.optional)) assert.ok(m.accept?.length, m.id)
 })

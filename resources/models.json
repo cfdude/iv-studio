@@ -533,7 +533,7 @@
       "folder": "diffusion_models",
       "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
       "size": 21504034224,
-      "sha256": "****************************************************************",
+      "sha256": "c4279eeff115cbeaca494bd2183e7d768c38fe85a184dc6afbb7159157c44334",
       "needed_for": [
         "effects"
       ],
@@ -549,7 +549,7 @@
       "folder": "text_encoders",
       "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
       "size": 15372969374,
-      "sha256": "****************************************************************",
+      "sha256": "6ce688a0aa98a5fa36a9f1e6c3f42152a498cc2b53ee8c15674c64244f91487f",
       "needed_for": [
         "effects"
       ],
@@ -565,7 +565,7 @@
       "folder": "vae",
       "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-video-vae-bf16.safetensors",
       "size": 1472223346,
-      "sha256": "****************************************************************",
+      "sha256": "847e14ca7f3355debca0cea4eaa24ac0fbcdf0061da054ac89ca638a869ddba3",
       "needed_for": [
         "effects"
       ],
@@ -581,7 +581,7 @@
       "folder": "vae",
       "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/49b093a39c19169a8a81721dcc541e07e945232f/vae/ltx-2.5-audio-vae-bf16.safetensors",
       "size": 364866540,
-      "sha256": "****************************************************************",
+      "sha256": "c52733d37f6a7fb7949c3dc0fb468c6cb2169e4d836983a73babb9f0d54837a5",
       "needed_for": [
         "effects"
       ],
@@ -597,7 +597,7 @@
       "folder": "loras",
       "url": "https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-DubIt/resolve/cc18226c909e87aa8a1a079896ad46a4ec01e4d1/ltx-2.3-22b-ic-lora-dubit-0.9.safetensors",
       "size": 2466665072,
-      "sha256": "****************************************************************",
+      "sha256": "fc415b12cb639e78511bc264f85080c2f7b188e334c1d9fade76b310e2bc419c",
       "needed_for": [
         "effects"
       ],
@@ -1063,7 +1063,7 @@
       "folder": "loras",
       "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR/resolve/c7578ebddb54f4210e534e4d8cad698a5a520692/ltx-2.5-22b-ic-lora-sdr-to-hdr-1.0.safetensors",
       "size": 1308787472,
-      "sha256": "****************************************************************",
+      "sha256": "0b39eac09672c18d0d10f401d5e71a68a73225f1169df826b092b7e5ef489675",
       "needed_for": [
         "effects"
       ],
@@ -1079,7 +1079,7 @@
       "folder": "embeddings",
       "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR/resolve/c7578ebddb54f4210e534e4d8cad698a5a520692/ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors",
       "size": 12614165,
-      "sha256": "****************************************************************",
+      "sha256": "63c03987a1984f6d4b3d3440c15deee66b0310c01950496329f983f5dc8c88bd",
       "needed_for": [
         "effects"
       ],
@@ -1110,7 +1110,7 @@
       "folder": "loras",
       "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Clean-Plate/resolve/5cdacad3ee33574ecb11120b873dec320de79b37/ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
       "size": 327318439,
-      "sha256": "****************************************************************",
+      "sha256": "27f4f7ba552d3bf7273dd817291123a5934f17e7698ca9cd8945b079a5358393",
       "needed_for": [
         "effects"
       ],
@@ -1126,7 +1126,7 @@
       "folder": "loras",
       "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Day-To-Night/resolve/16a69fe6c88de9e349246789d0c18803560881f5/ltx-2.5-22b-ic-lora-day-to-night-0.9.safetensors",
       "size": 327318440,
-      "sha256": "****************************************************************",
+      "sha256": "2212838ea446628a07eddb57734427b2150e9cf159b19360cda28365a30b275b",
       "needed_for": [
         "effects"
       ],
@@ -1142,7 +1142,7 @@
       "folder": "loras",
       "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Water-Simulation/resolve/7a458d0c206d6f80ee7bae2f46e21e959f6fc42e/ltx-2.5-22b-ic-lora-water-simulation-0.9.safetensors",
       "size": 906080568,
-      "sha256": "****************************************************************",
+      "sha256": "58c244d24a4381858749e66fae9fd1b91aec6b546f83f3f81a7a10b4934a7857",
       "needed_for": [
         "effects"
       ],
