@@ -2,6 +2,15 @@
 // version's once, until it's dismissed; Settings → Updates lists the last few versions'.
 export const NEWS = [
   {
+    version: '1.1.9',
+    items: [
+      { text: 'Fixed: the LTX-2.5 models for Dub, Clean plate, Day to night, Add water and SDR to HDR failed their checksum and were deleted after downloading. They download and verify now.' },
+      { text: 'The storyboard keeps every line of your script: a line the writer left out gets a shot of its own, and the board says so.' },
+      { text: 'Setup can download the three files for training a character on your own graphics card (Characters → Train your own → This PC).' },
+      { text: 'More reliable model downloads: every model is pinned to an exact version and checked, and on a Linux or Mac ComfyUI every kind of job finds models kept in folders, not only shots.' }
+    ]
+  },
+  {
     version: '1.1.8',
     items: [
       { text: 'More than one character in a shot: in Create’s “Who’s in it”, click several. The first leads with their trained look; the others come along as their face pictures, and Write it for me names them.' },
