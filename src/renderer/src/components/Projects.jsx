@@ -872,6 +872,11 @@ function Board({ v, act, characters, openShot, setStep, mode }) {
       {b?.state === 'done' && !film && b.promptErrors > 0 && (
         <p className="small pink">{b.promptErrors === 1 ? 'One shot has' : `${b.promptErrors} shots have`} no prompt yet: the writer’s answer couldn’t be read. Open the shot and press Write the prompt.</p>
       )}
+      {b?.state === 'done' && !film && b.restoredLines > 0 && (
+        <p className="small dim">
+          The writer left out {b.restoredLines === 1 ? 'one line' : `${b.restoredLines} lines`} of your script, so {b.restoredLines === 1 ? 'it has a shot' : 'they have shots'} of {b.restoredLines === 1 ? 'its' : 'their'} own, in a plain medium close-up. Open {b.restoredLines === 1 ? 'it' : 'them'} to change the camera or the action.
+        </p>
+      )}
       {v.scenes.map((sc, k) => (
         <div key={sc.id} className="wiz-scene">
           <div className="wiz-scene-head">
