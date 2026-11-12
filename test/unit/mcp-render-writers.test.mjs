@@ -79,7 +79,7 @@ describe('MCP review and prompt writer tools', { skip: process.platform === 'win
     assert.equal(review.engine, 'claude')
     // saved under the take's number, and what Claude Code was given
     assert.equal(readData('jobs', `${job.id}.json`).reviews['2'].fix.kind, 'revise_prompt')
-    assert.match(sawArgs('claude'), /^-p --output-format json --json-schema .* --tools Read --strict-mcp-config --no-session-persistence --system-prompt-file /)
+    assert.match(sawArgs('claude'), /^-p --output-format json --json-schema .* --tools Read --strict-mcp-config --settings \{"disableAllHooks":true\} --no-session-persistence --system-prompt-file /)
     const input = sawInput('claude')
     assert.equal(input.match(/^frame-\d-at-[\d.]+s\.jpg:/gm).length, 6)
     assert.match(input, /A woman walks along a rainy street/)
