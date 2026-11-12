@@ -160,7 +160,7 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
       continue
     }
     const ok = loras.some((l) => l.replace(/\\/g, '/') === String(c.lora || '').replace(/\\/g, '/'))
-    items.push({ id: `character:${c.id}`, label: `Character: ${c.name}`, status: ok ? 'ok' : 'warn', detail: ok ? c.lora : `LoRA not found: ${c.lora}`, kind: 'character' })
+    items.push({ id: `character:${c.id}`, label: `Character: ${c.name}`, status: ok ? 'ok' : 'warn', detail: ok ? c.lora : `LoRA not found: ${c.lora}`, kind: 'character', download: !ok && c.catalog ? c.id : undefined })
   }
 
   const blocking = items.filter((i) => i.status === 'missing')

@@ -62,6 +62,32 @@ function ModelAction({ item, dl }) {
   )
 }
 
+// A ready-made character whose LoRA isn't in ComfyUI: the same download as the Characters page (characters:install)
+function CharacterAction({ item, recheck, notify }) {
+  const [pct, setPct] = useState(null)
+  const id = item.download
+  useEffect(() => window.ivstudio.characters.onProgress(({ id: cid, progress }) => cid === id && setPct(Math.round(progress * 100))), [id])
+  if (!id || item.status === 'ok') return <span />
+  async function get() {
+    setPct(0)
+    try {
+      await window.ivstudio.characters.install(id)
+      recheck()
+    } catch (err) {
+      notify(err.message)
+    } finally {
+      setPct(null)
+    }
+  }
+  return (
+    <div className="dl">
+      <button className="btn btn-small" disabled={pct != null} onClick={get}>
+        {pct != null ? `Downloading ${pct}%` : 'Download'}
+      </button>
+    </div>
+  )
+}
+
 const STEP = { copying: 'Copying', downloading: 'Downloading', unpacking: 'Unpacking', requirements: 'Installing its requirements', done: 'Installed', skipped: 'Left alone', failed: 'Failed' }
 
 // Installs every missing node pack into this PC's ComfyUI (nodepacks.js), a line per pack as it goes, then offers
@@ -161,7 +187,7 @@ function Row({ i, dl, remote, recheck, notify, licence }) {
           </button>
         )}
       </div>
-      {i.kind === 'model' && !remote ? <ModelAction item={i} dl={dl} /> : <span />}
+      {i.kind === 'model' && !remote ? <ModelAction item={i} dl={dl} /> : i.kind === 'character' && i.download && !remote ? <CharacterAction item={i} recheck={recheck} notify={notify} /> : <span />}
     </li>
   )
 }
