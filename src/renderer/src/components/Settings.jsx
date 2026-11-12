@@ -9,6 +9,7 @@ import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
 import { SetCard, SetField, SetSwitch, Pill, SetPath, SetCode } from './SettingsKit'
 import { startTour } from '../tours'
+import { summaryOf } from '../../../service/hwsummary'
 import { comfyLauncherHelp, keychainRefusedText } from '../../../shared/platform'
 import { secretRemedy } from '../../../service/secrets'
 import { usePlatform } from '../platform'
@@ -69,7 +70,20 @@ function PcCard({ n, settings, setSettings, notify }) {
       notify(err.message)
     }
   }
-  const check = () => window.dispatchEvent(new CustomEvent('iv:welcome'))
+  const [scanning, setScanning] = useState(false)
+  // looks again in place and updates the card (and the shot defaults stay as they are); the wizard is its own link
+  async function check() {
+    setScanning(true)
+    try {
+      setSettings(await window.ivstudio.settings.set({ hardware: summaryOf(await window.ivstudio.hardware.scan()) }))
+      notify('Checked your computer again.', 'info')
+    } catch (err) {
+      notify(err.message)
+    } finally {
+      setScanning(false)
+    }
+  }
+  const welcome = () => window.dispatchEvent(new CustomEvent('iv:welcome'))
   return (
     <SetCard
       id="pc"
@@ -77,9 +91,14 @@ function PcCard({ n, settings, setSettings, notify }) {
       title="Your computer"
       sub="What this computer can do, and the defaults that suit it."
       aside={
-        <button className="btn btn-small" onClick={check}>
-          {hw ? 'Check again' : 'Check my computer'}
-        </button>
+        <>
+          <button className="btn btn-small" disabled={scanning} onClick={check}>
+            {scanning ? 'Checking…' : hw ? 'Check again' : 'Check my computer'}
+          </button>{' '}
+          <button className="link-btn small" onClick={welcome}>
+            Run welcome again
+          </button>
+        </>
       }
     >
       <div className="set-pc">
