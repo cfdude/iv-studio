@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { driveName } from './hwsummary.js'
 import { finishFor, previewFor, speedForTier } from './speed.js'
 
 const GB = 1024 ** 3
@@ -269,10 +270,10 @@ export function recommend(scan) {
   const md = scan.modelsDrive
   if (md) {
     const state = md.free > needBytes + 20 * GB ? 'great' : md.free > needBytes ? 'ok' : 'weak'
-    verdicts.push({ id: 'disk', label: 'Free space', value: `${fmt(md.free)} free on ${md.path}`, state, say: state === 'weak' ? `The recommended downloads need ${fmt(needBytes)}. Free some space there, or move ComfyUI to a bigger drive.` : needBytes ? `Room for the ${fmt(needBytes)} of recommended downloads.` : 'Room to spare.' })
+    verdicts.push({ id: 'disk', label: 'Free space', value: `${fmt(md.free)} free on ${driveName(md.path)}`, state, say: state === 'weak' ? `The recommended downloads need ${fmt(needBytes)}. Free some space there, or move ComfyUI to a bigger drive.` : needBytes ? `Room for the ${fmt(needBytes)} of recommended downloads.` : 'Room to spare.' })
   } else {
     const best = [...(scan.drives || [])].sort((a, b) => b.free - a.free)[0]
-    if (best) verdicts.push({ id: 'disk', label: 'Free space', value: `${fmt(best.free)} free on ${best.path}`, state: best.free > needBytes + 20 * GB ? 'good' : 'ok', say: `No ComfyUI folder yet. Put ComfyUI on ${best.path}, the drive with the most room (H3 alone is about 61 GB).` })
+    if (best) verdicts.push({ id: 'disk', label: 'Free space', value: `${fmt(best.free)} free on ${driveName(best.path)}`, state: best.free > needBytes + 20 * GB ? 'good' : 'ok', say: `No ComfyUI folder yet. Put ComfyUI on ${driveName(best.path)}, the drive with the most room (H3 alone is about 61 GB).` })
   }
 
   // the prompt writer
