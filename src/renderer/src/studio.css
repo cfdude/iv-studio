@@ -189,6 +189,10 @@
 .go-anyway {
   margin-right: 10px;
 }
+.hunt-why {
+  margin: 0 10px 6px 0;
+  max-width: 38ch;
+}
 /* A shot's runs as versions, and two takes compared (Shot.jsx, Compare.jsx) */
 .run-changes {
   color: var(--pink);
