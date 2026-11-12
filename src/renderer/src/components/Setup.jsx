@@ -127,7 +127,7 @@ function NodeInstaller({ missing, recheck, notify }) {
   )
 }
 
-function Row({ i, dl, remote, recheck, notify }) {
+function Row({ i, dl, remote, recheck, notify, licence }) {
   return (
     <li className={i.status}>
       <span className="check-icon">{ICON[i.status]}</span>
@@ -140,6 +140,7 @@ function Row({ i, dl, remote, recheck, notify }) {
               Page and licence
             </button>
           )}
+          {i.status !== 'ok' && licence && licence !== 'unknown' && <span className={`hf-licence ${licence}`}> · {licence === 'accepted' ? 'licence accepted' : 'needs its licence'}</span>}
         </div>
         {i.fix && i.status !== 'ok' && i.kind !== 'model' && <div className="small pink">{i.fix}</div>}
         {i.id === 'comfyui' && i.address && (
@@ -200,6 +201,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
     })
   }, [recheck])
 
+  const [licences, setLicences] = useState({})
   const comfyItem = items.find((i) => i.id === 'comfyui')
   const gpuItem = items.find((i) => i.id === 'gpu')
   const comfyUp = comfyItem?.status === 'ok'
@@ -252,7 +254,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
   const rows = (list) => (
     <ul className="checks setup-rows">
       {list.map((i) => (
-        <Row key={i.id} i={i} dl={dl} remote={remote} recheck={recheck} notify={notify} />
+        <Row key={i.id} i={i} dl={dl} remote={remote} recheck={recheck} notify={notify} licence={i.gated ? licences[i.gated] : undefined} />
       ))}
     </ul>
   )
@@ -349,7 +351,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
               </>
             )}
             {x.id === 'extras' && !remote && optional.some((i) => i.gated && i.status !== 'ok') && (
-              <HfLogin notify={notify} pages={[...new Map(optional.filter((i) => i.gated && i.status !== 'ok').map((i) => [i.gated, { url: i.gated, label: i.name.replace(/ \(.*\)$/, '') }])).values()]} />
+              <HfLogin notify={notify} onLicences={setLicences} pages={[...new Map(optional.filter((i) => i.gated && i.status !== 'ok').map((i) => [i.gated, { url: i.gated, label: i.name.replace(/ \(.*\)$/, '') }])).values()]} />
             )}
             {x.id === 'extras' &&
               groups.map(([area, list]) => {

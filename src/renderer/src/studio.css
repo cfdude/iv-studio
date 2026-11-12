@@ -15910,6 +15910,12 @@ html.chat-window body {
 .hf-login .ok-dot {
   color: var(--green, #5fd38d);
 }
+.hf-licence.accepted {
+  color: var(--green, #5fd38d);
+}
+.hf-licence.needs-licence {
+  color: var(--pink);
+}
 .hf-login .key-form {
   display: flex;
   align-items: center;
