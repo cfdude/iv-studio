@@ -18,6 +18,9 @@ import { SpeedCards } from './Speed'
 import { savedSpeed } from '../../../service/speed'
 import { PrivacyCard } from './Privacy'
 import { AgentRows, useAgentSetup } from './AgentSetup'
+import { BUILD_SHA } from './Update'
+import { SILICON_HOME } from '../../../service/updateplan'
+import { versionLabel } from '../../../service/buildinfo'
 
 const WRITER_MODEL = 'huihui_ai/qwen3-vl-abliterated:8b-instruct'
 const GB = (b) => `${(b / 1e9).toFixed(1)} GB`
@@ -999,8 +1002,8 @@ function AboutCard({ n, info }) {
     <SetCard id="about" n={n} title="About" aside={terms && (terms.accepted ? <Pill tone="ok">Terms agreed</Pill> : <Pill tone="warn">Terms to agree</Pill>)}>
       <SetField label="IV Studio">
         <div className="set-inline">
-          <span className="set-big mono">v{info?.version}</span>
-          <button className="link-btn mono small" onClick={() => open('https://github.com/hollisorg/iv-studio')}>
+          <span className="set-big mono">v{versionLabel(info?.version, BUILD_SHA)}</span>
+          <button className="link-btn mono small" onClick={() => open(SILICON_HOME)}>
             GitHub ↗
           </button>
           <button className="link-btn mono small" onClick={() => open('https://infinitevariance.ai')}>
