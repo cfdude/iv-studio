@@ -92,6 +92,7 @@ describe('the default finisher (SB-23)', () => {
     const tips = recommend(mac(64)).tips.map((t) => t.text).join(' ')
     assert.match(tips, /2× upscale and RIFE frame interpolation/)
     assert.match(tips, /SeedVR2 isn't available on an Apple GPU yet/)
+    assert.doesNotMatch(tips, /DLSS|NVIDIA RTX/, 'a Mac is not told what a Windows card is needed for')
   })
   test('[mcp:scan_hardware] Real-ESRGAN x2 is recommended with the video models on a Mac, as its own download group', () => {
     const r = recommend(mac(64))

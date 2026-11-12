@@ -300,7 +300,7 @@ export function recommend(scan) {
     enhanceResolution: t.id === 'top' ? 1440 : 1080,
     ...(enhancer === 'upscale' ? { upscale2x: true, fps: 48 } : {})
   }
-  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale and RIFE frame interpolation; DLSS 5 needs an NVIDIA RTX card on Windows, and SeedVR2 isn't available on an Apple GPU yet." })
+  if (apple) tips.push({ state: 'info', text: "Finals on a Mac use the 2× upscale and RIFE frame interpolation. SeedVR2 isn't available on an Apple GPU yet." })
   else if (!nvidia || !win) tips.push({ state: 'info', text: `DLSS 5 needs an NVIDIA RTX card on Windows. Finals here use ${nvidia ? 'SeedVR2 or ' : ''}the 2× upscale and RIFE frame interpolation instead.` })
   if (ins.comfyRunning === false && !ins.comfyFound && local) tips.push({ state: 'warn', text: 'No ComfyUI found on this computer. Install ComfyUI (the Desktop app or the portable build) for anything that renders here.' })
   if (!ins.voices && local && nvidia) tips.push({ state: 'info', text: 'Voices are a one-time 12 GB setup on Audio > Voices.' })
