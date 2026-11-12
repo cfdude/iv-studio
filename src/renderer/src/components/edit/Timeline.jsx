@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FRAME, clipEnd, clipFor, clipKind, clipLength, fits, snap, timecode } from './model'
 import { Filmstrip, Wave, usePeaks, useStrip } from './thumbs'
+import { reducedMotion } from '../../a11y'
 
 export const HEAD = 176
 const RULER = 30
@@ -50,7 +51,28 @@ function TrackHead({ t, height, target, empty, onTarget, onTrack, onRemove }) {
   )
 }
 
+// The razor's cut: a red blade sweeps down the clip at the cut, a bright seam flashes and a few sparks fly. Drawn
+// straight into the lane (outside React) and gone in under a second; the reduce-motion setting skips it.
+function slashAt(lane, x, top, height) {
+  if (!lane || reducedMotion()) return
+  const fx = document.createElement('span')
+  fx.className = 'tl-slash'
+  fx.style.left = `${x}px`
+  fx.style.top = `${top}px`
+  fx.style.height = `${height}px`
+  fx.innerHTML = '<b class="tl-slash-arc"></b><b class="tl-slash-seam"></b>' + Array.from({ length: 7 }, (_, i) => {
+    const a = (i / 7) * Math.PI * 2 + Math.random() * 0.6
+    const d = 14 + Math.random() * 16
+    return `<i style="--dx:${(Math.cos(a) * d).toFixed(1)}px;--dy:${(Math.sin(a) * d * 0.7).toFixed(1)}px;animation-delay:${60 + i * 12}ms"></i>`
+  }).join('')
+  lane.appendChild(fx)
+  setTimeout(() => fx.remove(), 900)
+}
+
 function Clip({ c, m, kind, zoom, height, selected, tool, locked, onPointerDown, onContextMenu }) {
+  // where the razor would cut, under the pointer
+  const [guide, setGuide] = useState(null)
+  const cutting = tool === 'razor' && !locked
   const strip = useStrip(kind === 'video' ? m : null)
   const wave = usePeaks(kind === 'audio' || kind === 'video' ? m : null)
   const width = Math.max(6, clipLength(c) * zoom)
@@ -62,6 +84,8 @@ function Clip({ c, m, kind, zoom, height, selected, tool, locked, onPointerDown,
       className={`tl-clip ${kind} ${selected ? 'on' : ''} ${c.muted ? 'muted' : ''} ${locked ? 'locked' : ''} tool-${tool}`}
       style={{ left: c.start * zoom, width }}
       onPointerDown={(e) => e.button === 0 && onPointerDown(e, 'move')}
+      onPointerMove={cutting ? (e) => setGuide(e.clientX - e.currentTarget.getBoundingClientRect().left) : undefined}
+      onPointerLeave={cutting ? () => setGuide(null) : undefined}
       onContextMenu={onContextMenu}
       title={`${label} · ${clipLength(c).toFixed(2)} s`}
     >
@@ -74,6 +98,7 @@ function Clip({ c, m, kind, zoom, height, selected, tool, locked, onPointerDown,
       {c.fadeIn > 0 && <span className="tl-fade in" style={{ width: c.fadeIn * zoom }} />}
       {c.fadeOut > 0 && <span className="tl-fade out" style={{ width: c.fadeOut * zoom }} />}
       <span className="tl-clip-name">{label}</span>
+      {cutting && guide != null && <span className="tl-cut-guide" style={{ left: guide }} />}
       {!locked && tool !== 'razor' && (
         <>
           <span className="tl-edge left" onPointerDown={(e) => onPointerDown(e, 'left')} />
@@ -160,6 +185,8 @@ export default function Timeline({ tracks, clips, media, markers, time, zoom, se
       const t = Math.round(at / FRAME) * FRAME
       if (t > c.start + FRAME && t < clipEnd(c) - FRAME) {
         const at2 = c.in + (t - c.start)
+        const el = e.currentTarget
+        slashAt(el?.closest?.('.tl-lane'), t * zoom, el?.offsetTop ?? 4, el?.offsetHeight ?? 40)
         onCommit(clips.flatMap((x) => (x.id === c.id ? [{ ...c, out: at2, fadeOut: 0 }, { ...c, id: Math.random().toString(36).slice(2, 9), start: t, in: at2, fadeIn: 0 }] : [x])))
       }
       return

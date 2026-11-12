@@ -28,6 +28,16 @@ pictures, songs and spoken lines, cut it all together and export. IV Studio driv
 cloud. No strong graphics card? Shots can also render on a GPU in your own [RunPod](https://www.runpod.io) or
 [Modal](https://modal.com) account, billed by the second, or on Comfy Cloud (see [Cloud](#cloud)).
 
+**IV Studio 1.1.7** opens on a simpler welcome that asks how much you already know and keeps things short if
+you're new, shows a picture for every one of the 165 **Cinematography** setups, lets **Hermes** write your prompts,
+and opens Create's examples and staging board as pop-ups. **1.1.6** lets you name your agent (and tell it your
+name), pick a **colour** for the whole app (red, blue, purple, orange or a dark grey), and gives the editor's cut
+tool a red katana.
+
+**IV Studio 1.1.4** adds **Hermes** to the chat beside Claude Code and Codex, and a **History** tab for earlier
+conversations. The [IV Studio plugin for Hermes](https://github.com/hollisorg/hermes-iv-studio) works the other way
+round: Hermes's own `video_generate` and `image_generate` render in IV Studio, on your GPU, for free.
+
 **IV Studio 1.1.3** lets you talk to the chat (it hears you with IV Studio's own speech recognition, on your PC) and
 read its replies aloud, shows every agent's work in an **Activity** log with Undo, gives the chat a cleaner look and
 its own window, and tells it more about what you're looking at.
@@ -47,14 +57,20 @@ H3 render. To report misuse, email [abuse@infinitevariance.ai](mailto:abuse@infi
 
 ## What's new in 1.1
 
-### Your own Claude Code or Codex, inside IV Studio
+### Your own Claude Code, Codex or Hermes, inside IV Studio
 
-- **Chat.** The **Chat** button in the title bar opens a conversation with your own Claude Code or Codex, on
+- **Chat.** The **Chat** button in the title bar opens a conversation with your own Claude Code, Codex or Hermes, on
   your own plan, with every IV Studio tool: it can look things up, write and render shots, sequence, edit, make
   music and voices, and answer questions about your projects. It knows which page you're on and which shot,
   film or edit is open. Anything that deletes, costs money, installs or changes a setting shows an **Allow /
-  Don't allow** card first. Conversations are kept, and you can go back to an earlier one. On a wide window the
+  Don't allow** card first. Conversations are kept: the **History** tab (1.1.4) lists them, newest first, with which
+  agent and when, and opening one carries on where you left off. On a wide window the
   chat sits beside the page; on a smaller one it slides over it. Works on Windows, Mac and Linux.
+- **Hermes (1.1.4).** Pick Hermes beside Claude Code and Codex and your own
+  [Hermes Agent](https://hermes-agent.nousresearch.com) works in the chat, on the model you chose in Hermes. IV Studio
+  talks to it through Hermes's Agent Client Protocol server (`hermes-acp`, found where Hermes's installer puts it),
+  gives the session IV Studio's tools, and resumes the same Hermes session for each message. Anything Hermes asks
+  approval to run outside IV Studio (a shell command, a file edit) is declined and shown as a declined step.
 - **Talk to it (1.1.3).** Press the mic in the chat, say what you want and press send. IV Studio's own Whisper writes
   it down on your PC (Audio → Voices → Set up voices once). Talking while the agent works stops its answer and
   sends your new words; renders it already started keep going. The speaker button reads each reply aloud in one of
@@ -98,8 +114,10 @@ H3 render. To report misuse, email [abuse@infinitevariance.ai](mailto:abuse@infi
 - **Let Claude Code make it.** On the Dashboard, a button beside **Make it** hands your idea to your own agent:
   it writes the prompt and renders the previews on this PC, with its steps in a panel and a Stop button. It
   never deletes, installs or spends.
-- **Install them from IV Studio.** Check my PC asks whether you use Claude Code or Codex, and Settings → Agents
-  can install either with its maker's own installer and open its sign-in.
+- **Install them from IV Studio.** The welcome asks which agent you use (Claude Code, Codex or Hermes) and what to
+  call it, and Settings → Agents can install Claude Code or Codex with its maker's own installer and open its sign-in.
+- **Your agent's name (1.1.6).** Name your agent and tell it yours, in the welcome or Settings → You and your agent.
+  It answers to that name in the chat, on the Dashboard ("Let Nova make it") and in the activity log.
 
 <p align="center">
   <img src="docs/images/chat.png" alt="The chat beside the Dashboard: Claude Code answering which shots aren't finished yet, film by film, after looking them up with IV Studio's tools" width="100%">
@@ -133,8 +151,8 @@ H3 render. To report misuse, email [abuse@infinitevariance.ai](mailto:abuse@infi
   Klein, Flux.2 Klein, Krea 2, Qwen Image 2.1, Z-Image Turbo, SDXL (with Pony and Illustrious) and Moss: find a
   model's LoRAs on Civitai, see yours sorted by model, and send one to that model's tray. A LoRA IV Studio
   can't place can be assigned by hand.
-- **Start from an example.** Create offers six ready-made shots that fill in a working prompt, and the welcome
-  wizard's **Make your first shot** opens the first one ready to hunt.
+- **Start from an example.** Create's **Start from an example** button opens six ready-made shots in a pop-up;
+  each fills in a working prompt. The welcome wizard's **Make your first shot** opens the first one ready to hunt.
 - **Speed presets.** Quality, Balanced, Fast and Low memory trade picture size and steps for time and memory.
   Check my PC picks the one that suits your card; every preset fits a 12 GB card, the 2 MP finish too.
 - **How long, and what it costs.** Hunt and Finish say how long they'll take on your machine, worked out from
@@ -220,6 +238,20 @@ These ideas come from keys and Sam Wasserman's Imagination Studio (Apache-2.0); 
 
 ### Easier to use
 
+- **A simpler welcome (1.1.7).** The first thing IV Studio asks is how much you know about making AI video and
+  pictures. Then **Make it yours** (your name, your agent, a colour, easier-to-read options), a look at your PC,
+  where things render, what to download and you're ready: six steps on one row. If you're new to it, IV Studio
+  keeps each step to a couple of plain sentences and folds the details away with its suggestions already set.
+- **Your colour (1.1.6).** Red is IV Studio's own; blue, purple, orange or Dark (greys and white) recolour every
+  button, highlight and the artwork, in the welcome or Settings → Accessibility.
+- **Cinematography you can see (1.1.7).** The **Cinematography** button (with its little cinema camera) opens all
+  165 setups as pictures of one scene, a woman in a red coat at a rainy café window, shot each way: film stocks,
+  lenses, lighting, camera moves, moods. Hover one to read the phrase it adds; camera moves are marked.
+- **The staging board in a pop-up (1.1.7).** **Stage it on a board** on Create opens the board large; **Use this
+  staging** puts a one-line summary under the prompt, with Edit to open it again.
+- **Editor tools you can see (1.1.6).** The Razor (C) turns the cursor into a red katana with a guide line, and
+  each cut flashes a slash (not with Reduce motion). Select, Ripple and Roll have their own cursors and icons.
+
 - **A new look.** Tall animated banners with a quick-start bar on every main page, and an Audio front page.
   Nothing flashes (every banner is checked against the WCAG flash limit), animations pause when they're off
   screen, and Reduce motion holds them still.
@@ -239,6 +271,19 @@ These ideas come from keys and Sam Wasserman's Imagination Studio (Apache-2.0); 
 - **Less waiting on memory.** Effects free the GPU before their video model loads, and reopening IV Studio while
   ComfyUI starts no longer starts a second one.
 - **An installer in IV Studio's colours,** with the eye down the side.
+- **Scroll bars in the theme, and no clipped corners (1.1.6).** Every page was checked from 1100 × 720 to
+  2560 × 1440 with the chat open and closed.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/make-it-yours.png" alt="The welcome's Make it yours step: your name Alex, your agent Nova running on Claude Code, and the five colours with Red the default"></td>
+    <td width="50%"><img src="docs/images/cinematography.png" alt="The Cinematography menu: the same café scene shot as Editorial, Documentary, Fashion, Street and more, with Fashion and Kodak Portra 400 chosen"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Name your agent, tell it yours and pick a colour</sub></td>
+    <td align="center"><sub>Every cinematography setup as a picture</sub></td>
+  </tr>
+</table>
 
 ### Updates, privacy and credits
 
@@ -326,7 +371,7 @@ These ideas come from keys and Sam Wasserman's Imagination Studio (Apache-2.0); 
 - **Cloud.** Render shots and sequences on your own RunPod or Modal account, or on Comfy Cloud, set up with a
   guided wizard, with a running time and cost meter in the title bar and a **Shut down GPU** button.
 - **Incognito.** A private space whose work never shows in the normal app.
-- **Agents.** A local MCP server with 154 tools and a start menu gives Claude Code or any MCP client nearly
+- **Agents.** A local MCP server with 214 tools and a start menu gives Claude Code or any MCP client nearly
   everything a person can do in the window.
 - **Updates.** IV Studio updates itself: one click installs a new version and reopens.
 
@@ -656,8 +701,9 @@ writer under **Settings → Prompt writer**:
   or plain text for servers without it). IV Studio doesn't load or unload its models: with llama-swap, the
   model name picks what it loads. Agents using the MCP server pass the key as `IV_STUDIO_LLM_KEY` (or
   `OPENAI_API_KEY`) and headers as `IV_STUDIO_LLM_HEADERS`.
-- **Claude Code or Codex:** if you have either installed and signed in, it writes with your own login,
-  headless and with no tools but reading your reference pictures. It gets MiniMax's own H3 prompt guide
+- **Claude Code, Codex or Hermes:** if you have one installed and signed in, it writes with your own login,
+  headless and with no tools but reading your reference pictures (Hermes, from 1.1.7, on the model you picked in
+  Hermes; it sees your pictures when that model can). It gets MiniMax's own H3 prompt guide
   (downloaded from MiniMax on first use, not shipped) and the full directing method.
 - **MiniMax Context IR:** MiniMax's own prompt rewriter through ComfyUI, paid through your Comfy.org
   account (about $0.02 to $0.11 a prompt). Your API key is stored encrypted on your PC.
@@ -668,14 +714,14 @@ writer under **Settings → Prompt writer**:
 
 1. **Idea.** What it's about, the format (16:9, vertical or square) and the length.
 2. **Story.** **Write it for me** drafts a script from the idea, cast and length with your prompt writer (Settings → Prompt writer:
-   the local model, Claude Code, Codex or an OpenAI-compatible server), or
+   the local model, Claude Code, Codex, Hermes or an OpenAI-compatible server), or
    write it in plain words, or bring a `.txt` or `.fountain` screenplay.
 3. **Cast and places.** Speakers are played by your characters. Someone you made up gets a face drawn from
    their description, or from your own picture, and keeps it in every shot. Places get a description and a
    picture (drawn for you if you have none), plus **More angles** (a quarter turn, the side and a wide view,
    drawn with the QMA camera-angles LoRA for Qwen Image 2.1). Pick the film's look from six styles or your
    own words and LoRAs, add **Cinematography** (film stocks, lenses, lighting setups, camera rigs, moods: 165
-   ready phrases), and make a **Lookbook**: name a film, director or cinematographer, or describe the look,
+   ready phrases, each shown as a picture), and make a **Lookbook**: name a film, director or cinematographer, or describe the look,
    and your writer turns it into look language with no names in it. All of it goes into every shot.
 4. **Storyboard.** The writer plans each scene into 3 to 10 second shots with staging and where each one
    ends, writes each H3 prompt, and every panel gets a sketch that keeps your characters' faces and the
@@ -856,7 +902,7 @@ screen** (or F11) hides IV Studio's sidebar and gives the whole screen to the ed
 - **Timeline.** As many video and audio tracks as you need (a higher V track plays over a lower one), plus
   titles. Each track can be targeted (click its name), hidden, locked, muted or soloed. Video clips show a
   filmstrip and their sound's waveform; sound clips show a waveform. Markers sit on the ruler.
-- **Tools.** Select (V), Razor (C, click to cut), Ripple trim (B, the rest of the track follows) and Rolling
+- **Tools.** Select (V), Razor (C, click to cut; the cursor becomes a red katana), Ripple trim (B, the rest of the track follows) and Rolling
   edit (N, moves a cut between two clips). Each clip has fades and volume; titles have their own text,
   size, colour, position and box.
 - **Export MP4** renders the timeline at 1080p, 4K, vertical or square, 24/30/60 fps, into
@@ -925,6 +971,7 @@ control and setting stays the same, and names, prompts and file paths are never 
 ## Accessibility
 
 **Settings → Accessibility** makes IV Studio easier to read and use, and each change applies at once:
+**Colour** (Red, Blue, Purple, Orange or Dark: buttons, highlights and the artwork follow),
 **Text size** (Normal, Large, Larger: everything scales, like browser zoom), **Higher contrast text** (grey
 secondary text close to white, stronger lines; also offered on Check my PC's first page), **Reduce motion**
 (no animations, and the Workflows stages stand still; your system's own setting is followed too), **Clear

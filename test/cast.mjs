@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { Cast, handleOf, mentionsIn, resolveMentions } from '../src/service/cast.js'
+import { Cast, handleOf, mentionsIn, resolveMentions, withCast } from '../src/service/cast.js'
 import { lintPrompt } from '../src/service/lint.js'
 
 let n = 0
@@ -85,5 +85,26 @@ ok('places save with their picture, refuse a clash, and films offer theirs', () 
   cast.deletePlace(place.id)
   assert.equal(cast.places().length, 0)
   fs.rmSync(root, { recursive: true, force: true })
+})
+ok('#30: others picked in "Who\'s in it" join as mentions: a name in the prompt, else a line in [Shot 1]', () => {
+  const named = withCast({ mode: 'text', character: 'tess', with: ['theo'], prompt: 'integrated_multimodal_description: [Shot 1] {char} hands Theo Lindqvist a cup. Theo smiles.' }, members)
+  assert.equal(named.with, undefined)
+  assert.equal(named.prompt, 'integrated_multimodal_description: [Shot 1] {char} hands @Theo a cup. @Theo smiles.')
+  const unnamed = withCast({ mode: 'text', character: 'tess', with: ['theo', 'mara'], prompt: 'integrated_multimodal_description: [Shot 1] {char} waits in the rain.' }, members)
+  assert.equal(unnamed.prompt, 'integrated_multimodal_description: [Shot 1] @Theo and @Mara are also in the shot. {char} waits in the rain.')
+  // already mentioned, the lead themselves, and unknown ids change nothing
+  const same = 'integrated_multimodal_description: [Shot 1] @Theo waves.'
+  assert.equal(withCast({ mode: 'text', character: 'tess', with: ['theo', 'tess', 'gone'], prompt: same }, members).prompt, same)
+  // "Theodore" is not Theo
+  assert.equal(withCast({ mode: 'text', character: 'tess', with: ['theo'], prompt: 'Theodore waves.' }, members).prompt, 'Theodore waves. @Theo is also in the shot.')
+})
+ok('#30: with a lead and another character, the shot renders in References mode with the other\'s face', () => {
+  const asked = withCast({ mode: 'text', character: 'tess', with: ['theo'], prompt: 'integrated_multimodal_description: [Shot 1] {char} hands Theo a cup.\n\noverall_soundscape: Cafe.\n\nnon_diegetic_music: N/A' }, members)
+  const { request } = resolveMentions(asked, members)
+  assert.equal(request.mode, 'reference')
+  assert.equal(request.character, 'tess')
+  assert.deepEqual(request.media, [{ kind: 'picture', file: 'C:/faces/theo.png' }])
+  assert.match(request.prompt, /\{char\} hands <Subject 1> a cup/)
+  assert.match(request.prompt, /<Subject 1> is Theo Lindqvist, the person in <Picture 1>/)
 })
 console.log(`${n} checks passed`)

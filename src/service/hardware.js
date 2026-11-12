@@ -112,12 +112,12 @@ export const MODEL_GROUPS = [
   { id: 'sdxl', label: 'SDXL pictures', ids: ['sdxl_base'], needs: 'pictures' },
   // MiniMax H3 Image reads text with H3's own text encoder, so it's shared with the video shots
   { id: 'h3image', label: 'Pictures with MiniMax H3 Image (16 MP, edits with up to 16 pictures)', ids: ['h3image', 'h3image_vae', 'text_encoder'], needs: 'pictures' },
-  { id: 'music', label: 'Music (MiniMax Music 3 and ACE-Step)', ids: ['music3_dit', 'music3_te', 'music3_vae', 'ace15'], needs: 'music' },
-  { id: 'sounds', label: 'Sound effects (Stable Audio 3)', ids: ['sa3', 'sa3_te'], needs: 'music' },
+  { id: 'music', label: 'Music', ids: ['music3_dit', 'music3_te', 'music3_vae', 'ace15'], needs: 'music' },
+  { id: 'sounds', label: 'Sound effects', ids: ['sa3', 'sa3_te'], needs: 'music' },
   { id: 'pictools', label: 'Picture tools: relight, remove background, depth', ids: ['relight_unet', 'relight_te', 'relight_vae', 'relight_lightning', 'relight_lora', 'birefnet', 'moge'], needs: 'pictures' },
-  { id: 'effects', label: 'Effects gallery (Wan 2.1 and 24 effect LoRAs)', ids: ['ff_wan2_1_i2v_480p_14b_fp8_scaled', 'ff_umt5_xxl_fp8_e4m3fn_scaled', 'ff_clip_vision_h', 'ff_wan_2_1_vae', 'ff_lightx2v_i2v_14b_480p_cfg_step_distill_rank64_bf16', 'ff_cakeify_16_epochs', 'ff_angry_face_5_epochs', 'ff_crying_20_epochs', 'ff_laughing_15_epochs', 'ff_puppy_50_epochs', 'ff_wan21_penqi_000003500', 'ff_money_000003000', 'ff_crush_20_epochs', 'ff_deflate_20_epochs', 'ff_electrify_50_epochs', 'ff_explode_30_epochs', 'ff_inflate_20_epochs', 'ff_rotate_20_epochs', 'ff_squish_18', 'ff_360_orbit', 'ff_arc_shot', 'ff_wan21_i2v_rotation_000003750', 'ff_car_chase', 'ff_crane_down', 'ff_crane_overhead', 'ff_crane_up', 'ff_crash_zoom_in', 'ff_wan_21_i2v_dolly_zoom', 'ff_hero_run'], needs: 'video' },
-  { id: 'ltx', label: 'Dub, VFX, Transformations and Transitions (LTX-2.5)', ids: ['ff_ltx_2_5_22b_distilled_transformer_comfy_int8_convrot', 'ff_gemma4_12b_with_proj_ltx_2_5_comfy_int8_convrot', 'ff_ltx_2_5_video_vae_bf16', 'ff_ltx_2_5_audio_vae_bf16', 'ff_ltx_2_3_22b_ic_lora_dubit_0_9', 'ff_ltx2_3_transition', 'ff_ltx_2_5_22b_ic_lora_sdr_to_hdr_1_0', 'ff_ltx_2_5_22b_ic_lora_sdr_to_hdr_scene_emb', 'ff_ltx_2_5_22b_ic_lora_clean_plate_1_0', 'ff_ltx_2_5_22b_ic_lora_day_to_night_0_9', 'ff_ltx_2_5_22b_ic_lora_water_simulation_0_9'], needs: 'video' },
-  { id: 'slowmo', label: 'Smooth and slow motion (FILM)', ids: ['ff_film_net_fp16'], needs: 'video' },
+  { id: 'effects', label: 'Effects gallery (24 effects)', ids: ['ff_wan2_1_i2v_480p_14b_fp8_scaled', 'ff_umt5_xxl_fp8_e4m3fn_scaled', 'ff_clip_vision_h', 'ff_wan_2_1_vae', 'ff_lightx2v_i2v_14b_480p_cfg_step_distill_rank64_bf16', 'ff_cakeify_16_epochs', 'ff_angry_face_5_epochs', 'ff_crying_20_epochs', 'ff_laughing_15_epochs', 'ff_puppy_50_epochs', 'ff_wan21_penqi_000003500', 'ff_money_000003000', 'ff_crush_20_epochs', 'ff_deflate_20_epochs', 'ff_electrify_50_epochs', 'ff_explode_30_epochs', 'ff_inflate_20_epochs', 'ff_rotate_20_epochs', 'ff_squish_18', 'ff_360_orbit', 'ff_arc_shot', 'ff_wan21_i2v_rotation_000003750', 'ff_car_chase', 'ff_crane_down', 'ff_crane_overhead', 'ff_crane_up', 'ff_crash_zoom_in', 'ff_wan_21_i2v_dolly_zoom', 'ff_hero_run'], needs: 'video' },
+  { id: 'ltx', label: 'Dub, VFX, Transformations and Transitions', ids: ['ff_ltx_2_5_22b_distilled_transformer_comfy_int8_convrot', 'ff_gemma4_12b_with_proj_ltx_2_5_comfy_int8_convrot', 'ff_ltx_2_5_video_vae_bf16', 'ff_ltx_2_5_audio_vae_bf16', 'ff_ltx_2_3_22b_ic_lora_dubit_0_9', 'ff_ltx2_3_transition', 'ff_ltx_2_5_22b_ic_lora_sdr_to_hdr_1_0', 'ff_ltx_2_5_22b_ic_lora_sdr_to_hdr_scene_emb', 'ff_ltx_2_5_22b_ic_lora_clean_plate_1_0', 'ff_ltx_2_5_22b_ic_lora_day_to_night_0_9', 'ff_ltx_2_5_22b_ic_lora_water_simulation_0_9'], needs: 'video' },
+  { id: 'slowmo', label: 'Smooth and slow motion', ids: ['ff_film_net_fp16'], needs: 'video' },
   { id: 'replace', label: 'Replace: masks and descriptions', ids: ['sam31', 'describer'], needs: 'video' },
   { id: 'remake_swap', label: 'Replace: swapping people', ids: ['remake_swap'], needs: 'video' },
   { id: 'remake_edit', label: 'Replace: changing the scene', ids: ['remake_edit'], needs: 'video' },
@@ -290,7 +290,7 @@ export function recommend(scan) {
   // training a character
   const training =
     nvidia && t.vram >= 16 && ramState !== 'weak'
-      ? { where: 'cloud', localReady: true, say: `This card can train a character on this computer, free: Fizgig trains H3 from 16 GB, in a few hours. Or rent a cloud GPU for about $3 to $5 and half an hour.` }
+      ? { where: 'cloud', localReady: true, say: `This card can train a character on this computer, free: it trains H3 from 16 GB, in a few hours. Or rent a cloud GPU for about $3 to $5 and half an hour.` }
       : { where: 'cloud', localReady: false, say: 'Characters train on a cloud GPU (your RunPod or Modal account), about $3 to $5 a character.' }
 
   return { tier, verdicts, tips, downloads, needBytes, need: fmt(needBytes), prefs, writer, training }

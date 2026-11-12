@@ -105,7 +105,7 @@ export class Shinobi {
     this.onLog('Setting up Python for Shinobi…')
     fs.mkdirSync(this.dir, { recursive: true })
     if (!fs.existsSync(this.python)) await this.cloud.exec(this.cloud.uvExe, ['venv', this.venv, '--python', '3.12'], { env })
-    this.onLog(`Installing the Shinobi engine (${ENGINE.name} ${ENGINE.version})…`)
+    this.onLog(`Installing the Shinobi engine (${ENGINE.version})…`)
     await this.cloud.exec(this.cloud.uvExe, ['pip', 'install', '--python', this.venv, PACKAGE, 'onnxruntime>=1.20,<2'], { env })
     fs.writeFileSync(this.marker(), JSON.stringify({ commit: ENGINE.commit, at: new Date().toISOString() }, null, 2))
     fs.mkdirSync(this.workspace, { recursive: true })

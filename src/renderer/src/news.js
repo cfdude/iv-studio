@@ -2,6 +2,60 @@
 // version's once, until it's dismissed; Settings → Updates lists the last few versions'.
 export const NEWS = [
   {
+    version: '1.1.9',
+    items: [
+      { text: 'Fixed: the LTX-2.5 models for Dub, Clean plate, Day to night, Add water and SDR to HDR failed their checksum and were deleted after downloading. They download and verify now.' },
+      { text: 'The storyboard keeps every line of your script: a line the writer left out gets a shot of its own, and the board says so.' },
+      { text: 'Setup can download the three files for training a character on your own graphics card (Characters → Train your own → This computer).' },
+      { text: 'More reliable model downloads: every model is pinned to an exact version and checked, and on a Linux or Mac ComfyUI every kind of job finds models kept in folders, not only shots.' }
+    ]
+  },
+  {
+    version: '1.1.8',
+    items: [
+      { text: 'More than one character in a shot: in Create’s “Who’s in it”, click several. The first leads with their trained look; the others come along as their face pictures, and Write it for me names them.' },
+      { text: 'Fixed: the storyboard of a long film stopped with “The writer returned something unreadable”. Long scenes are planned in parts, and if a writer’s answer is cut short anyway the board keeps what it finished and says so.' },
+      { text: 'Fixed: H3 files kept straight in diffusion_models (not in a “Minimax H3” folder) showed as installed but failed to render. IV Studio now uses each model’s name as your ComfyUI lists it.' },
+      { text: 'Hermes errors in the chat show Hermes’s own details, not just “Internal error”.' }
+    ]
+  },
+  {
+    version: '1.1.7',
+    items: [
+      { text: 'A simpler welcome: it starts by asking how much you know about AI video. New to it? Everyday words, fewer choices, and IV Studio picks the settings for you. Then name yourself, your helper and your colour, and it checks your computer.' },
+      { text: 'The Cinematography menu shows a picture for every setup: the same scene with each film stock, lens, light, camera move and mood, so you can see the difference before you pick. It opens from a new Cinematography button.' },
+      { text: 'Hermes can write your prompts: pick it in Settings → Prompt writer, beside Claude Code and Codex.' },
+      { text: 'Start from an example and Stage it on a board open as pop-ups on Create.' }
+    ]
+  },
+  {
+    version: '1.1.6',
+    items: [
+      { text: 'Fixed: Write it for me said Unknown writer "h3" when H3 was the shot’s model (for example after Use in a shot). It uses the writer from Settings again.' },
+      { text: 'The editor’s razor (C) is a red katana now: a dashed line shows where it will cut, and each cut slashes the clip in two.' },
+      { text: 'Pick a colour: red (the default), blue, purple, orange or Dark (greys only), in Settings → Accessibility or when IV Studio first opens. Buttons, highlights and the artwork all follow it.' },
+      { text: 'Name your agent, and tell it your name: when IV Studio first opens or in Settings → You and your agent. It answers to its name in the chat and on the Dashboard, and runs on Claude Code, Codex or Hermes, your pick.' },
+      { text: 'Select, Ripple and Roll have their own red cursors too, in the katana’s style.' },
+      { text: 'Replace leads the Workflows page.' },
+      { text: 'Scroll bars in the app’s colours, the sidebar fits short windows, and Setup no longer scrolls sideways.' },
+      { text: 'Fixed: on a narrow window the chat’s close button was cut off at the edge, and the live preview sat over the chat’s message box. The chat’s header now fits, and the live preview keeps to the left of the chat.' }
+    ]
+  },
+  {
+    version: '1.1.5',
+    items: [
+      { text: 'Fixed on Windows: when IV Studio had to start Ollama itself, a terminal window opened every time Ollama loaded a model (with Library search on, after each new render). IV Studio now starts Ollama through its own tray app, or hidden.' }
+    ]
+  },
+  {
+    version: '1.1.4',
+    items: [
+      { text: 'Hermes in the chat: pick Hermes beside Claude Code and Codex, and your own Hermes Agent works in IV Studio with every IV Studio tool, on the model you chose in Hermes. Anything Hermes would run outside IV Studio is declined.' },
+      { text: 'History: a tab in the chat lists your earlier conversations, newest first, with which agent and when. Open one to carry on where you left off.' },
+      { text: 'And the other way round: the IV Studio plugin for Hermes (github.com/hollisorg/hermes-iv-studio) makes Hermes’s own video and picture tools render here, on your GPU, for free.' }
+    ]
+  },
+  {
     version: '1.1.3',
     items: [
       { text: 'Talk to the chat: press the mic, say what you want, and press send. IV Studio’s own speech recognition writes it down on your computer. Talking while the agent works stops its answer and sends your new words.' },
@@ -55,12 +109,12 @@ export const NEWS = [
       { text: 'Hunt and Finish say how long they will take on your machine, worked out from your own earlier renders, and what a cloud render will cost.' },
       { text: 'The editor can add a “Made with IV Studio” end card to an export (Edit settings → End card). It is off unless you turn it on.' },
       { text: 'Settings → Privacy: IV Studio sends nothing about how you use it unless you turn on “Help improve IV Studio”, which counts only opens and renders, never prompts, pictures or files.' },
-      { text: 'Effects on any clip in the editor (right-click → Effects…): dubbing into any language with new lip movement, clean plates, day to night, water, SDR to HDR, background removal and smooth or slow motion. Built on Freefield’s apps.' },
-      { text: 'Workflows → Effects turns a photo into an effect clip, a transformation or a transition. Audio → Sounds makes sound effects, ambiences and loops with Stable Audio 3, ready for A2.' },
+      { text: 'Effects on any clip in the editor (right-click → Effects…): dubbing into any language with new lip movement, clean plates, day to night, water, SDR to HDR, background removal and smooth or slow motion.' },
+      { text: 'Workflows → Effects turns a photo into an effect clip, a transformation or a transition. Audio → Sounds makes sound effects, ambiences and loops, ready for A2.' },
       { text: 'Picture tools in Create → Image: inpaint by painting over a part, relight, remove the background, upscale 2× or 4×, and depth or normal maps.' },
       { text: 'LoRAs for every model, not just H3: pick MiniMax H3, LTX-2.5, Wan 2.1, Flux 3 Klein, Flux.2 Klein, Krea 2, Qwen Image 2.1, Z-Image, SDXL or Moss, find its LoRAs on Civitai and use them in that model’s tray.' },
       { text: 'Closing and reopening IV Studio while ComfyUI starts no longer starts a second ComfyUI.' },
-      { text: 'Film craft in Projects, after Sam Wasserman’s Slate: coverage plans for a scene (dialogue, entrance, parallel action and more), a continuity check like a script supervisor’s, a Lookbook from any film or cinematographer, and a shot list as a document or CSV.' },
+      { text: 'Film craft in Projects: coverage plans for a scene (dialogue, entrance, parallel action and more), a continuity check like a script supervisor’s, a Lookbook from any film or cinematographer, and a shot list as a document or CSV.' },
       { text: 'Cinematography and prompt tools in Create and on every film shot: 165 setups (film stocks, lenses, light, camera rigs, moods), a director’s note, Tighten, Enrich, a new angle and 3 variants, with earlier versions kept.' },
       { text: 'Projects writes the script and plans the storyboard with your chosen prompt writer, Claude Code and Codex included.' },
       { text: 'A new prompt writer: OpenAI-compatible. Point it at llama.cpp, llama-swap, vLLM, LM Studio, LiteLLM, OpenAI or any server with the OpenAI API, with an optional key and extra headers (Settings → Prompt writer).' },
@@ -73,7 +127,7 @@ export const NEWS = [
       { text: 'The Library shows how each render was made: model, size, seed, finish, render time, cost and the prompt.' },
       { text: 'Simple words for people new to AI video, and Get ComfyUI for me when there isn’t one yet.' },
       { text: 'Mac copies now install their own updates, like Windows and Linux.' },
-      { text: 'Character training moves to Fizgig 9; RunPod training starts from Fizgig’s own template. Settings → About → Credits lists everything IV Studio is built on.' },
+      { text: 'Character training moves to the newest trainer, and RunPod training starts from its own template. Settings → About → Credits lists everything IV Studio is built on.' },
       { text: 'Takes that cut away: when a one-shot take cuts to a close-up nobody asked for, the take card says when, it scores lower, and you can keep the part before or after the cut. In First / last frame mode, each take says whether it really opens and ends on your pictures.' },
       { text: 'The prompt checker warns about “no …” wording: H3 has no negative prompt, so “no photographs” can put photographs on the wall. It suggests what to write instead.' },
       { text: 'Premiere / Resolve in the editor: the timeline as files Premiere Pro, DaVinci Resolve and Final Cut open, with every clip copied beside them and zipped to send.' },
@@ -194,7 +248,7 @@ export const NEWS = [
   {
     version: '0.3.0',
     items: [
-      { text: 'Replace runs on Viggle Remake: swap people into any video, or change the scene in plain words (snow, night, something removed). IV Studio paints a frame of each shot for you to check, writes the prompt and keeps the motion and sound.' },
+      { text: 'Replace has a new engine: swap people into any video, or change the scene in plain words (snow, night, something removed). IV Studio paints a frame of each shot for you to check, writes the prompt and keeps the motion and sound.' },
       { text: 'In the editor, right-click a clip → Remake this clip.' }
     ]
   },

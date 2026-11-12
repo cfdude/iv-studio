@@ -1,3 +1,4 @@
+import { isHarness } from './harness.js'
 // Reviews one take against its brief, the last step of Matthew Hollis's directing method (directing.js): a writer
 // looks at frames from the take (and what Whisper heard, when the take was ranked), names each problem with the
 // stretch it happens in, says what worked, and picks the fix: revise the prompt, change a reference, split the
@@ -195,7 +196,7 @@ export class Reviewer {
       const images = shots.map((s, i) => ({ name: `frame-${i + 1}-at-${s.at}s.jpg`, data: s.data, label: `frame at ${s.at} s` }))
       const list = images.map((im) => `${im.name}: ${im.label}`).join('\n')
       let data
-      const useHarness = engine === 'claude' || engine === 'codex'
+      const useHarness = isHarness(engine)
       if (useHarness) {
         const user = `${brief}\n\nFrames from the take, in order:\n${list}${engine === 'claude' ? '\nOpen each frame with the Read tool before you answer.' : ''}\n\nAnswer with the JSON object only.`
         data = await harnessJson({ engine, model, system: reviewSystem({ full: true }), user, schema: reviewSchema(), images })

@@ -250,7 +250,7 @@ describe('MCP remake tools', { skip: process.platform === 'win32' && 'the agent 
     const painting = fake.prompts.length
     fake.setObjectInfo({ ...OBJECT_INFO, UNETLoader: combo('unet_name', ['Flux2/flux2_klein_9b.safetensors']), RemakeConditioning: undefined, RemakeKeyframeUntil: undefined, RemakeNoise: undefined })
     try {
-      await fails('remake_render', { session: s.id, prompt }, /Remake needs Viggle Remake nodes \(Settings → Setup → Install missing node packs\), Viggle Remake swap \(viggle_remake_swap_pruned_int8_convrot\.safetensors, 21 GB\)\./)
+      await fails('remake_render', { session: s.id, prompt }, /Remake needs Replace’s nodes \(Settings → Setup → Install missing node packs\), Replace’s swap model \(viggle_remake_swap_pruned_int8_convrot\.safetensors, 21 GB\)\./)
     } finally {
       fake.setObjectInfo(OBJECT_INFO)
     }

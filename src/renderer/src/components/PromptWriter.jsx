@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ask } from './Confirm'
 import StageBoard from './StageBoard'
 import { cameraWords, defaultStage, previsWords, stagingWords } from '../../../service/staging'
 
-const HARNESS_NAME = { claude: 'Claude Code', codex: 'Codex' }
+const HARNESS_NAME = { claude: 'Claude Code', codex: 'Codex', hermes: 'Hermes' }
 
 // An idea from somewhere else (Create's banner bar, the Dashboard's "What do you want to make?") for Create's own
 // writer: it fills in the idea and, with write, writes the prompt straight away. Kept until a listening writer takes
@@ -35,6 +36,9 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
     return () => window.removeEventListener('iv:idea', take)
   }, [listen])
   const [board, setBoard] = useState(false)
+  // the board opens in a pop-up; Cancel puts back what was there (snapshot)
+  const [boardOpen, setBoardOpen] = useState(false)
+  const snapshot = useRef(null)
   const [stage, setStage] = useState(null)
   const [previs, setPrevis] = useState(null)
   const [drawing, setDrawing] = useState(false)
@@ -62,7 +66,7 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
 
   // Context IR is MiniMax's H3 rewriter: a Seedance shot is written by the local writer instead
   const engine = context.engine === 'seedance' && status?.engine === 'contextir' ? 'local' : status?.engine || 'local'
-  const harness = engine === 'claude' || engine === 'codex'
+  const harness = engine === 'claude' || engine === 'codex' || engine === 'hermes'
   const blocker =
     status &&
     (engine === 'contextir'
@@ -80,7 +84,7 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
   const sees = engine === 'openai' ? status?.openai?.vision : status?.models?.find((m) => m.name === status.model)?.vision
   const seeing =
     harness && visual.length > 0
-      ? `${HARNESS_NAME[engine]} looks at your ${visual.length === 1 ? (visual[0].kind === 'video' ? 'video' : 'picture') : `${visual.length} references`} and writes what it sees.`
+      ? `${HARNESS_NAME[engine]} looks at your ${visual.length === 1 ? (visual[0].kind === 'video' ? 'video' : 'picture') : `${visual.length} references`} and writes what it sees${engine === 'hermes' ? ', if its model takes pictures' : ''}.`
       : (engine === 'local' && status?.running) || (engine === 'openai' && status?.openai?.ok) ? (visual.length > 0
       ? sees
         ? `Looks at your ${visual.length === 1 ? (visual[0].kind === 'video' ? 'video' : 'picture') : `${visual.length} references`} and writes what it sees.`
@@ -123,20 +127,49 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
         </button>
       </div>
       {names && (
-        <button className={`link-btn mono small writer-stage ${board ? 'pink' : ''}`} onClick={() => (setBoard(!board), !stage && setStage(defaultStage(names.slice(0, 1))))}>
-          {board ? '✦ Leave the staging to the writer' : '✦ Stage it on a board'}
-        </button>
+        <div className="writer-staged">
+          {board && stage?.people?.length ? (
+            <>
+              <span className="small">
+                <span className="mono pink">✦ Staged:</span> <span className="dim">{stagingWords(stage)} {cameraWords(stage)}.</span>
+                {previsN ? <span className="dim"> Previs clip added.</span> : null}
+              </span>
+              <button className="btn btn-small" onClick={() => ((snapshot.current = { stage, board }), setBoardOpen(true))}>
+                Edit the staging
+              </button>
+            </>
+          ) : (
+            <button
+              className="link-btn mono small writer-stage"
+              onClick={() => {
+                snapshot.current = { stage, board }
+                if (!stage) setStage(defaultStage(names.slice(0, 1)))
+                setBoardOpen(true)
+              }}
+            >
+              ✦ Stage it on a board
+            </button>
+          )}
+        </div>
       )}
-      {names && board && <StageBoard stage={stage} names={names} start={names.slice(0, 1)} onChange={setStage} />}
-      {names && board && onPrevis && (
-        <p className="small writer-note">
-          <button className="btn btn-small" disabled={drawing || !stage?.people?.length} onClick={makePrevis}>
-            {drawing ? 'Drawing…' : previsN ? 'Draw the previs again' : 'Make a previs clip'}
-          </button>{' '}
-          <span className="dim">
-            {previsN ? `The previs is <Video ${previsN}> in your references; the writer tells H3 to follow its camera move.` : 'A grey clip of the camera move and the walks, added as a reference. Worth it for an arc round people, which H3 barely does from words; a push, track or walk works as well from the staging words, and faster.'}
-          </span>
-        </p>
+      {names && boardOpen && (
+        <StagePop
+          stage={stage}
+          names={names}
+          setStage={setStage}
+          staged={board}
+          previsN={previsN}
+          drawing={drawing}
+          canPrevis={!!onPrevis}
+          makePrevis={makePrevis}
+          onUse={() => (setBoard(true), setBoardOpen(false))}
+          onRemove={() => (setBoard(false), setBoardOpen(false))}
+          onCancel={() => {
+            setStage(snapshot.current?.stage ?? null)
+            setBoard(!!snapshot.current?.board)
+            setBoardOpen(false)
+          }}
+        />
       )}
       {seeing && !blocker && <p className={`small writer-note ${sees ? 'dim' : 'pink'}`}>✦ {seeing}</p>}
       {blocker && (
@@ -162,6 +195,53 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
         </p>
       )}
     </div>
+  )
+}
+
+// The staging board in its own pop-up: the floor seen from above, big enough to place people and the camera, with
+// the words it becomes, the previs clip, and Use / Cancel. Esc or the backdrop cancels.
+function StagePop({ stage, names, setStage, staged, previsN, drawing, canPrevis, makePrevis, onUse, onRemove, onCancel }) {
+  useEffect(() => {
+    const esc = (e) => e.key === 'Escape' && onCancel()
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [])
+  return createPortal(
+    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="modal stage-pop" role="dialog" aria-label="Stage it on a board">
+        <div className="source-head">
+          <h2>Stage it on a board</h2>
+          <button className="link-btn mono" onClick={onCancel} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <p className="dim small">The floor seen from above. Drag people and the camera, turn them by their small dot, and pick the lens and the move. The writer follows it exactly: who stands where, who looks at whom, and what the camera does.</p>
+        <StageBoard stage={stage} names={names} start={names.slice(0, 1)} onChange={setStage} />
+        {canPrevis && (
+          <p className="small stage-pop-previs">
+            <button className="btn btn-small" disabled={drawing || !stage?.people?.length} onClick={makePrevis}>
+              {drawing ? 'Drawing…' : previsN ? 'Draw the previs again' : 'Make a previs clip'}
+            </button>{' '}
+            <span className="dim">{previsN ? `The previs is <Video ${previsN}> in your references; H3 is told to follow its camera move.` : 'A grey clip of the camera move, added as a reference. Worth it for an arc round people; a push, track or walk works as well from the words.'}</span>
+          </p>
+        )}
+        <div className="modal-foot">
+          {staged && (
+            <button className="link-btn mono small" onClick={onRemove}>
+              Leave the staging to the writer
+            </button>
+          )}
+          <span className="spacer" />
+          <button className="btn" onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" disabled={!stage?.people?.length} onClick={onUse}>
+            Use this staging
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }
 

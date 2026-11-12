@@ -109,7 +109,7 @@ export function Progress({ job }) {
 // A take reviewed against its prompt (review.js): the verdict, what works, each problem at its seconds (a click
 // plays the take from there), the fix, and the revised prompt to run again.
 const VERDICT = { usable: 'Usable as it is', usable_with_fixes: 'Usable, with fixes', redo: 'Redo it' }
-const ENGINE = { claude: 'Claude Code', codex: 'Codex', local: 'the local writer' }
+const ENGINE = { claude: 'Claude Code', codex: 'Codex', hermes: 'Hermes', local: 'the local writer' }
 function ReviewCard({ review, title, videoKey, before, onRun }) {
   const seek = (t) => {
     const v = document.querySelector(`video[data-take="${videoKey}"]`)

@@ -66,7 +66,8 @@ async function hashFile(file, hash) {
 
 // A checksum pinned in models.json wins; Hugging Face's x-linked-etag covers the rest.
 // GitHub release downloads send no checksum, so those entries must pin one.
-export const expectedSha256 = (model, probed) => model.sha256 || probed || null
+// a pinned hash that isn't a real one (Hugging Face's "****…" for a gated file: #32) is no pin
+export const expectedSha256 = (model, probed) => (/^[0-9a-f]{64}$/.test(model.sha256 || '') ? model.sha256 : probed) || null
 
 export class ModelInstaller {
   constructor({ comfy, manifest, onUpdate }) {
@@ -121,10 +122,11 @@ export class ModelInstaller {
   async download(model, signal) {
     const target = await modelTarget(this.comfy, model)
     if (fs.existsSync(target)) return this.set(model.id, { status: 'done', path: target })
-    // a pinned SHA-256 in the manifest (the Recommended shelf) wins over the one the host publishes (expectedSha256)
-    const info = await upstreamInfo(model.url)
-    const sha256 = expectedSha256(model, info.sha256)
-    const size = info.size || model.size || null // GitHub's redirect answers the probe with no length
+    // a pinned SHA-256 in the manifest (the Recommended shelf) wins over the one the host publishes (expectedSha256); one that
+    // isn't a real hash (Hugging Face shows "****…" for a gated file to anyone without access: #32) is ignored
+    const up = await upstreamInfo(model.url)
+    const sha256 = expectedSha256(model, up.sha256)
+    const size = up.size || model.size || null // GitHub's redirect answers the probe with no length
     const part = `${target}.part`
     fs.mkdirSync(path.dirname(target), { recursive: true })
 

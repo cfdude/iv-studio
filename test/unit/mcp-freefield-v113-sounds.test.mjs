@@ -200,8 +200,8 @@ describe('MCP sound tools', () => {
 
   test('[mcp:make_sound] names the missing models, or the missing nodes, and queues nothing', async () => {
     const queued = fake.prompts.length
-    await withSounds(() => fails('make_sound', { description: 'A door.' }, /^Stable Audio 3 needs Stable Audio 3 \(medium\) and Stable Audio 3 text encoder \(T5Gemma\)\. Download them on the Sounds page\.$/), soundInfo({ models: false }))
-    await withSounds(() => fails('make_sound', { description: 'A door.' }, /^Stable Audio 3 needs Stable Audio 3 text encoder \(T5Gemma\)\. Download it on the Sounds page\.$/), { ...soundInfo(), CLIPLoader: node({ clip_name: [['other.safetensors']], type: [['stable_audio']] }) })
+    await withSounds(() => fails('make_sound', { description: 'A door.' }, /^Sounds need Stable Audio 3 \(medium\) and Stable Audio 3 text encoder \(T5Gemma\)\. Download them on the Sounds page\.$/), soundInfo({ models: false }))
+    await withSounds(() => fails('make_sound', { description: 'A door.' }, /^Sounds need Stable Audio 3 text encoder \(T5Gemma\)\. Download it on the Sounds page\.$/), { ...soundInfo(), CLIPLoader: node({ clip_name: [['other.safetensors']], type: [['stable_audio']] }) })
     // a bare ComfyUI: the nodes come first
     await fails('make_sound', { description: 'A door.' }, /^This ComfyUI has no EmptyLatentAudio, VAEDecodeAudio, SaveAudio, CLIPLoader \(stable_audio\)\. Update ComfyUI\.$/)
     assert.equal(fake.prompts.length, queued)

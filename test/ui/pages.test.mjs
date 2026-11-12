@@ -317,7 +317,7 @@ describe('page tier: every sidebar page opens', () => {
     const dir = await api('training.chooseFizgig')
     assert.equal(path.basename(dir), 'Fizgig-here')
     assert.equal(settingsOnDisk().fizgigFolder, dir)
-    assert.ok(traceOf('dialog.showOpenDialog').some((t) => t.title === 'Fizgig’s folder'))
+    assert.ok(traceOf('dialog.showOpenDialog').some((t) => t.title === 'The trainer’s folder'))
   })
 
   test('[page:cloud][ipc:cloud:provider][ipc:cloud:status][ipc:cloud:clearToken] choose the cloud service, report it, and clear only a sign-in that cannot be opened', async () => {

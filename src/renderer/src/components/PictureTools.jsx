@@ -47,7 +47,7 @@ function MaskPainter({ picture, onMask }) {
     if (!drawing.current) return
     const [x, y, k] = at(e)
     const g = canvas.current.getContext('2d')
-    g.fillStyle = 'rgba(244, 72, 89, 0.55)'
+    g.fillStyle = `rgba(${getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim() || '244, 72, 89'}, 0.55)`
     g.beginPath()
     g.arc(x, y, (size / 2) * k, 0, Math.PI * 2)
     g.fill()

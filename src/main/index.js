@@ -1,15 +1,17 @@
+import { isHarness } from '../service/harness.js'
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, powerSaveBlocker, protocol, safeStorage, screen, shell } from 'electron'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
-import { comfyFolders, dataLocation, incognitoDir, readSettings, resourcesDir, videosFolderOf, writerOf, writeSettings } from '../service/paths'
+import { comfyFolders, dataLocation, incognitoDir, readSettings, resourcesDir, videosFolderOf, PROMPT_WRITERS, writerFor, writerOf, writeSettings } from '../service/paths'
 import { uiHidden } from '../service/uihidden'
 import { chooseTarget, copyData, discardCopy, freeBytes, listData, movableEntries, oldCopy, removeOldCopy, verifyCopy, writePointer } from '../service/datafolder'
 import { codexWindow, EXTRA_BIN, findHarnesses, harnessStatus } from '../service/harness'
 import { AGENT_NAMES, startAgentRun } from '../service/agentrun'
 import { ACTIVITY_FOLDER, markUndone, pruneActivity, readActivity } from '../service/activity'
 import { AGENT_INFO, openSignIn, runInstall, signedIn } from '../service/agentinstall'
+import { findHermes } from '../service/hermesacp'
 import { applyChatEvent, applyUsage, spokenText as spoken, ATTACH_EXTENSIONS, attachmentOf, listChats, loadChat, MAX_ATTACH, newChat, pruneChats, saveChat, startChatTurn, undoEditChange, withAttachments } from '../service/agentchat'
 import { pasteMessage, skillMarkdown, readGuide } from '../service/agent'
 import { Cloud, GPUS, MODAL_VERSION } from '../service/cloud'
@@ -886,7 +888,7 @@ app.whenReady().then(() => {
     }
     for (const s of music.all()) if (s.file && fs.existsSync(s.file)) items.push({ key: `music:${s.id}`, type: 'music', group: 'Music', label: s.name, detail: `${s.engine === 'minimax' ? 'MiniMax Music 3' : 'ACE-Step 1.5'}${s.instrumental ? ' · instrumental' : ''}`, duration: s.duration, at: s.finishedAt || s.createdAt, file: { path: s.file }, set: `music:${s.id}`, setName: s.name, variant: 'Song', rank: 0 })
     for (const r of clipfx.runs()) if (r.status === 'success') (r.files || []).forEach((f, i) => f.kind === 'video' && fs.existsSync(f.file) && items.push({ key: `clipfx:${r.id}:${i}`, type: 'video', group: 'Effects', label: r.title, detail: `${r.label} · ${f.label}`, at: r.finishedAt || r.createdAt, file: { path: f.file }, set: `clipfx:${r.id}`, setName: r.title, variant: f.label, rank: i }))
-    for (const s of sounds.all()) (s.files || []).forEach((f, i) => fs.existsSync(f.file) && items.push({ key: `sound:${s.id}:${i}`, type: 'music', group: 'Sounds', label: s.name, detail: `Stable Audio 3 · ${SOUND_KINDS.find((k) => k.id === s.kind)?.label || 'Sound'}`, duration: f.duration, at: s.finishedAt || s.createdAt, file: { path: f.file }, set: `sound:${s.id}`, setName: s.name, variant: s.files.length > 1 ? `Take ${i + 1}` : 'Sound', rank: i }))
+    for (const s of sounds.all()) (s.files || []).forEach((f, i) => fs.existsSync(f.file) && items.push({ key: `sound:${s.id}:${i}`, type: 'music', group: 'Sounds', label: s.name, detail: `Sound · ${SOUND_KINDS.find((k) => k.id === s.kind)?.label || 'Sound'}`, duration: f.duration, at: s.finishedAt || s.createdAt, file: { path: f.file }, set: `sound:${s.id}`, setName: s.name, variant: s.files.length > 1 ? `Take ${i + 1}` : 'Sound', rank: i }))
     for (const r of images.all()) (r.files || []).forEach((f, i) => fs.existsSync(f) && items.push({ key: `image:${r.id}:${i}`, type: 'image', group: 'Images', label: r.name, detail: r.mode === 'frame' ? 'Last frame of a video' : `${r.familyLabel} · ${r.mode === 'edit' ? 'edit' : 'generate'}`, at: r.finishedAt || r.createdAt, file: { path: f }, set: `image:${r.id}`, setName: r.name, variant: `Picture ${i + 1}`, rank: i, imageId: r.id }))
     for (const l of voices.lines()) if (fs.existsSync(l.file)) items.push({ key: `line:${l.id}`, type: 'voice', group: 'Voice lines', label: l.text, detail: l.voice, duration: l.duration, at: l.createdAt, file: { path: l.file }, set: `line:${l.id}`, setName: l.text, variant: `Seed ${l.seed}`, rank: 0 })
     return items.sort((a, b) => String(b.at).localeCompare(String(a.at)))
@@ -1036,10 +1038,10 @@ app.whenReady().then(() => {
     return { fizgig: fiz?.dir || null, missing }
   })
   handle('training:chooseFizgig', async () => {
-    const r = await dialog.showOpenDialog(win, { title: 'Fizgig’s folder', properties: ['openDirectory'] })
+    const r = await dialog.showOpenDialog(win, { title: 'The trainer’s folder', properties: ['openDirectory'] })
     if (r.canceled || !r.filePaths[0]) return null
     const fiz = findFizgig(r.filePaths[0])
-    if (!fiz) throw new Error('That folder has no Fizgig in it (with its venv). Pick the folder you cloned Fizgig into.')
+    if (!fiz) throw new Error('That folder doesn’t have the trainer in it (with its venv). Pick the folder you put the trainer in.')
     writeSettings({ fizgigFolder: fiz.dir }, BASE)
     return fiz.dir
   })
@@ -1911,12 +1913,12 @@ app.whenReady().then(() => {
     engine: readSettings(BASE).promptEngine, model: readSettings(BASE).ollamaModel, contextIrPrice: CONTEXT_IR_PRICE, harnesses: agentsStatus() }))
   handle('prompts:write', (request) => {
     const s = readSettings(BASE)
-    const w = writerOf(request?.engine ? { ...s, promptEngine: request.engine } : s)
+    const w = writerFor(s, request)
     return studio.writePrompt(request, { engine: w.engine, apiKey: w.engine === 'contextir' ? comfyKey() : null, model: w.model })
   })
   handle('prompts:story', (request) => {
     const w = writerOf(readSettings(BASE))
-    return studio.writeStory(request, w.engine === 'claude' || w.engine === 'codex' ? w : { model: readSettings(BASE).ollamaModel })
+    return studio.writeStory(request, isHarness(w.engine) ? w : { model: readSettings(BASE).ollamaModel })
   })
   handle('prompts:pull', (model) => pullModel(model, (ev) => send('prompts:pull', { model, ...ev })))
   handle('settings:set', (patch) => {
@@ -1930,7 +1932,7 @@ app.whenReady().then(() => {
     }
     if ('openaiModel' in safe) safe.openaiModel = String(safe.openaiModel || '').trim()
     if ('openaiVision' in safe) safe.openaiVision = !!safe.openaiVision
-    if ('promptEngine' in safe && !['local', 'claude', 'codex', 'contextir', 'openai'].includes(safe.promptEngine)) delete safe.promptEngine
+    if ('promptEngine' in safe && !PROMPT_WRITERS.includes(safe.promptEngine)) delete safe.promptEngine
     if ('ollamaUrl' in safe) {
       try {
         safe.ollamaUrl = normalizeOllamaUrl(safe.ollamaUrl)
@@ -1990,6 +1992,13 @@ app.whenReady().then(() => {
       ollama: !!(ollama?.running || ollama?.installed),
       claude: !!harness.claude.installed,
       codex: !!harness.codex.installed,
+      hermes: (() => {
+        try {
+          return !!chatFound().hermes
+        } catch {
+          return false
+        }
+      })(),
       voices: !!voices?.engine?.installed?.(),
       cloud: !!(s.cloud || s.runpod),
       modelsKnown: !!setup,
@@ -2006,8 +2015,13 @@ app.whenReady().then(() => {
   })
   // what the wizard chose: the shot defaults and the writer, and that it's been done (so it doesn't open again)
   // plainWords / aiLevel: the welcome's "how much do you know" question (Simple words, words.js)
-  handle('hardware:apply', ({ shotPrefs, promptEngine, hardware, plainWords, highContrast, aiLevel } = {}) => {
+  handle('hardware:apply', ({ shotPrefs, promptEngine, hardware, plainWords, highContrast, aiLevel, accent, agentName, userName, chatEngine } = {}) => {
     const patch = { onboarded: new Date().toISOString() }
+    if (['red', 'blue', 'purple', 'orange', 'mono'].includes(accent)) patch.accent = accent
+    // you and your agent (Settings → You and your agent)
+    if (typeof agentName === 'string') patch.agentName = agentName.trim().slice(0, 40)
+    if (typeof userName === 'string') patch.userName = userName.trim().slice(0, 40)
+    if (['claude', 'codex', 'hermes'].includes(chatEngine)) patch.chatEngine = chatEngine
     if (typeof plainWords === 'boolean') patch.plainWords = plainWords
     if (typeof highContrast === 'boolean') patch.highContrast = highContrast
     if (['new', 'some', 'lots'].includes(aiLevel)) patch.aiLevel = aiLevel
@@ -2015,7 +2029,7 @@ app.whenReady().then(() => {
     // the speed preset (speed.js) the wizard picked; Settings → Your PC can change it afterwards
     if (shotPrefs?.speed && isSpeed(shotPrefs.speed)) patch.speed = shotPrefs.speed
     if (hardware) patch.hardware = hardware
-    if (promptEngine && ['local', 'claude', 'codex'].includes(promptEngine)) patch.promptEngine = promptEngine
+    if (promptEngine && ['local', 'claude', 'codex', 'hermes'].includes(promptEngine)) patch.promptEngine = promptEngine
     return publicSettings(writeSettings(patch, BASE))
   })
   handle('setup:installNodes', () => studio.installNodePacks({ folder: readSettings(BASE).comfyFolder || null, onProgress: (u) => send('setup:nodes', u) }))
@@ -2365,13 +2379,15 @@ app.whenReady().then(() => {
   const agentPick = () => {
     const found = TEST_COPY && process.env.IV_STUDIO_TEST_AGENT ? { claude: process.env.IV_STUDIO_TEST_AGENT, codex: null } : agentsFound()
     const s = readSettings(BASE)
-    const pick = ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : null
+    // your agent (Settings → You and your agent) when it can run Dashboard ideas (Claude Code or Codex), else the prompt
+    // writer's, else whichever is installed
+    const pick = ['claude', 'codex'].includes(s.chatEngine) && found[s.chatEngine] ? s.chatEngine : ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : null
     return { pick, exe: pick ? found[pick] : null, installed: { claude: !!found.claude, codex: !!found.codex } }
   }
   const agentView = () => (agentRun ? { ...agentRun.state(), renders: agentRenders } : null)
   const agentStatus = () => {
     const { pick, installed } = agentPick()
-    return { pick, name: pick ? AGENT_NAMES[pick] : null, installed, cloud: readSettings(BASE).target === 'cloud', run: agentView() }
+    return { pick, name: pick ? (readSettings(BASE).agentName || '').trim() || AGENT_NAMES[pick] : null, installed, cloud: readSettings(BASE).target === 'cloud', run: agentView() }
   }
   // the takes the run started, as the panel shows them: name, status and progress
   const refreshAgentRenders = async () => {
@@ -2410,6 +2426,7 @@ app.whenReady().then(() => {
       idea: text,
       mcp,
       model: pick === 'claude' ? s.claudeModel || '' : s.codexModel || '',
+      agentName: (s.agentName || '').trim(),
       extraEnv,
       onChange: (state) => {
         send('agentRun:changed', { ...state, renders: agentRenders })
@@ -2440,10 +2457,17 @@ app.whenReady().then(() => {
   let chatTurn = null
   let chatRenders = []
   let chatPoll = null
-  const chatFound = () => (TEST_COPY && process.env.IV_STUDIO_TEST_CHAT ? { claude: process.env.IV_STUDIO_TEST_CHAT, codex: null } : agentsFound())
+  // Hermes (hermesacp.js) joins the chat only: the prompt writer and Dashboard ideas stay with Claude Code and Codex.
+  // A test copy can stand in a Hermes ACP server too (IV_STUDIO_TEST_HERMES: a command line).
+  const chatFound = () => {
+    if (TEST_COPY && process.env.IV_STUDIO_TEST_CHAT) return { claude: process.env.IV_STUDIO_TEST_CHAT, codex: null, hermes: process.env.IV_STUDIO_TEST_HERMES || null }
+    const { env, home } = agentHome()
+    return { ...agentsFound(), hermes: (TEST_COPY && process.env.IV_STUDIO_TEST_HERMES) || findHermes(env, home) }
+  }
   const chatPreferred = (found) => {
     const s = readSettings(BASE)
-    return ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : null
+    if (['claude', 'codex', 'hermes'].includes(s.chatEngine) && found[s.chatEngine]) return s.chatEngine
+    return ['claude', 'codex'].includes(s.promptEngine) && found[s.promptEngine] ? s.promptEngine : found.claude ? 'claude' : found.codex ? 'codex' : found.hermes ? 'hermes' : null
   }
   // The spending limit (spending.js): the chat's MCP server asks this desk before a paid step, and borrows the
   // Comfy.org key from it, with a token that only lives as long as one chat turn.
@@ -2490,13 +2514,14 @@ app.whenReady().then(() => {
   const chatEngine = (engine) => {
     const found = chatFound()
     const e = engine || chatPreferred(found)
-    if (!e || !AGENT_NAMES[e]) throw new Error('Install Claude Code or Codex first: the chat uses your own.')
+    if (!e || !AGENT_NAMES[e]) throw new Error('Install Claude Code, Codex or Hermes first: the chat uses your own.')
     if (!found[e]) throw new Error(`${AGENT_NAMES[e]} isn't installed on this computer.`)
     return e
   }
   handle('chat:status', () => {
     const found = chatFound()
-    return { installed: { claude: !!found.claude, codex: !!found.codex }, preferred: chatPreferred(found), chat: chatView(), chats: listChats(chatsRoot).slice(0, 10) }
+    const s = readSettings(BASE)
+    return { installed: { claude: !!found.claude, codex: !!found.codex, hermes: !!found.hermes }, preferred: chatPreferred(found), chat: chatView(), chats: listChats(chatsRoot).slice(0, 20), agentName: (s.agentName || '').trim(), userName: (s.userName || '').trim() }
   })
   handle('chat:new', (engine) => {
     if (chatTurn) throw new Error(`${chat.name} is still answering. Stop it first.`)
@@ -2572,7 +2597,8 @@ app.whenReady().then(() => {
       message: withAttachments(message, attached),
       context: fullContext,
       mcp: mcpCommand(),
-      model: current.engine === 'claude' ? s.claudeModel || '' : s.codexModel || '',
+      model: current.engine === 'claude' ? s.claudeModel || '' : current.engine === 'codex' ? s.codexModel || '' : s.hermesModel || '',
+      names: { agentName: s.agentName, userName: s.userName },
       extraEnv,
       onEvent: (e) => {
         // show_in_app: the window goes there and lights it up (App.jsx)

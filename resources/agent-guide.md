@@ -218,12 +218,12 @@ them on). The tools say "film" because `list_projects` already means shots.
 H3 follows one character LoRA per shot best: a shot's `character` is its main person; other cast on screen
 come from their face pictures (Reference mode) and are named in the prompt.
 
-## Film craft (after Sam Wasserman's Slate)
+## Film craft
 
 Every one of these uses the writer the person chose in Settings → Prompt writer (Claude Code, Codex, the local
 model or an OpenAI-compatible server), as do `write_film_script` and `break_down_film`.
 
-- **Cinematography.** `list_cinematography` gives Slate's 165 setups in 12 groups (film stocks, lenses, lighting
+- **Cinematography.** `list_cinematography` gives 165 setups in 12 groups (film stocks, lenses, lighting
   setups, camera rigs, single-shot moves, mood, depth layers, frames within the frame, realism, photo, cinematic
   and commercial styles) and its 12 coverage plans. `add_cinematography` puts setups' phrases into a prompt;
   `set_film_cinematography` sets them for a whole film.
@@ -441,7 +441,7 @@ site's screens are real captures; keep them sharp and unstretched.
 
 ## Replace: swap people or change the scene
 
-Remake (Viggle Remake on MiniMax H3) re-renders up to 14 s of video so it matches painted frames, keeping the
+Remake (on MiniMax H3) re-renders up to 14 s of video so it matches painted frames, keeping the
 camera, cuts, motion and soundtrack.
 1. Trim the source first if it's longer (`prepare_media`).
 2. `remake_paint` kind swap (people: one or two, each with picture = their face, name, and who = whom they
@@ -451,7 +451,7 @@ camera, cuts, motion and soundtrack.
    or set your own (`remake_use_picture`).
 4. `remake_render` (takes 1-3): the person's writer writes the six-section prompt, then it renders. Poll
    `get_job`; `replace_history` gives the result trimmed back to the source.
-`replace_video` is the old engine (OpenJutsu masks): use it for faces and colours.
+`replace_video` is the old engine (masks): use it for faces and colours.
 Only put invented characters, or people who agreed, into a video.
 
 ## Rebuild: take a video apart and rebuild it
@@ -503,7 +503,7 @@ The Characters page (and these tools) turn an invented person into a character p
    `list_voices` works), then `make_training_clips`:
    H3 talking clips from the face and the stills. `rank_likeness` scores them; render weak ones again
    (`make_training_clips` redo) or drop them (`set_training_item` keep false). Aim for 0.45+.
-4. Where it trains (`options.where`): `local` is free on this computer's own NVIDIA card (16 GB or more; Fizgig
+4. Where it trains (`options.where`): `local` is free on this computer's own NVIDIA card (16 GB or more; the trainer
    installed; a Standard run takes a few hours and nothing should render meanwhile; `scan_hardware` says
    whether this computer can), `modal` or `runpod` rent a GPU on the person's own account. The recipe is in
    `options` too (preset quick/standard/thorough, learn, detail, mode, checkpoints, and a `budget` cap for the

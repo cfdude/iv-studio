@@ -1,3 +1,4 @@
+import { isHarness } from './harness.js'
 // Writes Seedance 2.5 prompts from a plain-words idea, with the same writers as H3 shots (the local model in
 // Ollama, or the person's Claude Code or Codex), following IV Studio's bundled Seedance guide
 // (resources/guides/seedance25: Matthew Hollis's playbook distilled from ByteDance/Dreamina's public guides).
@@ -116,7 +117,7 @@ export async function writeSeedance({ engine = 'local', model, idea, mode = 'tex
   const refs = { pictures: labels.filter((l) => l.kind === 'picture'), videos: labels.filter((l) => l.kind === 'video'), audios: labels.filter((l) => l.kind === 'audio') }
 
   let ask
-  if (engine === 'claude' || engine === 'codex') {
+  if (isHarness(engine)) {
     const images = pictures.map((p, i) => ({ ...p, name: `reference-${i + 1}.jpg` }))
     ask = (extra = '') => harnessJson({ engine, model, system, user: user + extra, schema: SCHEMA, images })
   } else {

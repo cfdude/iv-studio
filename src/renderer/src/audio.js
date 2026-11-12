@@ -6,31 +6,27 @@ export const AUDIO_TOOLS = [
     name: 'Voices',
     tag: 'A voice for every character',
     about: 'Describe a voice that doesn’t exist yet, or save your own from a recording, and give it to a character so their shots speak in it.',
-    needs: ['VoxCPM2 and Whisper, set up once (about 12 GB) on this computer or your cloud'],
-    credit: 'VoxCPM2 (OpenBMB), Whisper large-v3 turbo (OpenAI)'
+    needs: ['The voice engine, set up once (about 12 GB) on this computer or your cloud']
   },
   {
     page: 'lines',
     name: 'Lines',
     tag: 'Say it in their voice',
     about: 'Type a line, pick a voice, and use it as a shot’s voice line: H3 lip-syncs the character to it.',
-    needs: ['A voice from Voices'],
-    credit: 'VoxCPM2'
+    needs: ['A voice from Voices']
   },
   {
     page: 'music',
     name: 'Music',
     tag: 'Songs and scores',
     about: 'Describe the music, add lyrics or keep it instrumental, or remix a song you already have, for an edit or a song a character sings.',
-    needs: ['MiniMax Music 3 or ACE-Step 1.5 on this computer (Setup)'],
-    credit: 'MiniMax Music 3, ACE-Step 1.5 Turbo'
+    needs: ['A music model on this computer (Setup)']
   },
   {
     page: 'sounds',
     name: 'Sounds',
     tag: 'Effects, ambiences and loops',
     about: 'Describe a sound and make up to four takes at once, then put the one you like under an edit, on A2 beneath the music.',
-    needs: ['Stable Audio 3 on this computer (Setup)'],
-    credit: 'Stable Audio 3 (Stability AI)'
+    needs: ['The sound model on this computer (Setup)']
   }
 ]

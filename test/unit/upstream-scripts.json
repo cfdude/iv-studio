@@ -9,6 +9,11 @@
     "reason": "installer and sign-in commands for each platform, a stand-in installer on Windows only, and finding what the installers put in place; passed under the guard",
     "failsOnMac": false
   },
+  "agent-names.mjs": {
+    "class": "default-safe",
+    "reason": "the names and accent colours the agent is told; pure; passed under the guard",
+    "failsOnMac": false
+  },
   "agent-run.mjs": {
     "class": "needs Windows",
     "reason": "the stand-in agent is fixtures/agent-stub.cmd on every platform and the process-tree check runs powershell; neither runs on a Mac",
@@ -184,6 +189,11 @@
     "reason": "recommend() on made-up machines; passed under the guard",
     "failsOnMac": false
   },
+  "hermes-acp.mjs": {
+    "class": "needs fixtures",
+    "reason": "spawns a stand-in Hermes ACP server, which the guard refuses; passes unguarded on a Mac",
+    "failsOnMac": false
+  },
   "image-families.mjs": {
     "class": "default-safe",
     "reason": "picture family file rules, no ComfyUI; passed under the guard",
@@ -297,6 +307,11 @@
   "ollama-address.mjs": {
     "class": "needs fixtures",
     "reason": "fake Ollama on this PC's LAN address (non-loopback on a Mac), which the guard refuses",
+    "failsOnMac": false
+  },
+  "ollama-start.mjs": {
+    "class": "default-safe",
+    "reason": "how each platform starts Ollama, as argument lists; passed under the guard",
     "failsOnMac": false
   },
   "openai-writer.mjs": {
@@ -507,6 +522,16 @@
   "words.mjs": {
     "class": "default-safe",
     "reason": "plain-words rewriting, pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "writer-json.mjs": {
+    "class": "default-safe",
+    "reason": "cutting the JSON out of a writer's answer; pure; passed under the guard",
+    "failsOnMac": false
+  },
+  "writer-pick.mjs": {
+    "class": "default-safe",
+    "reason": "picking the writer's JSON from a fenced or wordy answer; pure; passed under the guard",
     "failsOnMac": false
   }
 }

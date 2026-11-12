@@ -145,7 +145,7 @@ export default function Replace({ notify, characters, replaceSeed, go }) {
         <p className="stage-note small">
           {oldEngine
             ? 'The old engine: only the person or thing you choose is redrawn by H3, clip by clip. SAM 3.1 tracks them and Qwen3-VL writes the prompts.'
-            : 'The camera, cuts, motion and soundtrack stay. IV Studio paints a frame of each shot the way it should look, you check them, and Viggle Remake on MiniMax H3 redraws the video to match.'}
+            : 'The camera, cuts, motion and soundtrack stay. IV Studio paints a frame of each shot the way it should look, you check them, and MiniMax H3 redraws the video to match.'}
         </p>
         <WorkflowNeeds page="replace" />
       </Stage>

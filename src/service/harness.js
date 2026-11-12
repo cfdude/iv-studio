@@ -1,12 +1,15 @@
-// The person's own Claude Code or Codex as the prompt writer, run headless on their existing login (after IV Chat's
-// Draft button). Each run gets an empty folder of its own, no tools but reading the reference pictures put in it,
+// The person's own Claude Code, Codex or Hermes as the prompt writer, run headless on their existing login (after
+// IV Chat's Draft button). Hermes answers over its ACP server (hermesacp.js) with no tools and no MCP server. Each run gets an empty folder of its own, no tools but reading the reference pictures put in it,
 // no MCP servers and nothing saved, and answers in IV Studio's JSON shape (the CLI's own structured output).
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { findHermes, hermesTurn } from './hermesacp.js'
 
-export const HARNESSES = { claude: 'Claude Code', codex: 'Codex' }
+export const HARNESSES = { claude: 'Claude Code', codex: 'Codex', hermes: 'Hermes' }
+// a writer that's one of the person's agent apps (not the local model or Context IR)
+export const isHarness = (engine) => engine === 'claude' || engine === 'codex' || engine === 'hermes'
 
 // Claude Code takes these names; '' leaves the choice to the person's Claude Code settings.
 export const CLAUDE_MODELS = [
@@ -105,7 +108,9 @@ export function harnessStatus(env = process.env, home = os.homedir()) {
   const found = findHarnesses(env, home)
   return {
     claude: { installed: !!found.claude, models: CLAUDE_MODELS },
-    codex: { installed: !!found.codex, models: codexModels(env, home) }
+    codex: { installed: !!found.codex, models: codexModels(env, home) },
+    // Hermes writes on the model chosen in Hermes itself (hermes model)
+    hermes: { installed: !!findHermes(env, home), models: [{ id: '', name: 'Your Hermes model' }] }
   }
 }
 
@@ -157,6 +162,7 @@ function run(command, args, { input, cwd, timeoutMs }) {
 // One structured answer from Claude Code or Codex. images: [{ name, data }] (base64 JPEGs), saved into the run's
 // folder; the user text names them. Returns the parsed object.
 export async function harnessJson({ engine, model, system, user, schema, images = [], timeoutMs = 300000 }) {
+  if (engine === 'hermes') return hermesJson({ model, system, user, schema, images, timeoutMs })
   const exe = findHarnesses()[engine]
   if (!exe) throw new Error(`${HARNESSES[engine] || engine} isn't installed on this computer. Choose another writer in Settings → Prompt writer.`)
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-studio-writer-'))
@@ -225,5 +231,46 @@ export async function harnessJson({ engine, model, system, user, schema, images 
     throw new Error(`Unknown writer "${engine}".`)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+// One structured answer from Hermes: a fresh ACP session with no MCP servers, the instructions and the JSON shape in
+// the message, and the reply read back as JSON. Pictures go along when its model takes them.
+export async function hermesJson({ model, system, user, schema, images = [], timeoutMs = 300000 }) {
+  const exe = findHermes()
+  if (!exe) throw new Error('Hermes isn’t installed on this computer. Choose another writer in Settings → Prompt writer.')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-studio-writer-'))
+  let said = ''
+  let turn = null
+  try {
+    const text = `${system}\n\n${user}\n\nAnswer with one JSON object only (no other words, no code fences), shaped like this JSON Schema:\n${JSON.stringify(schema)}\nDon't use any tools.`
+    turn = hermesTurn({ exe, cwd: dir, server: null, text, model, images: images.map((im) => ({ data: im.data, mimeType: 'image/jpeg' })), emit: (e) => e.type === 'say' && (said += `${e.text}\n`) })
+    let timer
+    const r = await Promise.race([turn.done, new Promise((_, no) => (timer = setTimeout(() => (turn.cancel(), turn.child.kill(), no(new Error('The writer took too long. Try again.'))), timeoutMs)))])
+    clearTimeout(timer)
+    if (!r.ok && !said.trim()) throw new Error(`Hermes: ${r.error || 'no answer'}`)
+    return parseJsonAnswer(said)
+  } finally {
+    // Hermes keeps running in its folder after the answer: stop it, then clear the folder (Windows holds it briefly)
+    try {
+      turn?.child.kill()
+    } catch {}
+    await new Promise((r) => setTimeout(r, 300))
+    try {
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+    } catch {}
+  }
+}
+
+// The JSON object in a writer's reply: the whole text, or the outermost {...} if it said anything around it.
+export function parseJsonAnswer(text) {
+  const t = String(text || '').trim().replace(/^```(?:json)?\s*|\s*```$/g, '')
+  try {
+    return JSON.parse(t)
+  } catch {
+    const a = t.indexOf('{')
+    const b = t.lastIndexOf('}')
+    if (a >= 0 && b > a) return JSON.parse(t.slice(a, b + 1))
+    throw new Error('Hermes didn’t answer in the expected shape. Try again, or pick another writer.')
   }
 }

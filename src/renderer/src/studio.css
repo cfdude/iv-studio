@@ -205,13 +205,13 @@
   margin: 6px 0;
 }
 .prompt-diff .added {
-  background: rgba(241, 157, 172, 0.22);
+  background: rgba(var(--pink-rgb), 0.22);
   color: var(--paper);
 }
 .prompt-diff .removed {
   text-decoration: line-through;
   color: var(--paper-dim);
-  background: rgba(244, 72, 89, 0.14);
+  background: rgba(var(--accent-rgb), 0.14);
 }
 .editing-run {
   border-left: 3px solid var(--pink);
@@ -1099,7 +1099,7 @@ input.mini {
   display: grid;
   gap: 10px;
   padding: 14px 16px;
-  background: linear-gradient(90deg, rgba(244, 72, 89, 0.08), rgba(244, 72, 89, 0) 70%), var(--ink-2);
+  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.08), rgba(var(--accent-rgb), 0) 70%), var(--ink-2);
   border: 1px solid var(--line);
   border-left: 2px solid var(--red);
 }
@@ -1667,7 +1667,7 @@ body.resizing * {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: rgba(241, 157, 172, 0.35);
+  background: rgba(var(--pink-rgb), 0.35);
   border-left: 2px solid var(--pink);
   border-right: 2px solid var(--pink);
 }
@@ -1826,8 +1826,8 @@ body.resizing * {
   flex-wrap: wrap;
   gap: 10px;
   padding: 6px 10px;
-  border: 1px solid rgba(241, 157, 172, 0.45);
-  background: rgba(241, 157, 172, 0.08);
+  border: 1px solid rgba(var(--pink-rgb), 0.45);
+  background: rgba(var(--pink-rgb), 0.08);
 }
 .ed-agent .label {
   margin: 0;
@@ -2068,9 +2068,6 @@ body.resizing * {
   border: 1px solid rgba(255, 255, 255, 0.18);
   cursor: grab;
 }
-.tl-clip.tool-razor {
-  cursor: crosshair;
-}
 .tl-clip.locked {
   cursor: not-allowed;
 }
@@ -2161,7 +2158,7 @@ body.resizing * {
   cursor: col-resize;
 }
 .tl-clip.tool-roll .tl-edge:hover {
-  background: rgba(244, 72, 89, 0.5);
+  background: rgba(var(--accent-rgb), 0.5);
 }
 .tl-fade {
   position: absolute;
@@ -2185,7 +2182,7 @@ body.resizing * {
   margin-left: -1px;
   background: var(--red);
   pointer-events: none;
-  box-shadow: 0 0 6px rgba(244, 72, 89, 0.6);
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.6);
   z-index: 2;
 }
 .model-pick {
@@ -3661,7 +3658,7 @@ body.resizing * {
   place-items: center;
   font-size: 44px;
   color: var(--red);
-  background: radial-gradient(circle at 50% 60%, rgba(232, 72, 85, 0.16), transparent 70%), #000;
+  background: radial-gradient(circle at 50% 60%, rgba(var(--accent-rgb), 0.16), transparent 70%), #000;
 }
 .lib-item .tile-name {
   overflow: hidden;
@@ -3708,7 +3705,7 @@ body.resizing * {
   display: block;
 }
 .lora-thumb.empty {
-  background: radial-gradient(circle at 50% 60%, rgba(244, 72, 89, 0.18), transparent 70%), var(--ink-3);
+  background: radial-gradient(circle at 50% 60%, rgba(var(--accent-rgb), 0.18), transparent 70%), var(--ink-3);
 }
 .lora-thumb.empty span {
   font: 800 34px/1 var(--display);
@@ -3929,7 +3926,7 @@ body.resizing * {
   color: #6ee7a8;
 }
 .lora-pill.warn {
-  border-color: rgba(244, 72, 89, 0.5);
+  border-color: rgba(var(--accent-rgb), 0.5);
   color: var(--pink);
 }
 .lora-actions {
@@ -4186,7 +4183,7 @@ body.resizing * {
   border-radius: 50%;
   font-size: 64px;
   color: var(--red);
-  background: radial-gradient(circle, rgba(244, 72, 89, 0.18), transparent 70%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.18), transparent 70%);
   border: 1px solid var(--line);
 }
 .viewer-sound audio {
@@ -4314,7 +4311,7 @@ body.resizing * {
 }
 .viewer-thumb.on {
   border-color: var(--red);
-  background: rgba(239, 68, 68, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   box-shadow: inset 3px 0 0 var(--red);
 }
 .viewer-thumb.on .viewer-thumb-label {
@@ -4376,7 +4373,7 @@ button.nav-update {
   cursor: pointer;
 }
 button.nav-update:hover {
-  background: #ff5c6c;
+  background: var(--red-hi);
 }
 
 /* ---------- website sizzle ---------- */
@@ -4819,7 +4816,7 @@ button.nav-update:hover {
   transition: box-shadow 0.2s;
 }
 .live-pip.moving {
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(244, 72, 89, 0.45);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(var(--accent-rgb), 0.45);
 }
 .live-pip.moving,
 .live-pip.moving * {
@@ -4909,7 +4906,7 @@ button.nav-update:hover {
 }
 .live-pip-dot.on {
   background: var(--red);
-  box-shadow: 0 0 8px rgba(244, 72, 89, 0.8);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.8);
   animation: live-pip-pulse 1.4s ease-in-out infinite;
 }
 @keyframes live-pip-pulse {
@@ -5505,7 +5502,7 @@ button.nav-update:hover {
   cursor: pointer;
 }
 .tl-menu-item:hover:not(:disabled) {
-  background: rgba(244, 72, 89, 0.16);
+  background: rgba(var(--accent-rgb), 0.16);
   color: var(--cream);
 }
 .tl-menu-item:disabled {
@@ -5528,7 +5525,7 @@ button.nav-update:hover {
   padding: 0 8px;
   overflow: hidden;
   border: 1px dashed var(--red);
-  background: repeating-linear-gradient(135deg, rgba(244, 72, 89, 0.22) 0 10px, rgba(16, 12, 14, 0.75) 10px 20px);
+  background: repeating-linear-gradient(135deg, rgba(var(--accent-rgb), 0.22) 0 10px, rgba(16, 12, 14, 0.75) 10px 20px);
   color: var(--cream);
   text-align: left;
   cursor: pointer;
@@ -5800,7 +5797,7 @@ button.nav-update:hover {
 }
 .wiz-step-btn.done {
   color: var(--paper);
-  border-bottom-color: rgba(244, 72, 89, 0.45);
+  border-bottom-color: rgba(var(--accent-rgb), 0.45);
 }
 .wiz-step-btn.on {
   color: var(--cream);
@@ -5900,7 +5897,7 @@ button.nav-update:hover {
 }
 .wiz-choice.on {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 .wiz-choice.big {
   padding: 30px 20px;
@@ -6073,7 +6070,7 @@ button.nav-update:hover {
   text-align: center;
 }
 .wiz-role.on {
-  border-color: rgba(244, 72, 89, 0.6);
+  border-color: rgba(var(--accent-rgb), 0.6);
 }
 .wiz-role-face {
   display: grid;
@@ -6662,8 +6659,8 @@ button.nav-update:hover {
   stroke-width: 0.02;
 }
 .stage-fov {
-  fill: rgba(244, 72, 89, 0.1);
-  stroke: rgba(244, 72, 89, 0.45);
+  fill: rgba(var(--accent-rgb), 0.1);
+  stroke: rgba(var(--accent-rgb), 0.45);
   stroke-width: 0.03;
 }
 .stage-person,
@@ -6784,7 +6781,7 @@ button.nav-update:hover {
   top: 30px;
   left: 6px;
   padding: 2px 7px;
-  background: rgba(244, 72, 89, 0.85);
+  background: rgba(var(--accent-rgb), 0.85);
   color: var(--cream);
   font-size: 11px;
 }
@@ -6859,7 +6856,7 @@ button.nav-update:hover {
   cursor: pointer;
 }
 .reel-song.on {
-  border-color: rgba(244, 72, 89, 0.8);
+  border-color: rgba(var(--accent-rgb), 0.8);
 }
 .reel-row {
   display: flex;
@@ -6894,7 +6891,7 @@ button.nav-update:hover {
   cursor: pointer;
 }
 .help-btn:hover {
-  border-color: rgba(244, 72, 89, 0.8);
+  border-color: rgba(var(--accent-rgb), 0.8);
 }
 .help-panel {
   position: fixed;
@@ -7096,7 +7093,7 @@ button.nav-update:hover {
   position: absolute;
   border: 2px solid var(--pink);
   border-radius: 4px;
-  box-shadow: 0 0 0 3px rgba(241, 157, 172, 0.22), 0 0 18px rgba(241, 157, 172, 0.35);
+  box-shadow: 0 0 0 3px rgba(var(--pink-rgb), 0.22), 0 0 18px rgba(var(--pink-rgb), 0.35);
   pointer-events: none;
   transition: opacity 0.15s, box-shadow 0.15s;
 }
@@ -7115,7 +7112,7 @@ button.nav-update:hover {
 }
 .learn-mark.on {
   border-color: var(--red);
-  box-shadow: 0 0 0 4px rgba(244, 72, 89, 0.35), 0 0 26px rgba(244, 72, 89, 0.6);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.35), 0 0 26px rgba(var(--accent-rgb), 0.6);
 }
 .learn-mark.on b {
   background: var(--red);
@@ -7332,7 +7329,7 @@ button.nav-update:hover {
 }
 @keyframes free-urge {
   50% {
-    box-shadow: 0 0 0 3px rgba(241, 157, 172, 0.25), 0 0 12px rgba(241, 157, 172, 0.45);
+    box-shadow: 0 0 0 3px rgba(var(--pink-rgb), 0.25), 0 0 12px rgba(var(--pink-rgb), 0.45);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -7495,7 +7492,7 @@ button.nav-update:hover {
   25% {
     background: var(--pink);
     border-color: var(--pink);
-    box-shadow: 0 0 8px rgba(241, 157, 172, 0.6);
+    box-shadow: 0 0 8px rgba(var(--pink-rgb), 0.6);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -7709,7 +7706,7 @@ button.nav-update:hover {
 .voice-chip.on {
   color: var(--paper);
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 .voice-chip-name {
   display: grid;
@@ -7726,7 +7723,7 @@ button.nav-update:hover {
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 25%, #f47b8a, var(--red) 55%, #7a1c2a);
+  background: radial-gradient(circle at 30% 25%, var(--red-hi), var(--red) 55%, var(--red-lo));
   color: var(--ink);
   font: 800 1em/1 var(--display);
 }
@@ -8078,7 +8075,7 @@ button.nav-update:hover {
 }
 .drop-pick:hover {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.06);
+  background: rgba(var(--accent-rgb), 0.06);
 }
 .drop-pick-plus {
   font: 800 30px/1 var(--display);
@@ -8108,7 +8105,7 @@ button.nav-update:hover {
 }
 .engine-card.on {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   color: var(--paper);
 }
 .engine-card-name {
@@ -8293,8 +8290,8 @@ button.nav-update:hover {
   color: var(--paper);
 }
 .create-v2 .mode-card.on {
-  background: linear-gradient(160deg, rgba(244, 72, 89, 0.16), transparent 65%), var(--ink-3);
-  box-shadow: 0 12px 30px -14px rgba(244, 72, 89, 0.7);
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), 0.16), transparent 65%), var(--ink-3);
+  box-shadow: 0 12px 30px -14px rgba(var(--accent-rgb), 0.7);
 }
 .create-v2 .mode-card.on .mode-icon {
   color: var(--red);
@@ -8326,7 +8323,7 @@ button.nav-update:hover {
 .cast-chip.on {
   color: var(--paper);
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 .cast-chip-face {
   width: 52px;
@@ -8335,7 +8332,7 @@ button.nav-update:hover {
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 25%, #f47b8a, var(--red) 55%, #7a1c2a);
+  background: radial-gradient(circle at 30% 25%, var(--red-hi), var(--red) 55%, var(--red-lo));
   color: var(--ink);
   font: 800 22px/1 var(--display);
   transition: box-shadow 0.2s;
@@ -8351,7 +8348,7 @@ button.nav-update:hover {
   font-family: var(--body);
 }
 .cast-chip.on .cast-chip-face {
-  box-shadow: 0 0 0 2px var(--ink-2), 0 0 0 4px var(--red), 0 0 22px rgba(244, 72, 89, 0.45);
+  box-shadow: 0 0 0 2px var(--ink-2), 0 0 0 4px var(--red), 0 0 22px rgba(var(--accent-rgb), 0.45);
 }
 .cast-chip-name {
   font-size: 13px;
@@ -8412,7 +8409,7 @@ button.nav-update:hover {
 }
 .create-v2 .create-drop.drag-over {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 .create-drop-empty {
   display: grid;
@@ -8474,7 +8471,7 @@ button.nav-update:hover {
 .aspect-tile.on {
   color: var(--paper);
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 .aspect-glyph {
   height: 24px;
@@ -8489,7 +8486,7 @@ button.nav-update:hover {
 }
 .aspect-tile.on .aspect-glyph span {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.35);
+  background: rgba(var(--accent-rgb), 0.35);
 }
 /* the length slider with its marks */
 .length-slider {
@@ -8529,7 +8526,7 @@ button.nav-update:hover {
   gap: 14px;
   padding: 16px;
   border: 1px solid var(--line-strong);
-  background: linear-gradient(180deg, rgba(244, 72, 89, 0.09), transparent 180px), var(--ink-2);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.09), transparent 180px), var(--ink-2);
   box-shadow: 0 22px 50px rgba(0, 0, 0, 0.35);
 }
 .shot-card-head {
@@ -8719,8 +8716,8 @@ button.nav-update:hover {
 .create-kind-card.on {
   color: var(--paper);
   border-color: var(--red);
-  background: linear-gradient(120deg, rgba(244, 72, 89, 0.18), transparent 70%), var(--ink-3);
-  box-shadow: 0 12px 30px -16px rgba(244, 72, 89, 0.8);
+  background: linear-gradient(120deg, rgba(var(--accent-rgb), 0.18), transparent 70%), var(--ink-3);
+  box-shadow: 0 12px 30px -16px rgba(var(--accent-rgb), 0.8);
 }
 .create-kind-icon {
   display: grid;
@@ -8733,7 +8730,7 @@ button.nav-update:hover {
 }
 .create-kind-card.on .create-kind-icon {
   color: var(--red);
-  border-color: rgba(244, 72, 89, 0.5);
+  border-color: rgba(var(--accent-rgb), 0.5);
 }
 .create-kind-text {
   display: grid;
@@ -8771,7 +8768,7 @@ button.nav-update:hover {
 }
 .family-card.on {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 .family-card:disabled {
   opacity: 0.35;
@@ -8874,8 +8871,8 @@ button.nav-update:hover {
 .source-card:hover,
 .train-path.on {
   border-color: var(--red);
-  background: linear-gradient(160deg, rgba(244, 72, 89, 0.15), transparent 65%), var(--ink-3);
-  box-shadow: 0 12px 30px -16px rgba(244, 72, 89, 0.8);
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), 0.15), transparent 65%), var(--ink-3);
+  box-shadow: 0 12px 30px -16px rgba(var(--accent-rgb), 0.8);
 }
 .source-icon,
 .train-path-icon {
@@ -8890,7 +8887,7 @@ button.nav-update:hover {
 .source-card:hover .source-icon,
 .train-path.on .train-path-icon {
   color: var(--red);
-  border-color: rgba(244, 72, 89, 0.5);
+  border-color: rgba(var(--accent-rgb), 0.5);
 }
 .source-name,
 .train-path-name {
@@ -8912,7 +8909,7 @@ button.nav-update:hover {
   color: var(--paper-dim);
 }
 .train-path.on .train-path-chips span {
-  border-color: rgba(244, 72, 89, 0.45);
+  border-color: rgba(var(--accent-rgb), 0.45);
   color: var(--paper);
 }
 .train-path-steps {
@@ -9013,7 +9010,7 @@ button.nav-update:hover {
 }
 .refmod-pics.drag-over {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 .refmod-pic {
   position: relative;
@@ -9129,7 +9126,7 @@ button.nav-update:hover {
   background: var(--red);
   border-color: var(--red);
   color: var(--ink);
-  box-shadow: 0 0 0 4px rgba(244, 72, 89, 0.2), 0 0 20px rgba(244, 72, 89, 0.45);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.2), 0 0 20px rgba(var(--accent-rgb), 0.45);
 }
 .wizard-label {
   font: 700 18px/1 var(--display);
@@ -9251,7 +9248,7 @@ button.nav-update:hover {
 .shelf-tile:focus-visible {
   border-color: var(--red);
   transform: translateY(-2px);
-  box-shadow: 0 14px 30px -18px rgba(244, 72, 89, 0.7);
+  box-shadow: 0 14px 30px -18px rgba(var(--accent-rgb), 0.7);
 }
 .shelf-media {
   position: relative;
@@ -9308,8 +9305,8 @@ button.nav-update:hover {
   box-shadow: inset 0 0 0 1px rgba(110, 231, 168, 0.35);
 }
 .shelf-status.rendering {
-  background: rgba(244, 72, 89, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(244, 72, 89, 0.5);
+  background: rgba(var(--accent-rgb), 0.22);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.5);
 }
 .shelf-status.edit-len {
   top: auto;
@@ -9456,7 +9453,7 @@ button.nav-update:hover {
 }
 .shot-v2 .candidate.on {
   border-color: var(--red);
-  box-shadow: 0 0 0 1px var(--red), 0 14px 30px -18px rgba(244, 72, 89, 0.8);
+  box-shadow: 0 0 0 1px var(--red), 0 14px 30px -18px rgba(var(--accent-rgb), 0.8);
 }
 .shot-v2 .candidate figcaption {
   display: flex;
@@ -9483,7 +9480,7 @@ button.nav-update:hover {
   margin-top: 14px;
   padding: 18px 20px;
   border: 1px solid var(--red);
-  background: linear-gradient(160deg, rgba(244, 72, 89, 0.1), transparent 50%), var(--ink);
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), 0.1), transparent 50%), var(--ink);
   animation: train-form-in 0.2s ease-out;
 }
 .finish-head {
@@ -9553,9 +9550,9 @@ button.nav-update:hover {
   box-shadow: inset 0 0 0 1px rgba(110, 231, 168, 0.35);
 }
 .final-badge.enhanced-badge {
-  background: rgba(241, 157, 172, 0.12);
+  background: rgba(var(--pink-rgb), 0.12);
   color: var(--pink);
-  box-shadow: inset 0 0 0 1px rgba(241, 157, 172, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(var(--pink-rgb), 0.35);
 }
 .final-actions {
   display: inline-flex;
@@ -9604,7 +9601,7 @@ button.nav-update:hover {
   letter-spacing: 0.16em;
 }
 .ed-monitor.active {
-  border-color: rgba(244, 72, 89, 0.55);
+  border-color: rgba(var(--accent-rgb), 0.55);
   box-shadow: inset 0 2px 0 var(--red);
 }
 .ed-toolbar {
@@ -9617,7 +9614,7 @@ button.nav-update:hover {
   border: 1px solid var(--line);
 }
 .ed-toolset button.on {
-  box-shadow: 0 0 14px rgba(244, 72, 89, 0.45);
+  box-shadow: 0 0 14px rgba(var(--accent-rgb), 0.45);
 }
 .ed-tl-wrap {
   border: 1px solid var(--line);
@@ -9648,7 +9645,7 @@ button.nav-update:hover {
   overflow: hidden;
   background: var(--ink);
   border: 1px solid var(--line-strong);
-  box-shadow: 0 0 0 1px rgba(244, 72, 89, 0.15), 0 40px 120px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.15), 0 40px 120px rgba(0, 0, 0, 0.7);
   animation: wel-rise 0.35s cubic-bezier(0.2, 0.9, 0.25, 1);
 }
 .welcome-panel::before {
@@ -9703,7 +9700,7 @@ button.nav-update:hover {
   from { opacity: 0; transform: translateX(-14px) }
 }
 .welcome-steps {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--steps, 6), minmax(0, 1fr));
   margin: 18px 0 22px;
 }
 .welcome-steps button:disabled {
@@ -9741,7 +9738,7 @@ button.nav-update:hover {
   margin: 18px 0 0;
   padding: 12px 14px;
   border-left: 2px solid var(--pink);
-  background: rgba(241, 157, 172, 0.06);
+  background: rgba(var(--pink-rgb), 0.06);
   line-height: 1.5;
 }
 .wel-note strong {
@@ -9766,7 +9763,7 @@ button.nav-update:hover {
   padding: 16px 16px 14px;
   border: 1px solid var(--line);
   border-top: 2px solid var(--red);
-  background: linear-gradient(170deg, rgba(244, 72, 89, 0.08), transparent 55%), var(--ink-2);
+  background: linear-gradient(170deg, rgba(var(--accent-rgb), 0.08), transparent 55%), var(--ink-2);
   animation: wel-text-up 0.4s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
   animation-delay: calc(var(--i) * 70ms);
 }
@@ -9801,7 +9798,7 @@ button.nav-update:hover {
   border-top: 1px solid var(--line);
 }
 .wel-scan li.now {
-  background: rgba(244, 72, 89, 0.06);
+  background: rgba(var(--accent-rgb), 0.06);
   color: var(--paper);
 }
 .wel-scan li.done {
@@ -9809,7 +9806,7 @@ button.nav-update:hover {
   animation: wel-tick 0.3s ease-out;
 }
 @keyframes wel-tick {
-  from { background: rgba(244, 72, 89, 0.14) }
+  from { background: rgba(var(--accent-rgb), 0.14) }
 }
 .wel-scan-mark {
   display: grid;
@@ -9872,12 +9869,12 @@ li:not(.now) > .wel-scan-mark .wel-spin {
   overflow: hidden;
   padding: 22px 24px;
   border: 1px solid var(--red);
-  background: radial-gradient(120% 140% at 0% 0%, rgba(244, 72, 89, 0.22), transparent 55%), var(--ink-2);
+  background: radial-gradient(120% 140% at 0% 0%, rgba(var(--accent-rgb), 0.22), transparent 55%), var(--ink-2);
 }
 .wel-verdict.t-some,
 .wel-verdict.t-cloud {
   border-color: var(--pink);
-  background: radial-gradient(120% 140% at 0% 0%, rgba(241, 157, 172, 0.16), transparent 55%), var(--ink-2);
+  background: radial-gradient(120% 140% at 0% 0%, rgba(var(--pink-rgb), 0.16), transparent 55%), var(--ink-2);
 }
 .wel-verdict-kicker {
   font-size: 10px;
@@ -9978,7 +9975,7 @@ li:not(.now) > .wel-scan-mark .wel-spin {
 .wel-tips li {
   padding: 10px 14px;
   border-left: 2px solid var(--pink);
-  background: rgba(241, 157, 172, 0.06);
+  background: rgba(var(--pink-rgb), 0.06);
   line-height: 1.45;
 }
 .wel-tips li.t-warn {
@@ -10016,8 +10013,8 @@ li:not(.now) > .wel-scan-mark .wel-spin {
 .wel-way.on {
   border-color: var(--red);
   color: var(--paper);
-  background: linear-gradient(160deg, rgba(244, 72, 89, 0.14), transparent 60%), var(--ink-2);
-  box-shadow: 0 0 0 1px var(--red), 0 18px 40px -24px rgba(244, 72, 89, 0.9);
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), 0.14), transparent 60%), var(--ink-2);
+  box-shadow: 0 0 0 1px var(--red), 0 18px 40px -24px rgba(var(--accent-rgb), 0.9);
 }
 .wel-way .wel-icon {
   width: 34px;
@@ -10096,7 +10093,7 @@ li:not(.now) > .wel-scan-mark .wel-spin {
   transition: background 0.15s;
 }
 .wel-downloads li.on label {
-  background: rgba(244, 72, 89, 0.06);
+  background: rgba(var(--accent-rgb), 0.06);
 }
 .wel-downloads li.have label {
   cursor: default;
@@ -10478,8 +10475,8 @@ li:not(.now) > .wel-scan-mark .wel-spin {
 .train-preset.on {
   border-color: var(--red);
   color: var(--paper);
-  background: linear-gradient(160deg, rgba(244, 72, 89, 0.14), transparent 60%), var(--ink-2);
-  box-shadow: 0 0 0 1px var(--red), 0 18px 40px -24px rgba(244, 72, 89, 0.9);
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), 0.14), transparent 60%), var(--ink-2);
+  box-shadow: 0 0 0 1px var(--red), 0 18px 40px -24px rgba(var(--accent-rgb), 0.9);
 }
 .train-preset:disabled {
   cursor: default;
@@ -10626,7 +10623,7 @@ li:not(.now) > .wel-scan-mark .wel-spin {
   flex: none;
   width: 46px;
   align-self: stretch;
-  background: rgba(244, 72, 89, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   color: var(--pink);
 }
 .refmod-chip-icon svg {
@@ -10674,7 +10671,7 @@ li:not(.now) > .wel-scan-mark .wel-spin {
 }
 .aspect-tile.on .aspect-glyph span {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.25);
+  background: rgba(var(--accent-rgb), 0.25);
 }
 /* the face ring: a plain ring */
 .cast-chip.on .cast-chip-face {
@@ -10746,7 +10743,7 @@ li:not(.now) > .wel-scan-mark .wel-spin {
 .set-nav button.on {
   color: var(--cream);
   border-left-color: var(--red);
-  background: rgba(244, 72, 89, 0.06);
+  background: rgba(var(--accent-rgb), 0.06);
 }
 .set-nav button.on .mono {
   color: var(--red);
@@ -10994,7 +10991,7 @@ button.set-chip:hover {
 }
 .set-pill.warn {
   color: var(--pink);
-  border-color: rgba(241, 157, 172, 0.4);
+  border-color: rgba(var(--pink-rgb), 0.4);
 }
 /* switches read as sentences here */
 .set-switch {
@@ -11184,7 +11181,7 @@ button.set-chip:hover {
   width: auto;
   height: 38px;
   padding: 0 14px 0 5px;
-  border: 1px solid rgba(244, 72, 89, 0.55);
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
   border-radius: 19px;
   background: rgba(16, 12, 14, 0.86);
   color: var(--cream);
@@ -11196,7 +11193,7 @@ button.set-chip:hover {
 }
 .help-btn:hover {
   border-color: var(--red);
-  background: rgba(36, 18, 22, 0.92);
+  background: rgba(var(--accent-ink-rgb), 0.92);
 }
 .help-btn:focus-visible {
   outline: 1px solid var(--pink);
@@ -11262,7 +11259,7 @@ button.set-chip:hover {
 .tour-spot {
   position: absolute;
   border: 2px solid var(--red);
-  box-shadow: 0 0 0 200vmax rgba(8, 6, 7, 0.7), 0 0 0 6px rgba(244, 72, 89, 0.18);
+  box-shadow: 0 0 0 200vmax rgba(8, 6, 7, 0.7), 0 0 0 6px rgba(var(--accent-rgb), 0.18);
   pointer-events: none;
   transition: top 0.32s cubic-bezier(0.2, 0.7, 0.2, 1), left 0.32s cubic-bezier(0.2, 0.7, 0.2, 1), width 0.32s cubic-bezier(0.2, 0.7, 0.2, 1), height 0.32s cubic-bezier(0.2, 0.7, 0.2, 1);
   animation: tour-fade 0.2s ease-out;
@@ -11314,7 +11311,7 @@ button.set-chip:hover {
   cursor: pointer;
 }
 .tour-dots button.done {
-  background: rgba(244, 72, 89, 0.45);
+  background: rgba(var(--accent-rgb), 0.45);
 }
 .tour-dots button.on {
   width: 26px;
@@ -11386,8 +11383,8 @@ button.set-chip:hover {
   gap: 16px;
   align-items: center;
   padding: 16px 18px;
-  border: 1px solid rgba(244, 72, 89, 0.45);
-  background: rgba(244, 72, 89, 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.06);
 }
 .wel-tour-q {
   display: grid;
@@ -11481,7 +11478,7 @@ button.set-chip:hover {
   letter-spacing: -0.01em;
   text-transform: uppercase;
   color: var(--cream);
-  text-shadow: 0 4px 40px rgba(0, 0, 0, 0.7), 0 0 60px rgba(244, 72, 89, 0.25);
+  text-shadow: 0 4px 40px rgba(0, 0, 0, 0.7), 0 0 60px rgba(var(--accent-rgb), 0.25);
 }
 .stage-kicker {
   margin: 0;
@@ -11501,16 +11498,16 @@ button.set-chip:hover {
   align-items: stretch;
   gap: 10px;
   padding: 10px;
-  border: 1px solid rgba(244, 72, 89, 0.55);
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
   background: rgba(16, 12, 14, 0.78);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 4px rgba(244, 72, 89, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 4px rgba(var(--accent-rgb), 0.08);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .stage-panel:focus-within {
   border-color: var(--red);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 4px rgba(244, 72, 89, 0.18);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 4px rgba(var(--accent-rgb), 0.18);
 }
 .stage-panel input {
   flex: 1;
@@ -11829,7 +11826,7 @@ button.set-chip:hover {
 }
 .stage-drop.over {
   border-color: var(--red);
-  background: rgba(60, 18, 24, 0.85);
+  background: rgba(var(--accent-deep-rgb), 0.85);
 }
 .tool-shelf {
   display: grid;
@@ -11979,7 +11976,7 @@ button.set-chip:hover {
 }
 .chip.on {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   color: var(--cream);
   box-shadow: inset 0 0 0 1px var(--red);
 }
@@ -13339,7 +13336,7 @@ button.set-chip:hover {
   fill: rgba(241, 237, 229, 0.1);
 }
 .rig-zone.edge {
-  fill: rgba(241, 157, 172, 0.09);
+  fill: rgba(var(--pink-rgb), 0.09);
 }
 .rig-orbit {
   fill: none;
@@ -13364,8 +13361,8 @@ button.set-chip:hover {
   fill: var(--red);
 }
 .rig-cone {
-  fill: rgba(244, 72, 89, 0.16);
-  stroke: rgba(244, 72, 89, 0.55);
+  fill: rgba(var(--accent-rgb), 0.16);
+  stroke: rgba(var(--accent-rgb), 0.55);
 }
 .rig-cam.ghost rect,
 .rig-cam.ghost path:not(.rig-cone) {
@@ -13520,6 +13517,8 @@ button.set-chip:hover {
 /* ---------- Setup: a status card, then folding cards ---------- */
 .setup {
   display: grid;
+  /* one column the page's width: a long file name or path in a card wraps instead of widening the page */
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 .setup-summary {
@@ -13689,7 +13688,7 @@ button.set-chip:hover {
   max-width: min(720px, calc(100vw - 48px));
   padding: 10px 16px;
   border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
-  border-left: 3px solid var(--red, #e5484d);
+  border-left: 3px solid var(--red);
   border-radius: 10px;
   background: var(--ink, #1b1518);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
@@ -13710,7 +13709,7 @@ button.set-chip:hover {
 .cloud-prep-bar span {
   display: block;
   height: 100%;
-  background: var(--red, #e5484d);
+  background: var(--red);
   transition: width 0.4s;
 }
 /* ---------- 1.1: a failed render in plain words (Failure.jsx), time estimates, Privacy ---------- */
@@ -13720,8 +13719,8 @@ button.set-chip:hover {
   justify-items: start;
   padding: 14px 16px;
   margin: 10px 0;
-  border: 1px solid rgba(244, 72, 89, 0.55);
-  background: rgba(244, 72, 89, 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 .failure-title {
   font: 800 18px/1.1 var(--display);
@@ -13844,7 +13843,7 @@ button.set-chip:hover {
 }
 .starter.on {
   border-color: var(--red);
-  background: rgba(244, 72, 89, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 .starter-tag {
   color: var(--pink, var(--red));
@@ -15183,7 +15182,7 @@ html.rm .agent-dot.live {
 }
 .h3-terms-agree {
   padding: 10px 12px;
-  border: 1px solid rgba(244, 72, 89, 0.45);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
   color: var(--paper);
 }
 .h3-terms-done {
@@ -15202,7 +15201,7 @@ html.rm .agent-dot.live {
   --you-bubble: #8e2a3d;
   --you-text: #fbefe9;
   --agent-bubble: #262028;
-  --agent-color: #f19dac;
+  --agent-color: var(--pink);
 }
 .chat-panel.agent-claude {
   --agent-color: #e8a06a;
@@ -15210,9 +15209,123 @@ html.rm .agent-dot.live {
 .chat-panel.agent-codex {
   --agent-color: #5cc3b2;
 }
+.chat-panel.agent-hermes {
+  --agent-color: #c4b0ff;
+}
+/* the Chats tab: earlier conversations */
+.chat-list {
+  gap: 12px;
+}
+.chat-list-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.chat-list-top p {
+  flex: 1;
+  margin: 0;
+}
+.chat-list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-list-item {
+  --dot: var(--pink);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  min-height: 44px;
+  text-align: left;
+  color: var(--cream);
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--dot);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.chat-list-item:hover:not(:disabled) {
+  border-color: var(--dot);
+}
+.chat-list-item.on {
+  background: color-mix(in srgb, var(--dot) 12%, var(--ink-2));
+}
+.chat-list-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.chat-list-item.agent-claude {
+  --dot: #e8a06a;
+}
+.chat-list-item.agent-codex {
+  --dot: #5cc3b2;
+}
+.chat-list-item.agent-hermes {
+  --dot: #c4b0ff;
+}
+.chat-list-title {
+  font-size: 14px;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.chat-list-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dot);
+  letter-spacing: 0.04em;
+}
+.chat-list-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+.chat-list-now {
+  color: var(--cream);
+}
 .chat-head {
   gap: 8px;
   padding: 10px 10px 10px 18px;
+  min-width: 0;
+}
+.chat-panel {
+  container: chat / inline-size;
+}
+.chat-head .chat-tabs {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+@container chat (max-width: 460px) {
+  .chat-head {
+    gap: 4px;
+    padding-left: 14px;
+  }
+  .chat-tabs button {
+    padding: 0 9px;
+  }
+}
+@container chat (max-width: 359px) {
+  .chat-head h2 {
+    display: none;
+  }
+}
+@container chat (max-width: 340px) {
+  .chat-tabs button {
+    padding: 0 7px;
+  }
+  .chat-head .chat-icon {
+    width: 30px;
+  }
 }
 .chat-tabs {
   display: inline-flex;
@@ -15868,4 +15981,712 @@ html.chat-window body {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* The sidebar on a short window (or with larger text): tighter rows first, then it scrolls rather than cutting off
+   the queue, Library, the Visual | Audio switch and the version at its foot. */
+.nav {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.nav::-webkit-scrollbar {
+  width: 6px;
+}
+.nav::-webkit-scrollbar-thumb {
+  border-width: 1px;
+}
+@media (max-height: 800px) {
+  .nav {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .nav-item {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+}
+
+/* ---------- the editor's razor (C): a red katana for a cursor, a guide where it will cut, and a slash when it does ---------- */
+.tl-clip.tool-razor {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M2.5 29.5C8 22.6 13.2 16.9 19.2 11.2L21 13C15.2 18.6 9.3 24.2 2.5 29.5Z' fill='%23f44859' stroke='%23120c0e' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M4 27.6C9.2 21.8 14 16.8 19.4 11.9' fill='none' stroke='%23ffd6dc' stroke-width='.9' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%23120c0e' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%23b3202f' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='1.3 .9'/%3E%3Cellipse cx='20.6' cy='11.6' rx='3.4' ry='1.5' transform='rotate%28-45 20.6 11.6%29' fill='%231b1215' stroke='%23f44859' stroke-width='.9'/%3E%3C/svg%3E") 3 29, crosshair;
+}
+.tl-cut-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed rgba(var(--accent-pale-rgb), 0.95);
+  box-shadow: 0 0 6px 1px rgba(var(--accent-rgb), 0.7);
+  pointer-events: none;
+  z-index: 3;
+}
+.tl-slash {
+  position: absolute;
+  width: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.tl-slash-arc {
+  position: absolute;
+  left: -26px;
+  top: -8px;
+  width: 52px;
+  height: calc(100% + 16px);
+  background: linear-gradient(118deg, transparent 40%, rgba(255, 255, 255, 0.95) 48.5%, var(--red) 51.5%, transparent 60%);
+  filter: drop-shadow(0 0 5px var(--red));
+  animation: tl-slash-arc 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.tl-slash-seam {
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 6px 2px var(--red), 0 0 16px 5px rgba(var(--accent-rgb), 0.55);
+  transform-origin: top;
+  animation: tl-slash-seam 0.75s ease-out forwards;
+}
+.tl-slash i {
+  position: absolute;
+  left: -1.5px;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent-pale);
+  box-shadow: 0 0 5px var(--red);
+  opacity: 0;
+  animation: tl-slash-spark 0.5s ease-out forwards;
+}
+@keyframes tl-slash-arc {
+  0% {
+    opacity: 1;
+    clip-path: inset(0 0 100% 0);
+  }
+  55% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    opacity: 0;
+    clip-path: inset(100% 0 0 0);
+  }
+}
+@keyframes tl-slash-seam {
+  0% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  25% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+@keyframes tl-slash-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.4);
+  }
+}
+.ed-razor-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+.ed-toolset button.on .ed-razor-icon path:first-of-type {
+  fill: currentColor;
+}
+
+/* ---------- the editor's other tools, in the katana's style: a red arrow to select and move, and red trim, ripple and roll handles on a clip's edges ---------- */
+.tl-clip.tool-select,
+.tl-clip.tool-ripple,
+.tl-clip.tool-roll {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 3v21l5.6-5.2 3.6 8.4 3.6-1.6-3.6-8.2h7.6Z' fill='%23f44859' stroke='%23120c0e' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M7.2 8v10' stroke='%23ffd6dc' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E") 5 3, default;
+}
+.tl-clip.tool-select .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M16 5v22' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 5v22' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23f44859' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, ew-resize;
+}
+.tl-clip.tool-ripple .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23f44859' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+.tl-clip.tool-roll .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23f44859' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+.tl-clip.locked {
+  cursor: not-allowed;
+}
+.ed-tool-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+.ed-toolset button.on .ed-tool-icon .red {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* the editor's cursors in the other accent colours (accent.js) */
+:root[data-accent='blue'] /* ---------- the editor's razor (C): a red katana for a cursor,
+:root[data-accent='blue'] a guide where it will cut,
+:root[data-accent='blue'] and a slash when it does ---------- */
+.tl-clip.tool-razor {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M2.5 29.5C8 22.6 13.2 16.9 19.2 11.2L21 13C15.2 18.6 9.3 24.2 2.5 29.5Z' fill='%233d8bff' stroke='%23120c0e' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M4 27.6C9.2 21.8 14 16.8 19.4 11.9' fill='none' stroke='%23d6e6ff' stroke-width='.9' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%23120c0e' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%232457b3' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='1.3 .9'/%3E%3Cellipse cx='20.6' cy='11.6' rx='3.4' ry='1.5' transform='rotate%28-45 20.6 11.6%29' fill='%231b1215' stroke='%233d8bff' stroke-width='.9'/%3E%3C/svg%3E") 3 29, crosshair;
+}
+:root[data-accent='blue'] /* ---------- the editor's other tools,
+:root[data-accent='blue'] in the katana's style: a red arrow to select and move,
+:root[data-accent='blue'] and red trim,
+:root[data-accent='blue'] ripple and roll handles on a clip's edges ---------- */
+.tl-clip.tool-select,
+:root[data-accent='blue'] .tl-clip.tool-ripple,
+:root[data-accent='blue'] .tl-clip.tool-roll {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 3v21l5.6-5.2 3.6 8.4 3.6-1.6-3.6-8.2h7.6Z' fill='%233d8bff' stroke='%23120c0e' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M7.2 8v10' stroke='%23d6e6ff' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E") 5 3, default;
+}
+:root[data-accent='blue'] .tl-clip.tool-select .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M16 5v22' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 5v22' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%233d8bff' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, ew-resize;
+}
+:root[data-accent='blue'] .tl-clip.tool-ripple .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%233d8bff' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+:root[data-accent='blue'] .tl-clip.tool-roll .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%233d8bff' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+:root[data-accent='purple'] /* ---------- the editor's razor (C): a red katana for a cursor,
+:root[data-accent='purple'] a guide where it will cut,
+:root[data-accent='purple'] and a slash when it does ---------- */
+.tl-clip.tool-razor {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M2.5 29.5C8 22.6 13.2 16.9 19.2 11.2L21 13C15.2 18.6 9.3 24.2 2.5 29.5Z' fill='%23a06bff' stroke='%23120c0e' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M4 27.6C9.2 21.8 14 16.8 19.4 11.9' fill='none' stroke='%23e6dcff' stroke-width='.9' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%23120c0e' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%236236b3' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='1.3 .9'/%3E%3Cellipse cx='20.6' cy='11.6' rx='3.4' ry='1.5' transform='rotate%28-45 20.6 11.6%29' fill='%231b1215' stroke='%23a06bff' stroke-width='.9'/%3E%3C/svg%3E") 3 29, crosshair;
+}
+:root[data-accent='purple'] /* ---------- the editor's other tools,
+:root[data-accent='purple'] in the katana's style: a red arrow to select and move,
+:root[data-accent='purple'] and red trim,
+:root[data-accent='purple'] ripple and roll handles on a clip's edges ---------- */
+.tl-clip.tool-select,
+:root[data-accent='purple'] .tl-clip.tool-ripple,
+:root[data-accent='purple'] .tl-clip.tool-roll {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 3v21l5.6-5.2 3.6 8.4 3.6-1.6-3.6-8.2h7.6Z' fill='%23a06bff' stroke='%23120c0e' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M7.2 8v10' stroke='%23e6dcff' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E") 5 3, default;
+}
+:root[data-accent='purple'] .tl-clip.tool-select .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M16 5v22' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 5v22' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23a06bff' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, ew-resize;
+}
+:root[data-accent='purple'] .tl-clip.tool-ripple .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23a06bff' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+:root[data-accent='purple'] .tl-clip.tool-roll .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23a06bff' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+:root[data-accent='orange'] /* ---------- the editor's razor (C): a red katana for a cursor,
+:root[data-accent='orange'] a guide where it will cut,
+:root[data-accent='orange'] and a slash when it does ---------- */
+.tl-clip.tool-razor {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M2.5 29.5C8 22.6 13.2 16.9 19.2 11.2L21 13C15.2 18.6 9.3 24.2 2.5 29.5Z' fill='%23ff7a2f' stroke='%23120c0e' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M4 27.6C9.2 21.8 14 16.8 19.4 11.9' fill='none' stroke='%23ffe2cc' stroke-width='.9' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%23120c0e' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%23b34a12' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='1.3 .9'/%3E%3Cellipse cx='20.6' cy='11.6' rx='3.4' ry='1.5' transform='rotate%28-45 20.6 11.6%29' fill='%231b1215' stroke='%23ff7a2f' stroke-width='.9'/%3E%3C/svg%3E") 3 29, crosshair;
+}
+:root[data-accent='orange'] /* ---------- the editor's other tools,
+:root[data-accent='orange'] in the katana's style: a red arrow to select and move,
+:root[data-accent='orange'] and red trim,
+:root[data-accent='orange'] ripple and roll handles on a clip's edges ---------- */
+.tl-clip.tool-select,
+:root[data-accent='orange'] .tl-clip.tool-ripple,
+:root[data-accent='orange'] .tl-clip.tool-roll {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 3v21l5.6-5.2 3.6 8.4 3.6-1.6-3.6-8.2h7.6Z' fill='%23ff7a2f' stroke='%23120c0e' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M7.2 8v10' stroke='%23ffe2cc' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E") 5 3, default;
+}
+:root[data-accent='orange'] .tl-clip.tool-select .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M16 5v22' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 5v22' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23ff7a2f' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, ew-resize;
+}
+:root[data-accent='orange'] .tl-clip.tool-ripple .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23ff7a2f' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+:root[data-accent='orange'] .tl-clip.tool-roll .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23ff7a2f' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+
+/* the colour picker (AccentPicker.jsx): Settings → Accessibility and the welcome wizard */
+.accent-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.accent-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--ink-2);
+  color: var(--paper);
+  font: 500 14px/1 var(--body);
+  cursor: pointer;
+}
+.accent-swatch:hover {
+  border-color: var(--swatch);
+}
+.accent-swatch.on {
+  border-color: var(--swatch);
+  box-shadow: inset 0 0 0 1px var(--swatch);
+}
+.accent-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--swatch);
+}
+.accent-swatch.on .accent-dot {
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--swatch), 0 0 10px var(--swatch);
+}
+.wel-accent {
+  margin-top: 18px;
+}
+.wel-accent h3 {
+  margin: 0 0 10px;
+}
+/* and in Dark */
+:root[data-accent='mono'] /* ---------- the editor's razor (C): a red katana for a cursor,
+:root[data-accent='mono'] a guide where it will cut,
+:root[data-accent='mono'] and a slash when it does ---------- */
+.tl-clip.tool-razor {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M2.5 29.5C8 22.6 13.2 16.9 19.2 11.2L21 13C15.2 18.6 9.3 24.2 2.5 29.5Z' fill='%23cfccd6' stroke='%23120c0e' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M4 27.6C9.2 21.8 14 16.8 19.4 11.9' fill='none' stroke='%23ffffff' stroke-width='.9' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%23120c0e' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M22.2 10 29 3.2' stroke='%234a4852' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='1.3 .9'/%3E%3Cellipse cx='20.6' cy='11.6' rx='3.4' ry='1.5' transform='rotate%28-45 20.6 11.6%29' fill='%231b1215' stroke='%23cfccd6' stroke-width='.9'/%3E%3C/svg%3E") 3 29, crosshair;
+}
+:root[data-accent='mono'] /* ---------- the editor's other tools,
+:root[data-accent='mono'] in the katana's style: a red arrow to select and move,
+:root[data-accent='mono'] and red trim,
+:root[data-accent='mono'] ripple and roll handles on a clip's edges ---------- */
+.tl-clip.tool-select,
+:root[data-accent='mono'] .tl-clip.tool-ripple,
+:root[data-accent='mono'] .tl-clip.tool-roll {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 3v21l5.6-5.2 3.6 8.4 3.6-1.6-3.6-8.2h7.6Z' fill='%23cfccd6' stroke='%23120c0e' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M7.2 8v10' stroke='%23ffffff' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E") 5 3, default;
+}
+:root[data-accent='mono'] .tl-clip.tool-select .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M16 5v22' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 5v22' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23cfccd6' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, ew-resize;
+}
+:root[data-accent='mono'] .tl-clip.tool-ripple .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14 6h3v20h-3' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23cfccd6' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+:root[data-accent='mono'] .tl-clip.tool-roll .tl-edge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23120c0e' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M13 6h-2v20h2 M19 6h2v20h-2' fill='none' stroke='%23f4ecdc' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2.5 16 8.5 10.5V14h3.5v4H8.5v3.5Z M29.5 16 23.5 10.5V14H20v4h3.5v3.5Z' fill='%23cfccd6' stroke='%23120c0e' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 16 16, col-resize;
+}
+
+/* the person's name over their first message in a row (Settings → Your agent) */
+.chat-row.you {
+  flex-direction: column;
+  align-items: flex-end;
+}
+.chat-name-you {
+  color: var(--paper-dim);
+  margin-right: 2px;
+}
+/* the welcome wizard's "You and your agent" names */
+.wel-names-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.wel-names-row label {
+  display: grid;
+  gap: 6px;
+}
+
+/* ---------- the welcome wizard's first page and its simpler path for someone new (Welcome.jsx) ---------- */
+.wel-first {
+  padding-top: 8px;
+}
+.wel-first-q {
+  margin: 4px 0 8px;
+  font: 800 clamp(30px, 3.4vw, 46px) / 1.02 var(--display);
+  text-transform: uppercase;
+  color: var(--cream);
+  max-width: 22ch;
+}
+.wel-first-sub {
+  margin: 0 0 22px;
+  font-size: 16px;
+}
+.wel-levels-big {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.wel-levels-big .wel-way {
+  min-height: 170px;
+  padding: 22px;
+  text-align: left;
+  animation: wel-rise 0.4s calc(var(--i, 0) * 70ms) both;
+}
+.wel-levels-big .wel-way h3 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.wel-levels-big .wel-way p {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+@keyframes wel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+:root.rm .wel-levels-big .wel-way {
+  animation: none;
+}
+.wel-fold > summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  list-style: none;
+  cursor: pointer;
+}
+.wel-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.wel-fold-more {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  color: var(--paper-dim);
+}
+.wel-fold[open] .wel-fold-more {
+  color: var(--paper);
+  border-color: var(--red);
+}
+.wel-plain {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+.wel-plain li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.wel-plain .wel-icon {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+}
+.wel-cards.wel-cards-folded {
+  display: none;
+}
+.wel-pc-more {
+  margin: 0 0 14px;
+}
+.wel-dl-fold > summary {
+  cursor: pointer;
+  margin: 8px 0 10px;
+  color: var(--paper-dim);
+}
+.wel-dl-fold:not([open]) > summary {
+  margin-bottom: 0;
+}
+.wel-while {
+  margin: 22px 0 10px;
+  color: var(--paper-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* the welcome wizard's step bar stays one even row: on a narrow window the small line under each name goes first */
+@media (max-width: 1180px) {
+  .welcome-steps .wizard-sub {
+    display: none;
+  }
+  .welcome-steps .wizard-label {
+    font-size: 15px;
+  }
+}
+
+/* ---------- Create: "Start from an example" as one button and a pop-up (Starters.jsx) ---------- */
+.starters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 18px;
+}
+.starter-menu {
+  width: min(980px, 100%);
+}
+.starter-menu .starters-row {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.starter-menu .starter {
+  min-height: 150px;
+  padding: 16px 18px;
+  animation: starter-in 0.3s calc(var(--i, 0) * 40ms) both;
+}
+.starter-menu .starter-name {
+  font-size: 21px;
+}
+.starter-menu .starter-about {
+  -webkit-line-clamp: 4;
+}
+@keyframes starter-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+:root.rm .starter-menu .starter {
+  animation: none;
+}
+
+/* ---------- the staging board in its own pop-up (PromptWriter.jsx StagePop) ---------- */
+.stage-pop {
+  width: min(1180px, 100%);
+}
+.stage-pop .stage-board {
+  grid-template-columns: minmax(320px, 520px) minmax(0, 1fr);
+  padding: 16px;
+}
+@media (max-width: 900px) {
+  .stage-pop .stage-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stage-pop .stage-floor {
+    max-width: 420px;
+    justify-self: center;
+  }
+}
+.stage-pop-previs {
+  margin: 0;
+}
+.writer-staged {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 6px;
+}
+.writer-staged > .small {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+/* ---------- the Cinematography picker as picture tiles (CraftKit.jsx) ---------- */
+.craft-picker {
+  width: min(1180px, 100%);
+  height: min(900px, 100%);
+}
+.craft-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 10px;
+}
+.craft-tile {
+  position: relative;
+  display: block;
+  padding: 0;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  color: var(--paper);
+  cursor: pointer;
+  text-align: left;
+}
+.craft-tile img,
+.craft-tile-blank {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease, filter 0.35s ease;
+  filter: brightness(0.82);
+}
+.craft-tile-blank {
+  background: linear-gradient(135deg, var(--ink-3), var(--ink));
+}
+.craft-tile:hover img,
+.craft-tile:focus-visible img {
+  transform: scale(1.06);
+  filter: brightness(1);
+}
+.craft-tile-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 9px 7px;
+  background: linear-gradient(to top, rgba(8, 6, 7, 0.92), rgba(8, 6, 7, 0));
+  font: 800 15px / 1.1 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.craft-tile.on {
+  border-color: transparent;
+  box-shadow: inset 0 0 0 3px var(--red);
+}
+.craft-tile.on img {
+  filter: brightness(1);
+}
+.craft-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.craft-move {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  background: rgba(8, 6, 7, 0.75);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.craft-move-arrow {
+  width: 14px;
+  height: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.craft-move-arrow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 9px;
+  height: 2px;
+  background: var(--pink);
+  box-shadow: 4px 0 0 var(--pink);
+  animation: craft-move 1.2s ease-in-out infinite;
+}
+@keyframes craft-move {
+  0% {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(10px);
+    opacity: 0;
+  }
+}
+:root.rm .craft-move-arrow::before {
+  animation: none;
+  transform: none;
+}
+.craft-foot-text {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.8em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* the Cinematography button (CraftKit.jsx CinemaChips): a cinema camera in the accent colour, its reels turning on hover */
+.btn.craft-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 7px 14px 7px 11px;
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.btn.craft-open:hover,
+.btn.craft-open:focus-visible {
+  border-color: var(--red);
+  background: rgba(var(--accent-rgb), 0.16);
+}
+.craft-open-icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.craft-open-icon .body,
+.craft-open-icon .lens {
+  fill: rgba(var(--accent-rgb), 0.22);
+}
+.craft-open-icon .reel {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.btn.craft-open:hover .craft-open-icon .reel {
+  animation: craft-reel 1.4s linear infinite;
+}
+@keyframes craft-reel {
+  to {
+    transform: rotate(360deg);
+  }
+}
+:root.rm .btn.craft-open:hover .craft-open-icon .reel {
+  animation: none;
+}
+.craft-open-n {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--red);
+  color: #fff;
+  font-size: 11px;
+}
+
+/* Create: more than one character in a shot (GitHub #30). The lead keeps the outline; the others who come along
+   as their face pictures get a dashed one, and the lead a small tag. */
+.cast-chip {
+  position: relative;
+}
+.cast-chip.on.also {
+  border-style: dashed;
+  box-shadow: none;
+}
+.cast-chip.on.also .cast-chip-face {
+  box-shadow: 0 0 0 2px var(--ink-2), 0 0 0 3px rgba(var(--accent-rgb), 0.55);
+}
+.cast-chip-tag {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 1px 4px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--red);
+}
+.cast-note {
+  margin-top: 8px;
 }

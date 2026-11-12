@@ -86,7 +86,7 @@ describe('guard and the MCP training tools that need Modal or Python', () => {
     t.train = { where: 'local', name: 'run1', state: 'done', gpu: 'local', options: { where: 'local' }, epochs: 20 }
     writeTraining(t)
     const before = await refusedCount()
-    await fails('start_training', { trainingId: id, confirm_cost: 0, more: 10 }, /Fizgig isn’t on this computer\. Install it/)
+    await fails('start_training', { trainingId: id, confirm_cost: 0, more: 10 }, /The trainer isn’t on this computer\. Get it from the Train step/)
     assert.equal(await refusedCount(), before)
     assert.equal(readTraining(id).train.state, 'done', 'the finished run is left as it was')
   })

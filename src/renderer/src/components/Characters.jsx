@@ -912,7 +912,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
       kicker: free ? 'On this computer, free' : `Uses your ${PLACES[where].name} account`,
       title: extra ? `Train ${t.name} ${extra} more epochs?` : `Train ${t.name}?`,
       message: free
-        ? 'Fizgig trains on your graphics card. Don’t render while it trains; it keeps going if you close IV Studio.'
+        ? 'It trains on your graphics card. Don’t render while it trains; it keeps going if you close IV Studio.'
         : where === 'runpod'
           ? `RunPod bills by the second. The first run also downloads the H3 training files into your volume (about 42 GB, 10 to 20 minutes of GPU). The pod removes itself half an hour after training ends${opts.budget ? `, and training stops at your $${opts.budget} cap` : ''}.`
           : `Modal bills by the second and stops the GPU when training ends${opts.budget ? `, or at your $${opts.budget} cap (even if IV Studio is closed)` : ''}.`,
@@ -936,19 +936,12 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
         <p className="small dim">Claire had 8 stills, 7 face crops and 14 clips; Tess 15, 15 and 48 voice clips. 6–10 stills and 8–14 clips is a good start.</p>
         {(kept < 4 || kept + clips < 8) && <p className="small pink">Too few to learn a face yet: keep at least 4 stills and 8 items in all.</p>}
         <button className="link-btn mono" onClick={() => act('Building the dataset', () => T.openDataset(trainingId))}>
-          Open the dataset folder (to train in Fizgig yourself) ↗
+          Open the dataset folder (to train it yourself) ↗
         </button>
       </section>
 
       <section className="block create-step">
-        <StepHead n={2} title="The recipe" sub="Fizgig’s own H3 recipes. Standard suits most characters." />
-        <p className="small dim train-credit">
-          Training runs on{' '}
-          <button className="link-btn" onClick={() => window.ivstudio.links.open('https://github.com/shootthesound/Fizgig')}>
-            Fizgig
-          </button>{' '}
-          by shootthesound, free and open source, on this computer, Modal and RunPod alike.
-        </p>
+        <StepHead n={2} title="The recipe" sub="Tested H3 recipes. Standard suits most characters." />
         <div className="train-presets">
           {PRESET_ORDER.map((k) => {
             const pe = est?.presets?.[k]
@@ -987,7 +980,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
               ['normal', 'Normal'],
               ['fine', 'Fine detail']
             ]}
-            hint={opts.detail === 'fine' ? 'About 0.5 MP: small things like scars, tattoos and jewellery hold better. About twice the time and cost.' : '0.25 MP, Fizgig’s tested default.'}
+            hint={opts.detail === 'fine' ? 'About 0.5 MP: small things like scars, tattoos and jewellery hold better. About twice the time and cost.' : '0.25 MP, the tested default.'}
           />
           <Seg
             label="Focus"
@@ -998,7 +991,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
               ['likeness', 'The person'],
               ['whole', 'Their whole look']
             ]}
-            hint={opts.mode === 'whole' ? 'Reaches more of the model (Fizgig’s More Blocks): their style and movement too, with less of what H3 already knows kept.' : 'H3’s identity blocks only (Fizgig’s Default): the best likeness, soonest, and H3 keeps its own range.'}
+            hint={opts.mode === 'whole' ? 'Reaches more of the model: their style and movement too, with less of what H3 already knows kept.' : 'H3’s identity blocks only: the best likeness, soonest, and H3 keeps its own range.'}
           />
           <Seg
             label="Checkpoints"
@@ -1062,7 +1055,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
                 [60, 'Likeness and style'],
                 [8, 'Movement']
               ]}
-              hint="Fizgig’s clean-end share: 60% of steps on nearly clean pictures (the tuned default), or 8%, weighted to movement and composition."
+              hint="The clean-end share: 60% of steps on nearly clean pictures (the tuned default), or 8%, weighted to movement and composition."
             />
             <Seg
               label="Base precision"
@@ -1073,7 +1066,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
                 ['auto', 'Auto'],
                 ['int8', 'Accurate (int8)']
               ]}
-              hint="Auto lets Fizgig fit the card; on a 24 GB card it can drop to a 4-bit base, which is quicker but a little less accurate. int8 is the checkpoint’s own base, as the cloud GPUs train on."
+              hint="Auto lets the trainer fit the card; on a 24 GB card it can drop to a 4-bit base, which is quicker but a little less accurate. int8 is the checkpoint’s own base, as the cloud GPUs train on."
             />
           </div>
         )}
@@ -1092,7 +1085,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
                 <span className="mono small train-preset-cost">{w === 'local' ? 'Free' : `from $${from.toFixed(2)} an hour`}</span>
                 <p className="dim small">
                   {w === 'local'
-                    ? 'Fizgig on your graphics card. A few hours; don’t render meanwhile.'
+                    ? 'On your graphics card. A few hours; don’t render meanwhile.'
                     : w === 'runpod'
                       ? 'Your RunPod account, by the second. Its storage costs about $5.60 a month while it’s kept.'
                       : 'Your Modal account, by the second. Theo trained here in 56 minutes for about $4.10.'}
@@ -1123,12 +1116,12 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
           <div className="small train-ready-note">
             {!local.fizgig ? (
               <p>
-                Training here uses Fizgig.{' '}
+                Training here needs the trainer on this computer.{' '}
                 <button className="link-btn" onClick={() => window.ivstudio.links.open('https://github.com/shootthesound/Fizgig')}>
-                  Install Fizgig
+                  Get the trainer
                 </button>
                 , then{' '}
-                <button className="link-btn" onClick={() => act('Checking Fizgig', async () => (await T.chooseFizgig()) && checkLocal())}>
+                <button className="link-btn" onClick={() => act('Checking the trainer', async () => (await T.chooseFizgig()) && checkLocal())}>
                   pick its folder
                 </button>
                 .
@@ -1140,7 +1133,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
             )}
           </div>
         )}
-        {where === 'local' && local?.fizgig && <p className="mono small dim">Fizgig: {local.fizgig}</p>}
+        {where === 'local' && local?.fizgig && <p className="mono small dim">Trainer: {local.fizgig}</p>}
         {!free && (
           <div className="cloud-gpus">
             {gpus.map((g) => (

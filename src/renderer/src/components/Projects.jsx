@@ -679,7 +679,7 @@ function Cast({ v, act, characters, notify, go, setStep }) {
       <div className="wiz-craft" data-tour="film-cinema">
         <h3 className="wiz-q-small">Cinematography</h3>
         <p className="small dim">Film stock, lenses, light and camera for the whole film. Each goes into every shot's prompt.</p>
-        <CinemaChips value={v.look?.setups || []} onChange={(setups) => saveLook({ setups })} onOpen={() => setCinema(true)} label={v.look?.setups?.length ? '+ More' : '+ Choose the cinematography'} />
+        <CinemaChips value={v.look?.setups || []} onChange={(setups) => saveLook({ setups })} onOpen={() => setCinema(true)} label={v.look?.setups?.length ? 'Add more' : 'Choose the cinematography'} />
       </div>
       {cinema && <CinemaPicker value={v.look?.setups || []} onChange={(setups) => saveLook({ setups })} onClose={() => setCinema(false)} />}
       <div className="wiz-craft" data-tour="film-lookbook">
@@ -860,6 +860,23 @@ function Board({ v, act, characters, openShot, setStep, mode }) {
         </div>
       )}
       {b?.sketchError && !film && <p className="small pink">Sketches: {b.sketchError}</p>}
+      {b?.state === 'done' && !film && b.cutScenes?.length > 0 && (
+        <p className="small pink">
+          The writer’s answer for scene {b.cutScenes.join(', ')} was cut short, so it may be missing its last moments. Check it, or{' '}
+          <button className="link-btn small" onClick={() => act(() => P().breakDown(v.id, { sceneIds: b.cutScenes.map((n) => v.scenes[n - 1]?.id).filter(Boolean), sketch: true }))}>
+            plan {b.cutScenes.length === 1 ? 'it' : 'them'} again
+          </button>
+          .
+        </p>
+      )}
+      {b?.state === 'done' && !film && b.promptErrors > 0 && (
+        <p className="small pink">{b.promptErrors === 1 ? 'One shot has' : `${b.promptErrors} shots have`} no prompt yet: the writer’s answer couldn’t be read. Open the shot and press Write the prompt.</p>
+      )}
+      {b?.state === 'done' && !film && b.restoredLines > 0 && (
+        <p className="small dim">
+          The writer left out {b.restoredLines === 1 ? 'one line' : `${b.restoredLines} lines`} of your script, so {b.restoredLines === 1 ? 'it has a shot' : 'they have shots'} of {b.restoredLines === 1 ? 'its' : 'their'} own, in a plain medium close-up. Open {b.restoredLines === 1 ? 'it' : 'them'} to change the camera or the action.
+        </p>
+      )}
       {v.scenes.map((sc, k) => (
         <div key={sc.id} className="wiz-scene">
           <div className="wiz-scene-head">
@@ -934,7 +951,7 @@ function SceneTools({ v, sc, k, act, planning }) {
   return (
     <>
       <div className="wiz-scene-tools">
-        <label className="small dim" title={plan ? plan.description : 'How the scene is covered: the planner\'s own choice, or one of Slate\'s coverage plans. Changing it plans the scene again.'}>
+        <label className="small dim" title={plan ? plan.description : 'How the scene is covered: the planner\'s own choice, or one of the coverage plans. Changing it plans the scene again.'}>
           Coverage{' '}
           <select value={sc.coverage?.id || ''} disabled={planning || !slate} aria-label={`Coverage for scene ${k + 1}`} onChange={(e) => act(() => P().coverage(v.id, sc.id, e.target.value || null), e.target.value ? 'Coverage set. Plan the changed scene to get its shots.' : 'Coverage set back to the planner\'s choice.')}>
             <option value="">The planner's choice</option>
@@ -1024,7 +1041,7 @@ function Panel({ v, sh, n, film, ch, face, onClick }) {
         ) : sh.sketch ? (
           <img src={fileUrl(sh.sketch)} alt="" />
         ) : (
-          <span className="wiz-panel-blank mono small">{sh.sketchSet ? 'Sketching…' : sh.prompt ? 'No sketch yet' : 'Planning…'}</span>
+          <span className="wiz-panel-blank mono small">{sh.sketchSet ? 'Sketching…' : sh.prompt ? 'No sketch yet' : v.breakdown?.state === 'running' ? 'Planning…' : 'No prompt yet'}</span>
         )}
         <span className="wiz-panel-n">{n}</span>
         {sh.slot && <span className="wiz-panel-slot wiz-panel-cont">{sh.slot}</span>}

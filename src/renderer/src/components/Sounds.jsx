@@ -35,7 +35,7 @@ function Needed({ status, dl, onDone }) {
   return (
     <div className="music-needed">
       <p className="small">
-        Stable Audio 3 needs {status.missing.length === 1 ? 'one model' : `${status.missing.length} models`} first ({GB(bytes)}). They download into ComfyUI's models folder and are checked against the SHA-256 Hugging Face publishes.
+        Sounds need {status.missing.length === 1 ? 'one model' : `${status.missing.length} models`} first ({GB(bytes)}). They download into ComfyUI's models folder and are checked against the SHA-256 Hugging Face publishes.
       </p>
       {status.missing.map((m) => {
         const s = dl[m.id]
@@ -237,7 +237,7 @@ export function SoundsPage({ notify, openEdit, go }) {
             status?.remote
               ? { text: 'Sounds are made on this computer’s ComfyUI. Switch to This computer on the Cloud page to make them.' }
               : status && !status.ready && !status.error
-                ? { text: 'Stable Audio 3 isn’t downloaded yet.', action: { label: 'See what it needs', onClick: () => showBelow('.sounds .composer') } }
+                ? { text: 'The sound model isn’t downloaded yet.', action: { label: 'See what it needs', onClick: () => showBelow('.sounds .composer') } }
                 : null
           }
         />
@@ -252,9 +252,6 @@ export function SoundsPage({ notify, openEdit, go }) {
       <section className="audio-card composer">
         <div className="audio-card-head">
           <h2>New sound</h2>
-          <span className="mono small dim">
-            {meta?.engine.label} · <span className="music-licence">{meta?.engine.licence}</span>
-          </span>
         </div>
         <div className="audio-card-body">
           {status && !status.ready && !status.remote && !status.error && <Needed status={status} dl={dl} onDone={check} />}

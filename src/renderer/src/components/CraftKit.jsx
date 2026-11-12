@@ -1,6 +1,12 @@
-// Film craft in the window (filmcraft.js, after Sam Wasserman's Slate): the Cinematography picker, the prompt
-// tools (a director's note, Tighten, Enrich, Distill, Stronger shot, New angle, Variants) and the Lookbook.
+// Film craft in the window (filmcraft.js): the Cinematography picker, the prompt tools (a director's note, Tighten,
+// Enrich, Distill, Stronger shot, New angle, Variants) and the Lookbook.
 import { useEffect, useMemo, useState } from 'react'
+
+// Each setup's example picture (assets/cinema/<id>.webp): the same woman at the same café window, rendered with the
+// setup's own phrase (docs/art/cinema-examples.mjs), so two tiles differ only by the setup.
+const EXAMPLE = Object.fromEntries(Object.entries(import.meta.glob('../assets/cinema/*.webp', { eager: true, import: 'default' })).map(([f, url]) => [f.split('/').pop().replace('.webp', ''), url]))
+// groups whose setups are camera moves: a still can't show a move, so their tiles carry a moving badge
+const MOVES = new Set(['single-shot', 'camera'])
 
 const C = () => window.ivstudio.craft
 
@@ -35,13 +41,15 @@ export function CinemaPicker({ value = [], onChange, onClose }) {
       .filter((g) => g.items.length)
   }, [groups, group, q])
   const toggle = (i) => onChange(chosen.has(i.id) ? value.filter((s) => s.id !== i.id) : [...value, { id: i.id, label: i.label, snippet: i.snippet }])
+  // the setup under the pointer (or keyboard): its full phrase shows at the foot
+  const [hover, setHover] = useState(null)
   return (
     <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal craft-picker" role="dialog" aria-label="Cinematography">
         <div className="craft-picker-head">
           <div>
             <h3 className="craft-title">Cinematography</h3>
-            <p className="small dim">Film stocks, lenses, light, camera rigs and moods. Each adds a tested phrase to the prompt. From Slate by Sam Wasserman.</p>
+            <p className="small dim">Film stocks, lenses, light, camera moves and moods. Each picture is the same scene with that setup; pick any to add its tested phrase to the prompt.</p>
           </div>
           <button className="lora-chip-x" aria-label="Close" onClick={onClose}>
             ×
@@ -66,10 +74,31 @@ export function CinemaPicker({ value = [], onChange, onClose }) {
           {shown.map((g) => (
             <section key={g.id} className="craft-group">
               <h4 className="mono small dim">{g.label}</h4>
-              <div className="craft-chips">
+              <div className="craft-tiles">
                 {g.items.map((i) => (
-                  <button key={i.id} className={`craft-chip ${chosen.has(i.id) ? 'on' : ''}`} aria-pressed={chosen.has(i.id)} title={i.snippet} onClick={() => toggle(i)}>
-                    {i.label}
+                  <button
+                    key={i.id}
+                    className={`craft-tile ${chosen.has(i.id) ? 'on' : ''}`}
+                    aria-pressed={chosen.has(i.id)}
+                    aria-label={`${i.label}: ${i.snippet}`}
+                    onClick={() => toggle(i)}
+                    onMouseEnter={() => setHover(i)}
+                    onMouseLeave={() => setHover((h) => (h?.id === i.id ? null : h))}
+                    onFocus={() => setHover(i)}
+                  >
+                    {EXAMPLE[i.id] ? <img src={EXAMPLE[i.id]} alt="" loading="lazy" /> : <span className="craft-tile-blank" aria-hidden="true" />}
+                    {MOVES.has(g.id) && (
+                      <span className="craft-move mono" aria-hidden="true">
+                        <span className="craft-move-arrow" />
+                        moves
+                      </span>
+                    )}
+                    {chosen.has(i.id) && (
+                      <span className="craft-check" aria-hidden="true">
+                        ✓
+                      </span>
+                    )}
+                    <span className="craft-tile-label">{i.label}</span>
                   </button>
                 ))}
               </div>
@@ -77,7 +106,15 @@ export function CinemaPicker({ value = [], onChange, onClose }) {
           ))}
         </div>
         <div className="craft-picker-foot">
-          <span className="small dim">{value.length ? `${value.length} chosen: ${value.map((s) => s.label).join(', ')}` : 'Nothing chosen yet.'}</span>
+          <span className="small craft-foot-text">
+            {hover ? (
+              <>
+                <strong>{hover.label}</strong> <span className="dim">{hover.snippet}</span>
+              </>
+            ) : (
+              <span className="dim">{value.length ? `${value.length} chosen: ${value.map((s) => s.label).join(', ')}` : 'Nothing chosen yet. Hover a picture to read what it adds.'}</span>
+            )}
+          </span>
           <button className="btn btn-small btn-primary" onClick={onClose}>
             Done
           </button>
@@ -87,8 +124,26 @@ export function CinemaPicker({ value = [], onChange, onClose }) {
   )
 }
 
-// The chosen setups as small chips, with × to take one away and + to open the picker.
-export function CinemaChips({ value = [], onChange, onOpen, label = '+ Cinematography' }) {
+// A cinema camera, the Cinematography button's mark: its two reels turn while the button is hovered.
+const CinemaIcon = () => (
+  <svg className="craft-open-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <g className="reel">
+      <circle cx="7" cy="6.5" r="3.4" />
+      <circle cx="7" cy="6.5" r="0.9" />
+      <path d="M7 3.1v1.6M7 8.3v1.6M3.6 6.5h1.6M8.8 6.5h1.6" />
+    </g>
+    <g className="reel">
+      <circle cx="14.5" cy="6.5" r="3.4" />
+      <circle cx="14.5" cy="6.5" r="0.9" />
+      <path d="M14.5 3.1v1.6M14.5 8.3v1.6M11.1 6.5h1.6M16.3 6.5h1.6" />
+    </g>
+    <rect x="2.5" y="11" width="14" height="9" rx="1.2" className="body" />
+    <path d="M16.5 13.6 21.5 11v9l-5-2.6z" className="lens" />
+  </svg>
+)
+
+// The chosen setups as small chips, with × to take one away, and the Cinematography button that opens the picker.
+export function CinemaChips({ value = [], onChange, onOpen, label = 'Cinematography' }) {
   return (
     <div className="craft-chosen">
       {value.map((s) => (
@@ -99,8 +154,10 @@ export function CinemaChips({ value = [], onChange, onOpen, label = '+ Cinematog
           </button>
         </span>
       ))}
-      <button className="link-btn mono small craft-open" onClick={onOpen}>
-        {label}
+      <button className="btn craft-open" onClick={onOpen} title="Film stocks, lenses, light, camera moves and moods, each with a picture">
+        <CinemaIcon />
+        <span>{label}</span>
+        {value.length > 0 && <span className="craft-open-n mono">{value.length}</span>}
       </button>
     </div>
   )

@@ -6,6 +6,7 @@
 import { app, shell } from 'electron'
 import electronUpdater from 'electron-updater'
 import { dataLocation } from '../service/paths'
+import { offUpdater, selectUpdater } from '../service/updateplan'
 import { initMacUpdater } from './macupdater'
 import { initPortableUpdater } from './portableupdater'
 
@@ -38,9 +39,20 @@ export function initUpdater(onChange) {
     return { check: async () => state, install: () => false }
   }
 
-  if (MAC) return initMacUpdater({ set, get: () => state, testFeed: TEST_FEED })
-  if (WIN_PORTABLE) return initPortableUpdater({ set, get: () => state, testFeed: TEST_FEED })
+  // Mac copies of this Apple Silicon build never update themselves unless IV_STUDIO_MAC_UPDATES=1 (service/updateplan.js).
+  return selectUpdater({
+    mac: MAC,
+    portable: WIN_PORTABLE,
+    impls: {
+      off: () => offUpdater({ set }),
+      mac: () => initMacUpdater({ set, get: () => state, testFeed: TEST_FEED }),
+      portable: () => initPortableUpdater({ set, get: () => state, testFeed: TEST_FEED }),
+      standard: () => initStandardUpdater(set)
+    }
+  })
+}
 
+function initStandardUpdater(set) {
   if (TEST_FEED) autoUpdater.setFeedURL({ provider: 'generic', url: TEST_FEED })
   autoUpdater.autoDownload = !MANUAL
   autoUpdater.autoInstallOnAppQuit = !TEST_FEED && !MANUAL

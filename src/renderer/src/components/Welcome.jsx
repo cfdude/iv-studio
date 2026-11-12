@@ -7,6 +7,8 @@ import { StepHead } from './CreateKit'
 import { startTour } from '../tours'
 import { setSimpleWords, simpleWords } from '../words'
 import { highContrast, setContrast } from '../a11y'
+import { applyAccent } from '../accent'
+import AccentPicker from './AccentPicker'
 import { UsageAsk } from './Privacy'
 import { openStarter } from './Starters'
 import { AgentRows, useAgentSetup } from './AgentSetup'
@@ -17,17 +19,17 @@ import { openH3Terms, useH3Terms } from './H3Terms'
 // cloud or both), the defaults for shots and the writer, and the models worth downloading, then applies what the
 // person picked (hardware:apply). Each stage has its own banner art (assets/pages/pc-*.webp, drawn with Codex).
 const STEPS = [
-  ['hello', 'Welcome', 'What IV Studio does'],
-  ['scan', 'Scan', 'Reading your computer'],
+  ['hello', 'Welcome', 'How much you know'],
+  ['you', 'Make it yours', 'Names and colour'],
   ['pc', 'Your computer', 'What it can do'],
   ['way', 'Your way', 'Where things render'],
   ['get', 'Downloads', 'What to get'],
   ['done', 'Ready', 'Off you go']
 ]
-const ART = { hello: '', scan: 'pc-scan', pc: 'pc-card', way: 'pc-path', get: 'pc-path', done: '' }
+const ART = { hello: '', you: '', pc: 'pc-card', way: 'pc-path', get: 'pc-path', done: '' }
 const GB = 1024 ** 3
 const gbs = (b) => (b / GB >= 1000 ? `${(b / GB / 1024).toFixed(1)} TB` : `${b / GB >= 100 ? Math.round(b / GB) : (b / GB).toFixed(b / GB < 10 ? 1 : 0)} GB`)
-const WRITERS = { claude: 'Claude Code', codex: 'Codex', local: 'Local (Ollama)' }
+const WRITERS = { claude: 'Claude Code', codex: 'Codex', hermes: 'Hermes', local: 'Local (Ollama)' }
 
 // small line icons, in the app's style
 const Icon = ({ name }) => {
@@ -49,6 +51,8 @@ const Icon = ({ name }) => {
   )
 }
 
+const stepN = (id) => STEPS.findIndex(([s]) => s === id) + 1
+
 const STATE_WORD = { great: 'Great', good: 'Good', ok: 'Fine', weak: 'Limited' }
 
 export default function Welcome({ onClose, go, notify, first }) {
@@ -69,7 +73,21 @@ export default function Welcome({ onClose, go, notify, first }) {
   const words = (on) => (setSimple(on), setSimpleWords(on))
   const [hc, setHc] = useState(highContrast)
   const contrast = (on) => (setHc(on), setContrast(on))
-  const knows = (id) => (setLevel(id), words(id === 'new'))
+  // the accent colour (accent.js): shown at once, saved with the rest at the end
+  const [accent, setAccent] = useState(() => document.documentElement.dataset.accent || 'red')
+  const tint = (id) => (setAccent(id), applyAccent(id))
+  // you and your agent: names, and the app it runs on; saved with the rest at the end (Settings → You and your agent)
+  const [names, setNames] = useState({ userName: '', agentName: '', chatEngine: '' })
+  useEffect(() => {
+    window.ivstudio.settings.get().then((s) => setNames({ userName: s.userName || '', agentName: s.agentName || '', chatEngine: s.chatEngine || '' }), () => {})
+  }, [])
+  const named = { userName: names.userName.trim(), agentName: names.agentName.trim(), ...(names.chatEngine ? { chatEngine: names.chatEngine } : {}) }
+  const knows = (id) => {
+    setLevel(id)
+    words(id === 'new')
+    setTimeout(() => setStep('you'), 280)
+  }
+  const isNew = level === 'new'
   // anonymous usage counting (Privacy.jsx): off unless they say yes here; an earlier yes stays yes
   const [count, setCount] = useState(false)
   const countWas = useRef(null)
@@ -105,7 +123,7 @@ export default function Welcome({ onClose, go, notify, first }) {
     return () => clearTimeout(t)
   }, [data, shown, rows.length])
   useEffect(() => {
-    if (step === 'scan' && !data && !error) scan()
+    if (step === 'pc' && !data && !error) scan()
     body.current?.scrollTo?.({ top: 0 })
   }, [step])
   useEffect(() => {
@@ -123,7 +141,7 @@ export default function Welcome({ onClose, go, notify, first }) {
 
   async function finish(target, cloudWizard = false) {
     try {
-      await window.ivstudio.hardware.apply({ shotPrefs: prefs, promptEngine: writer !== data?.promptEngine ? writer : undefined, hardware: summaryOf(data), plainWords: simple, highContrast: hc, ...(level ? { aiLevel: level } : {}) })
+      await window.ivstudio.hardware.apply({ shotPrefs: prefs, promptEngine: writer !== data?.promptEngine ? writer : undefined, hardware: summaryOf(data), plainWords: simple, highContrast: hc, accent, ...named, ...(level ? { aiLevel: level } : {}) })
     } catch (e) {
       notify?.(e.message)
     }
@@ -138,7 +156,7 @@ export default function Welcome({ onClose, go, notify, first }) {
   async function skip() {
     if (stepRef.current === 'done') return finish()
     try {
-      await window.ivstudio.hardware.apply({ plainWords: simple, highContrast: hc, ...(level ? { aiLevel: level } : {}) })
+      await window.ivstudio.hardware.apply({ plainWords: simple, highContrast: hc, accent, ...named, ...(level ? { aiLevel: level } : {}) })
     } catch {}
     window.dispatchEvent(new CustomEvent('iv:settings'))
     onClose()
@@ -168,12 +186,12 @@ export default function Welcome({ onClose, go, notify, first }) {
   skipRef.current = skip
   const next = () => setStep(STEPS[Math.min(STEPS.length - 1, at + 1)][0])
   const back = () => setStep(STEPS[Math.max(0, at - 1)][0])
-  const canNext = step !== 'scan' || scanned
+  const canNext = step !== 'pc' || scanned
 
   const titles = {
-    hello: ['Welcome to IV Studio', 'Let’s set it up for your computer'],
-    scan: ['Checking your computer', 'Nothing leaves this computer'],
-    pc: ['Your computer', 'What this computer can do'],
+    hello: ['Welcome to IV Studio', 'One question first'],
+    you: ['Make it yours', 'Your name, your helper and your colour'],
+    pc: scanned ? ['Your computer', 'What this computer can do'] : ['Checking your computer', 'Nothing leaves this computer'],
     way: ['Your way of working', 'Where things render, and the defaults'],
     get: ['What to download', 'Models go into ComfyUI’s own folders'],
     done: ['You’re set', 'Change any of this later in Settings']
@@ -187,12 +205,12 @@ export default function Welcome({ onClose, go, notify, first }) {
         </button>
         <div className="welcome-scroll" ref={body}>
           <div key={step} className="welcome-hero-wrap">
-            <Hero art={ART[step]} title={titles[step][0]} kicker={titles[step][1]} help={false} />
+            <Hero art={step === 'pc' && !scanned ? 'pc-scan' : ART[step]} title={titles[step][0]} kicker={titles[step][1]} help={false} />
           </div>
-          <ol className="wizard-steps welcome-steps" aria-label="Steps">
+          <ol className="wizard-steps welcome-steps" aria-label="Steps" style={{ '--steps': STEPS.length }}>
             {STEPS.map(([id, label, sub], i) => (
               <li key={id} className={`${step === id ? 'on' : ''} ${i <= at ? 'reached' : ''}`}>
-                <button onClick={() => (i <= at || (data && i <= 4) ? setStep(id) : null)} aria-current={step === id ? 'step' : undefined} disabled={i > at && !(data && scanned)}>
+                <button onClick={() => (i <= at || (level && i <= 2) || (scanned && i < STEPS.length - 1) ? setStep(id) : null)} aria-current={step === id ? 'step' : undefined} disabled={i > at && !(level && i <= 2) && !(scanned && i < STEPS.length - 1)}>
                   <span className="wizard-n">{i < at ? '✓' : i + 1}</span>
                   <span className="wizard-label">{label}</span>
                   <span className="wizard-sub dim small">{sub}</span>
@@ -202,11 +220,11 @@ export default function Welcome({ onClose, go, notify, first }) {
           </ol>
 
           <div className="welcome-body" key={`b-${step}`}>
-            {step === 'hello' && <Hello level={level} knows={knows} simple={simple} words={words} hc={hc} contrast={contrast} />}
-            {step === 'scan' && <Scan rows={rows} shown={shown} error={error} retry={scan} />}
-            {step === 'pc' && rec && <YourPc rec={rec} scan={data.scan} />}
-            {step === 'way' && rec && <Way rec={rec} way={way} setWay={setWay} prefs={prefs} setPrefs={setPrefs} writer={writer} setWriter={setWriter} installs={installs} agents={agents} scan={data.scan} notify={notify} />}
-            {step === 'get' && rec && <Get rec={rec} way={way} pick={pick} setPick={setPick} packs={packs} setPacks={setPacks} installs={installs} scan={data.scan} started={started} download={download} startComfy={startComfy} comfyStarting={comfyStarting} rescan={scan} notify={notify} />}
+            {step === 'hello' && <Hello level={level} knows={knows} />}
+            {step === 'you' && <MakeItYours isNew={isNew} names={names} setNames={setNames} agents={agents} simple={simple} words={words} hc={hc} contrast={contrast} accent={accent} tint={tint} />}
+            {step === 'pc' && (scanned && rec ? <YourPc rec={rec} scan={data.scan} isNew={isNew} /> : <Scan rows={rows} shown={shown} error={error} retry={scan} />)}
+            {step === 'way' && rec && <Way rec={rec} way={way} setWay={setWay} prefs={prefs} setPrefs={setPrefs} writer={writer} setWriter={setWriter} installs={installs} agents={agents} scan={data.scan} notify={notify} isNew={isNew} />}
+            {step === 'get' && rec && <Get isNew={isNew} rec={rec} way={way} pick={pick} setPick={setPick} packs={packs} setPacks={setPacks} installs={installs} scan={data.scan} started={started} download={download} startComfy={startComfy} comfyStarting={comfyStarting} rescan={scan} notify={notify} />}
             {step === 'done' && rec && <Done rec={rec} way={way} prefs={prefs} writer={writer} started={started} onTour={() => finish('tour')} count={count} setCount={setCount} />}
           </div>
         </div>
@@ -222,13 +240,18 @@ export default function Welcome({ onClose, go, notify, first }) {
               </button>
             )}
             {step === 'hello' && (
+              <button className="btn btn-primary" onClick={next} disabled={!level} title={level ? undefined : 'Pick one first'}>
+                Next →
+              </button>
+            )}
+            {step === 'you' && (
               <button className="btn btn-primary" onClick={next}>
                 Check my computer →
               </button>
             )}
-            {step !== 'hello' && step !== 'done' && (
+            {step !== 'hello' && step !== 'you' && step !== 'done' && (
               <button className="btn btn-primary" onClick={next} disabled={!canNext}>
-                {step === 'scan' ? (scanned ? 'See what it means →' : 'Scanning…') : 'Next →'}
+                {step === 'pc' && !scanned ? 'Checking…' : 'Next →'}
               </button>
             )}
             {step === 'done' && (
@@ -254,42 +277,81 @@ export default function Welcome({ onClose, go, notify, first }) {
 }
 
 const LEVELS = [
-  ['new', 'New to it', 'I haven’t made AI video or pictures before.'],
-  ['some', 'Tried a little', 'I’ve used an app or two.'],
-  ['lots', 'Know it well', 'LoRAs, seeds and samplers are old friends.']
+  ['new', 'New to it', 'I haven’t made AI video or pictures before.', 'Everyday words, fewer choices, and IV Studio picks the settings.'],
+  ['some', 'Tried a little', 'I’ve used an app or two.', 'The usual choices, with what IV Studio suggests already picked.'],
+  ['lots', 'Know it well', 'LoRAs, seeds and samplers are old friends.', 'Every setting, from the first step.']
 ]
 
-function Hello({ level, knows, simple, words, hc, contrast }) {
-  const what = [
-    ['Shots', 'Write an idea, hunt a few takes, pick one and finish it at full size.'],
-    ['Characters and voices', 'Your own cast, with faces, voices and trained looks.'],
-    ['Films and edits', 'Short films from a script, cut together in the editor.'],
-    ['On your computer or in the cloud', 'Free on your own graphics card, or rented by the minute.']
-  ]
+function Hello({ level, knows }) {
   return (
-    <section className="block create-step">
-      <StepHead n={1} title="What IV Studio does" sub="A studio for making video with open models, on your computer." />
-      <div className="wel-what">
-        {what.map(([t, d], i) => (
-          <div key={t} className="wel-what-card" style={{ '--i': i }}>
-            <h3>{t}</h3>
-            <p className="dim small">{d}</p>
-          </div>
+    <section className="block create-step wel-first">
+      <h2 className="wel-first-q">How much do you know about making AI video and pictures?</h2>
+      <p className="wel-first-sub dim">There’s no wrong answer. IV Studio sets itself up to match, and you can change it later.</p>
+      <div className="wel-ways wel-levels wel-levels-big">
+        {LEVELS.map(([id, title, desc, more], i) => (
+          <button key={id} className={`wel-way ${level === id ? 'on' : ''}`} style={{ '--i': i }} onClick={() => knows(id)} aria-pressed={level === id}>
+            <h3>{title}</h3>
+            <p className="words-exact">{desc}</p>
+            <p className="dim small words-exact">{more}</p>
+          </button>
         ))}
       </div>
-      <p className="wel-lede">
-        First, a quick look at this computer: its graphics card, memory and free space. IV Studio reads them here and keeps them here, then suggests how to work and what to download. It takes a few seconds.
-      </p>
-      <div className="wel-know">
-        <h3>How much do you know about making AI video and pictures?</h3>
-        <div className="wel-ways wel-levels">
-          {LEVELS.map(([id, title, desc]) => (
-            <button key={id} className={`wel-way ${level === id ? 'on' : ''}`} onClick={() => knows(id)} aria-pressed={level === id}>
-              <h3>{title}</h3>
-              <p className="dim small words-exact">{desc}</p>
-            </button>
-          ))}
+    </section>
+  )
+}
+
+// Make it yours: names (you, your agent and the app it runs on), the colour, and the words and contrast switches.
+// For someone new, the agent is called a helper, explained in a sentence, and optional.
+function MakeItYours({ isNew, names, setNames, agents, simple, words, hc, contrast, accent, tint }) {
+  const [hermes, setHermes] = useState(false)
+  useEffect(() => {
+    window.ivstudio.chat.status().then((s) => setHermes(!!s.installed?.hermes), () => {})
+  }, [])
+  const has = { claude: !!agents?.claude?.installed, codex: !!agents?.codex?.installed, hermes }
+  const any = has.claude || has.codex || has.hermes
+  return (
+    <>
+      <section className="block create-step wel-names">
+        <StepHead
+          n={stepN('you')}
+          title={isNew ? 'You and your helper' : 'You and your agent'}
+          sub={isNew ? 'IV Studio can work with an AI helper that makes things for you when you ask in plain words. Give it a name if you like; you can skip this.' : 'Name your agent and tell it yours. It answers to its name in the chat, on the Dashboard and in the activity log.'}
+        />
+        <div className="wel-names-row">
+          <label>
+            <span className="mono small dim">Your name</span>
+            <input value={names.userName} maxLength={40} placeholder="Your name" onChange={(e) => setNames({ ...names, userName: e.target.value })} />
+          </label>
+          <label>
+            <span className="mono small dim">{isNew ? 'Your helper’s name' : 'Your agent’s name'}</span>
+            <input value={names.agentName} maxLength={40} placeholder={isNew ? 'Nova, Max, anything' : 'Name your agent'} onChange={(e) => setNames({ ...names, agentName: e.target.value })} />
+          </label>
         </div>
+        {any ? (
+          <Seg
+            label="It runs on"
+            value={names.chatEngine || (has.claude ? 'claude' : has.codex ? 'codex' : 'hermes')}
+            onChange={(v) => setNames({ ...names, chatEngine: v })}
+            options={[
+              ['claude', 'Claude Code', !has.claude && 'Claude Code isn’t on this computer'],
+              ['codex', 'Codex', !has.codex && 'Codex isn’t on this computer'],
+              ['hermes', 'Hermes', !has.hermes && 'Hermes isn’t on this computer']
+            ]}
+          />
+        ) : (
+          <p className="dim small">
+            {isNew
+              ? 'The helper runs on an app such as Claude Code or Codex, on your own plan. You don’t need one to start: a few steps on, IV Studio shows how to add one, or add it later in Settings.'
+              : 'No Claude Code, Codex or Hermes on this computer yet. The “Your way” step can install Claude Code or Codex; the name is kept for when you do.'}
+          </p>
+        )}
+      </section>
+      <section className="block create-step">
+        <StepHead title="Pick a colour" sub="For buttons, highlights and the artwork. Red is IV Studio’s own." />
+        <AccentPicker value={accent} onPick={tint} />
+      </section>
+      <section className="block create-step">
+        <StepHead title="Easier to read" sub="Both change any time in Settings." />
         <label className="switch-toggle wel-simple">
           <input type="checkbox" checked={simple} onChange={(e) => words(e.target.checked)} />
           <span className="switch-track">
@@ -297,7 +359,9 @@ function Hello({ level, knows, simple, words, hc, contrast }) {
           </span>
           <span>
             <strong>Simple words</strong>
-            <span className="dim small words-exact">The app says “trained look” for LoRA, “variation number” for seed, “quick sharpen” for DLSS and so on. Everything else stays the same. Change it any time in Settings.</span>
+            <span className="dim small words-exact">
+              {isNew ? 'On for you: the app uses everyday words instead of technical ones, like “trained look” for LoRA.' : 'The app says “trained look” for LoRA, “variation number” for seed, “quick sharpen” for DLSS and so on.'}
+            </span>
           </span>
         </label>
         <label className="switch-toggle wel-simple">
@@ -307,11 +371,11 @@ function Hello({ level, knows, simple, words, hc, contrast }) {
           </span>
           <span>
             <strong>Higher contrast text</strong>
-            <span className="dim small">Grey text turns close to white, so it’s easier to read. Settings → Accessibility also has bigger text, less motion and clearer focus outlines.</span>
+            <span className="dim small">Grey text turns close to white. Settings → Accessibility also has bigger text and less motion.</span>
           </span>
         </label>
-      </div>
-    </section>
+      </section>
+    </>
   )
 }
 
@@ -331,11 +395,18 @@ function scanRows({ scan, rec }) {
   ]
 }
 
+const WHAT = [
+  ['Shots', 'Write an idea, try a few takes, pick one and finish it at full size.'],
+  ['Characters and voices', 'Your own cast, with faces, voices and trained looks.'],
+  ['Films and edits', 'Short films from a script, cut together in the editor.'],
+  ['On your computer or in the cloud', 'Free on your own graphics card, or rented by the minute.']
+]
+
 function Scan({ rows, shown, error, retry }) {
   const placeholder = ['Graphics card', 'Memory', 'Processor', 'Drives', 'ComfyUI', 'Prompt writers', 'Voices', 'Cloud']
   return (
     <section className="block create-step">
-      <StepHead n={2} title="Reading your computer" sub="Graphics card, memory, processor, drives and what’s installed." />
+      <StepHead n={stepN('pc')} title="Reading your computer" sub="Graphics card, memory, processor, drives and what’s installed." />
       {error ? (
         <div className="wel-error">
           <p>The scan didn’t finish: {error}</p>
@@ -358,6 +429,15 @@ function Scan({ rows, shown, error, retry }) {
           })}
         </ul>
       )}
+      <h3 className="wel-while mono small">While it looks: what IV Studio does</h3>
+      <div className="wel-what">
+        {WHAT.map(([t, d], i) => (
+          <div key={t} className="wel-what-card" style={{ '--i': i }}>
+            <h3>{t}</h3>
+            <p className="dim small">{d}</p>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }
@@ -369,7 +449,28 @@ const Meter = ({ value, max }) => (
   </span>
 )
 
-function YourPc({ rec, scan }) {
+// Your PC in a sentence each, for someone new: what they can make here, and where the rest goes
+function PlainPc({ rec }) {
+  const here = { top: 'Everything, right here.', all: 'Everything, right here.', most: 'Most things here; the biggest videos are slower.', some: 'Pictures, music and short videos here; longer videos in the cloud.', cloud: 'Video in the cloud; this computer runs the app.' }
+  return (
+    <ul className="wel-plain">
+      <li>
+        <Icon name="pc" />
+        <span>
+          <strong>What you can make on this computer:</strong> {here[rec.tier.id] || rec.tier.summary}
+        </span>
+      </li>
+      <li>
+        <Icon name="cloud" />
+        <span>
+          <strong>Where things render:</strong> {rec.tier.renderOn === 'local' ? 'On this computer, free.' : rec.tier.renderOn === 'cloud' ? 'In the cloud, on your own account, paid by the minute.' : 'Here, with the cloud for the biggest videos.'} The next step lets you change it.
+        </span>
+      </li>
+    </ul>
+  )
+}
+
+function YourPc({ rec, scan, isNew }) {
   const gpu = (scan.gpus || []).find((g) => g.vram) || null
   const meter = { gpu: gpu && [gpu.vram, 32 * GB], ram: [scan.ram, 64 * GB] }
   return (
@@ -379,7 +480,8 @@ function YourPc({ rec, scan }) {
         <h2>{rec.tier.title}</h2>
         <p>{rec.tier.summary}</p>
       </section>
-      <div className="wel-cards">
+      {isNew && <PlainPc rec={rec} />}
+      <div className={`wel-cards ${isNew ? 'wel-cards-folded' : ''}`}>
         {rec.verdicts.map((v, i) => (
           <article key={v.id} className={`wel-card s-${v.state}`} style={{ '--i': i }}>
             <header>
@@ -393,6 +495,11 @@ function YourPc({ rec, scan }) {
           </article>
         ))}
       </div>
+      {isNew && (
+        <button className="link-btn mono small wel-pc-more" onClick={(e) => e.currentTarget.parentElement.querySelector('.wel-cards')?.classList.toggle('wel-cards-folded')}>
+          Show the details
+        </button>
+      )}
       {rec.tips.length > 0 && (
         <ul className="wel-tips">
           {rec.tips.map((t) => (
@@ -433,7 +540,28 @@ function prefsForSpeed(id) {
   return { speed: id, previewMp: p.megapixels, quality: p.steps === 4 ? 'draft' : 'standard', finalMp: finishFor(id).megapixels }
 }
 
-function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, agents, scan, notify }) {
+// A section of a step: open for anyone who knows the ropes, folded for someone new (with a plainer line), so the
+// choices are there but nothing has to be decided.
+function Fold({ isNew, title, sub, newSub, children }) {
+  if (!isNew)
+    return (
+      <section className="block create-step">
+        <StepHead title={title} sub={sub} />
+        {children}
+      </section>
+    )
+  return (
+    <details className="block create-step wel-fold">
+      <summary>
+        <StepHead title={title} sub={newSub || sub} />
+        <span className="wel-fold-more mono small">Change</span>
+      </summary>
+      {children}
+    </details>
+  )
+}
+
+function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, agents, scan, notify, isNew }) {
   const set = (p) => setPrefs((x) => ({ ...x, ...p }))
   const [videos, setVideos] = useState(null)
   useEffect(() => {
@@ -452,7 +580,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, a
   return (
     <>
       <section className="block create-step">
-        <StepHead n={4} title="Where things render" sub="Pick one; switch any time on the Cloud page." />
+        <StepHead n={stepN('way')} title="Where things render" sub="Pick one; switch any time on the Cloud page." />
         <div className="wel-ways">
           {WAYS.map(([id, icon, title, desc]) => (
             <button key={id} className={`wel-way ${way === id ? 'on' : ''}`} onClick={() => setWay(id)} aria-pressed={way === id}>
@@ -465,12 +593,14 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, a
         </div>
       </section>
       <section className="block create-step wel-agents">
-        <StepHead title="Do you use Claude Code or Codex?" sub="If you have either, IV Studio can use it on your own plan to write your prompts and to make a whole idea for you from the Dashboard." />
+        <StepHead
+          title={isNew ? 'Add a helper (optional)' : 'Do you use Claude Code or Codex?'}
+          sub={isNew ? 'Claude Code and Codex are AI helpers you sign in to with your own plan. With one, you can ask for a video in plain words and it does the steps for you. Not sure? Skip it; everything works without.' : 'If you have either, IV Studio can use it on your own plan to write your prompts and to make a whole idea for you from the Dashboard.'}
+        />
         <AgentRows setup={agents} notify={notify} />
         <p className="dim small wel-agents-skip">Don’t use either? That’s fine: skip this. The Local writer works without them, and you can add them any time in Settings → Agents.</p>
       </section>
-      <section className="block create-step">
-        <StepHead title="Defaults for your shots" sub="Set to suit this computer. Every shot can still change them." />
+      <Fold isNew={isNew} title="Defaults for your shots" sub="Set to suit this computer. Every shot can still change them." newSub="IV Studio picked these to suit this computer. Open this only if you want to change them.">
         <div className="wel-segs">
           <Seg label="Speed" value={prefs.speed} onChange={(v) => set(prefsForSpeed(v))} options={SPEED_IDS.map((id) => [id, `${SPEEDS[id].label}${rec.prefs.speed === id ? ' · suits this computer' : ''}`])} />
           {SPEEDS[prefs.speed] && <p className="dim small wel-speed">{SPEEDS[prefs.speed].say} {SPEEDS[prefs.speed].trade}</p>}
@@ -482,6 +612,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, a
             options={[
               ['claude', 'Claude Code', !installs.claude && 'Claude Code isn’t on this computer'],
               ['codex', 'Codex', !installs.codex && 'Codex isn’t on this computer'],
+              ['hermes', 'Hermes', !installs.hermes && 'Hermes isn’t on this computer'],
               ['local', 'Local (Ollama)']
             ]}
           />
@@ -489,7 +620,7 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, a
         <p className="wel-note dim small">
           <strong>Training a character:</strong> {rec.training.say}
         </p>
-      </section>
+      </Fold>
       <section className="block create-step">
         <StepHead title="Where finished videos go" sub="Films and edits you export, and cloud renders brought to this computer. Change it any time in Settings → Folders." />
         <div className="wel-videos">
@@ -567,11 +698,11 @@ function FindComfy({ installs, startComfy, comfyStarting, rescan, notify }) {
   )
 }
 
-function Get({ rec, way, pick, setPick, packs, setPacks, installs, scan, started, download, startComfy, comfyStarting, rescan, notify }) {
+function Get({ isNew, rec, way, pick, setPick, packs, setPacks, installs, scan, started, download, startComfy, comfyStarting, rescan, notify }) {
   if (way === 'cloud')
     return (
       <section className="block create-step">
-        <StepHead n={5} title="Nothing to download here" sub="In the cloud, the models live on your cloud storage." />
+        <StepHead n={stepN('get')} title="Nothing to download here" sub="In the cloud, the models live on your cloud storage." />
         <p className="wel-lede">The Cloud page sets up RunPod, Modal or Comfy Cloud and fetches the models there the first time. This computer only needs IV Studio.</p>
       </section>
     )
@@ -584,8 +715,8 @@ function Get({ rec, way, pick, setPick, packs, setPacks, installs, scan, started
   const allHere = installs.modelsKnown && groups.every((g) => g.have || !g.recommended) && !groups.some((g) => g.recommended)
   return (
     <section className="block create-step">
-      <StepHead n={5} title="What to download" sub="The ones for how you’ll work are ticked. Each is checked against its published fingerprint." />
-      <p className="wel-lede">IV Studio uses the ComfyUI already on this computer, wherever it is (the Desktop app, or a portable ComfyUI on another drive), or gets one for you. These download into that ComfyUI’s models folder, so they go on its drive.</p>
+      <StepHead n={stepN('get')} title="What to download" sub={isNew ? 'IV Studio picked what you need. Press the button and it downloads in the background while you start.' : 'The ones for how you’ll work are ticked. Each is checked against its published fingerprint.'} />
+      {!isNew && <p className="wel-lede">IV Studio uses the ComfyUI already on this computer, wherever it is (the Desktop app, or a portable ComfyUI on another drive), or gets one for you. These download into that ComfyUI’s models folder, so they go on its drive.</p>}
       {!installs.modelsKnown && <FindComfy installs={installs} startComfy={startComfy} comfyStarting={comfyStarting} rescan={rescan} notify={notify} />}
       {allHere && (
         <div className="wel-allhere">
@@ -593,6 +724,9 @@ function Get({ rec, way, pick, setPick, packs, setPacks, installs, scan, started
           <p>Everything this way of working needs is already on this computer. Tick anything extra you’d like.</p>
         </div>
       )}
+      {isNew && <p className="wel-lede">{chosen.length ? `${chosen.length === 1 ? 'One download' : `${chosen.length} downloads`}, ${gbs(bytes)} in all. You can keep using IV Studio while they come in.` : 'Nothing more to download for now.'}</p>}
+      <details className="wel-dl-fold" open={!isNew}>
+        <summary className="mono small">{isNew ? 'See or change the list' : 'The list'}</summary>
       <ul className="wel-downloads">
         {groups.map((g) => (
           <li key={g.id} className={`${g.have ? 'have' : ''} ${pick.includes(g.id) ? 'on' : ''}`}>
@@ -609,6 +743,7 @@ function Get({ rec, way, pick, setPick, packs, setPacks, installs, scan, started
         <input type="checkbox" checked={packs} disabled={!installs.modelsKnown || !!started} onChange={(e) => setPacks(e.target.checked)} />
         <span>Also add the ComfyUI node packs IV Studio uses (pinned versions; existing ones are left alone)</span>
       </label>
+      </details>
       <div className="wel-get-foot">
         <span className={`mono small ${short ? 'wel-short' : ''}`}>
           {gbs(bytes)} selected{md ? ` · ${gbs(md.free)} free on ${md.path}` : ''}
@@ -641,7 +776,7 @@ function Done({ rec, way, prefs, writer, started, onTour, count, setCount }) {
   ]
   return (
     <section className="block create-step">
-      <StepHead n={6} title="Here’s your setup" sub="Applied when you leave this page." />
+      <StepHead n={stepN('done')} title="Here’s your setup" sub="Applied when you leave this page." />
       <dl className="wel-summary">
         {lines.map(([k, v]) => (
           <div key={k}>

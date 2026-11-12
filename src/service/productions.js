@@ -1,3 +1,4 @@
+import { isHarness } from './harness.js'
 // Projects: a short film from script to rough cut. (Called "productions" in the code: a "project" already means
 // one shot's renders, see Studio.createProject.) A production holds:
 //   brief    name, logline, aspect, target length, look (style LoRAs, notes)
@@ -61,12 +62,136 @@ const SHOT_SCHEMA = {
       minItems: 1,
       items: {
         type: 'object',
-        properties: { action: { type: 'string' }, staging: { type: 'string' }, camera: { type: 'string' }, characters: { type: 'array', items: { type: 'string' } }, speaker: { type: 'string' }, line: { type: 'string' }, seconds: { type: 'number' }, ends: { type: 'string' } },
+        // length limits keep a small local writer from running on in one field until its answer is cut off (#27)
+        properties: { action: { type: 'string', maxLength: 500 }, staging: { type: 'string', maxLength: 500 }, camera: { type: 'string', maxLength: 160 }, characters: { type: 'array', maxItems: 8, items: { type: 'string', maxLength: 60 } }, speaker: { type: 'string', maxLength: 60 }, line: { type: 'string', maxLength: 800 }, seconds: { type: 'number' }, ends: { type: 'string', maxLength: 400 } },
         required: ['action', 'staging', 'camera', 'characters', 'speaker', 'line', 'seconds', 'ends']
       }
     }
   },
   required: ['shots']
+}
+
+// The shot schema for a stretch of this many seconds: no more shots than 3-second shots would fill, plus two (#27).
+export function shotSchemaFor(seconds) {
+  const s = structuredClone(SHOT_SCHEMA)
+  s.properties.shots.maxItems = Math.max(3, Math.ceil(seconds / 3) + 2)
+  return s
+}
+
+// A scene in parts of about `each` seconds for the shot planner, split between script elements (a line of dialogue
+// or a paragraph of action is never cut), each with its share of the scene's seconds: [{ text, seconds }].
+// A scene up to 1.25 parts long stays whole.
+export function sceneParts(scene, seconds, each = 60) {
+  const els = scene.elements || []
+  const n = Math.min(els.length, Math.ceil(seconds / each))
+  if (n <= 1 || seconds <= each * 1.25) return [{ text: sceneText(scene), seconds, elements: els }]
+  const size = (e) => String(e.text || '').length + 20
+  const total = els.reduce((t, e) => t + size(e), 0)
+  const groups = [[]]
+  let done = 0
+  for (const e of els) {
+    // start the next part once this one has its share (and there are parts left to fill)
+    if (groups[groups.length - 1].length && groups.length < n && done >= (total * groups.length) / n) groups.push([])
+    groups[groups.length - 1].push(e)
+    done += size(e)
+  }
+  return groups.map((g, k) => ({
+    text: sceneText({ heading: `${scene.heading}${k ? ' (continued)' : ''}`, elements: g }),
+    seconds: Math.max(6, Math.round((seconds * g.reduce((t, e) => t + size(e), 0)) / total)),
+    elements: g
+  }))
+}
+
+// Words for matching a line: lower case, straight quotes, no punctuation.
+const lineWords = (t) =>
+  String(t || '')
+    .toLowerCase()
+    .replace(/[‘’`]/g, "'")
+    .replace(/[^a-z0-9']+/g, ' ')
+    .trim()
+// A shot's words hold a script line: all of it, or (for a writer that changed a word or two) at least 80% of its
+// words in a shot line of about the same length.
+function holds(have, want) {
+  if (!have || !want) return false
+  if (have.includes(want)) return true
+  const w = want.split(' ')
+  const h = new Set(have.split(' '))
+  return w.length >= 4 && w.filter((x) => h.has(x)).length / w.length >= 0.8 && have.split(' ').length <= w.length * 1.5
+}
+
+// Every line of dialogue in `elements` (a scene's or a part's script) in some shot (GitHub #27: a small local writer
+// leaves a few out). A line counts when a shot's line holds it, or when up to four shots in a row hold it between
+// them (a speech split over shots). Lines are looked for from the shot of the line before, so a line said twice
+// needs two shots. A line no shot holds gets a shot of its own after the shot of the line before it, with the
+// action written just before it in the script. Returns { shots, added }.
+export function keepLines(shots, elements = []) {
+  const out = shots.map((s) => ({ ...s }))
+  let added = 0
+  let after = 0
+  let action = ''
+  let last = ''
+  const used = new Set() // shots already matched to a line
+  // the index of the shot (from `from` on) where `want` is said: in one shot's line, or across the lines of up to
+  // four shots in a row that start with its first words; -1 when nowhere
+  const findLine = (want, from, fresh = false) => {
+    for (let j = from; j < out.length; j++) {
+      if (fresh && used.has(j)) continue
+      const first = lineWords(out[j].line)
+      if (!first) continue
+      if (holds(first, want)) return j
+      if (!want.startsWith(first)) continue
+      let joined = first
+      for (let k = j + 1, n = 1; k < out.length && n < 4; k++) {
+        if (!out[k].line) continue
+        joined = `${joined} ${lineWords(out[k].line)}`
+        n++
+        if (holds(joined, want)) return k
+      }
+    }
+    return -1
+  }
+  for (const e of elements) {
+    if (e.type !== 'dialogue') {
+      action = String(e.text || '').trim()
+      continue
+    }
+    const want = lineWords(e.text)
+    if (!want) continue
+    // the same words again need the next shot; another line can share the shot of the one before
+    const k = findLine(want, want === last ? after + 1 : after)
+    last = want
+    if (k >= 0) {
+      used.add(k)
+      after = k
+      continue
+    }
+    // said earlier than expected (the writer moved it) in a shot no other line took: it's there, nothing to add
+    const early = findLine(want, 0, true)
+    if (early >= 0 && early < after) {
+      used.add(early)
+      continue
+    }
+    const prev = out.length ? out[Math.min(after, out.length - 1)] : null
+    const words = String(e.text).split(/\s+/).filter(Boolean).length
+    const shot = {
+      action: action ? action.slice(0, 480) : `${e.who} speaks.`,
+      staging: prev?.ends || prev?.staging || '',
+      camera: 'Medium close-up, static',
+      characters: [e.who],
+      speaker: e.who,
+      line: String(e.text).trim(),
+      seconds: Math.min(10, Math.max(3, Math.round(words / 2.5 + 1))),
+      ends: prev?.ends || ''
+    }
+    const pos = out.length ? Math.min(after + 1, out.length) : 0
+    out.splice(pos, 0, shot)
+    // the matched shots at or after pos moved down one
+    for (const u of [...used].filter((u) => u >= pos).sort((a, b) => b - a)) (used.delete(u), used.add(u + 1))
+    used.add(pos)
+    after = pos
+    added++
+  }
+  return { shots: out, added }
 }
 
 // withLine lives with the prompt checker now (Create's writers use it too)
@@ -536,12 +661,32 @@ export class Productions {
       // the scene's share of the film's length, by how much script it has
       const size = (s) => sceneText(s).length
       const share = Math.max(6, Math.round((p.targetSeconds * size(sc)) / Math.max(1, p.scenes.reduce((n, s) => n + size(s), 0))))
-      const user = [`Film: ${p.name}${p.logline ? `. ${p.logline}` : ''}`, castNames.length ? `Cast: ${castNames.join(', ')}` : '', loc?.description ? `${loc.name}: ${loc.description}` : '', lookWords(p.look) ? `Look: ${lookWords(p.look)}` : '', `Seconds for this scene: about ${share} (${Math.max(1, Math.round(share / 6))} shots or so).`, `Scene:\n${sceneText(sc)}`].filter(Boolean).join('\n')
+      const head = [`Film: ${p.name}${p.logline ? `. ${p.logline}` : ''}`, castNames.length ? `Cast: ${castNames.join(', ')}` : '', loc?.description ? `${loc.name}: ${loc.description}` : '', lookWords(p.look) ? `Look: ${lookWords(p.look)}` : '']
       // a coverage plan (Slate's): exactly its shots, in its order, each named by its slot
       const plan = sc.coverage?.shots?.length ? sc.coverage : null
       const people = [...new Set(p.cast.map((c) => this.character(c.characterId)?.name?.split(/\s+/)[0] || c.as).filter(Boolean))]
-      const out = await askWriter(this.writer(), { system: plan ? `${SHOT_RULES}\n\n${coverageRules(plan, { people })}` : SHOT_RULES, user, schema: SHOT_SCHEMA, cpu })
-      if (plan) out.shots = (out.shots || []).slice(0, plan.shots.length)
+      // A long scene (a 5-minute film can be one scene of several minutes) is planned in parts of about a minute,
+      // each carrying on from where the last ended, and each answer may hold only as many shots as its seconds
+      // allow, so a small local writer can't loop until it's cut off. An answer cut off anyway keeps the shots it
+      // finished, and the board says so (GitHub #27). A coverage plan is planned whole.
+      const parts = plan ? [{ text: sceneText(sc), seconds: share }] : sceneParts(sc, share)
+      const out = { shots: [], _cut: false }
+      for (const [k, part] of parts.entries()) {
+        const where = parts.length > 1 ? [`This is part ${k + 1} of ${parts.length} of the scene: plan the shots for this part only.`, out.shots.length ? `It opens as the previous part ended: ${out.shots[out.shots.length - 1].ends || out.shots[out.shots.length - 1].action}` : ''] : []
+        const user = [...head, ...where, `Seconds for this ${parts.length > 1 ? 'part' : 'scene'}: about ${part.seconds} (${Math.max(1, Math.round(part.seconds / 6))} shots or so).`, `Scene:\n${part.text}`].filter(Boolean).join('\n')
+        const schema = plan ? SHOT_SCHEMA : shotSchemaFor(part.seconds)
+        const long = part.seconds > 60
+        const got = await askWriter(this.writer(), { system: plan ? `${SHOT_RULES}\n\n${coverageRules(plan, { people })}` : SHOT_RULES, user, schema, cpu, ctx: long ? 24576 : 16384, maxTokens: long ? 14000 : 8000, salvage: true })
+        const planned = (got.shots || []).filter((s) => s && String(s.action || '').trim())
+        // every line of the part's script in a shot (a coverage plan keeps its own slots)
+        const kept = plan ? { shots: planned, added: 0 } : keepLines(planned, part.elements)
+        out.shots.push(...kept.shots)
+        out.added = (out.added || 0) + kept.added
+        if (got._cut) out._cut = true
+      }
+      if (plan) out.shots = out.shots.slice(0, plan.shots.length)
+      const sceneNo = p.scenes.findIndex((s) => s.id === sid) + 1
+      if (!out.shots.length) throw new Error(`The writer gave no shots for scene ${sceneNo}. Try again, or pick another writer in Settings → Prompt writer.`)
       const shots = (out.shots || []).map((s, k) => ({
         id: id6(),
         action: String(s.action || '').trim(),
@@ -564,10 +709,19 @@ export class Productions {
         if (t) Object.assign(t, { shots, stale: false })
         q.breakdown.scenesDone++
         q.breakdown.shots += shots.length
+        if (out._cut) q.breakdown.cutScenes = [...(q.breakdown.cutScenes || []), sceneNo]
+        if (out.added) q.breakdown.restoredLines = (q.breakdown.restoredLines || 0) + out.added
       })
+      // a shot whose prompt can't be written is left to write again from its drawer; the rest carry on
       for (const sh of shots) {
-        await this.writeShotPrompt(id, sid, sh.id, { cpu })
-        this.patch(id, (q) => q.breakdown.shotsDone++)
+        const failed = await this.writeShotPrompt(id, sid, sh.id, { cpu }).then(
+          () => false,
+          () => true
+        )
+        this.patch(id, (q) => {
+          q.breakdown.shotsDone++
+          if (failed) q.breakdown.promptErrors = (q.breakdown.promptErrors || 0) + 1
+        })
       }
     }
     const sketchError = sketch ? await this.sketch(id).then(() => null, (err) => err.message) : null
@@ -651,7 +805,7 @@ export class Productions {
     const ch = this.character(sh.character)
     const w = this.writer()
     const written =
-      w.engine === 'claude' || w.engine === 'codex'
+      isHarness(w.engine)
         ? await writeHarness({ engine: w.engine, model: w.model, idea, mode: 'text', seconds: sh.seconds, character: ch })
         : await writeLocal({ idea, mode: 'text', seconds: sh.seconds, character: ch, model: this.model(), cpu: cpu ?? (await this.studio().gpuBusy().catch(() => false)) })
     const prompt = oneTake(withLine(written, ch && first(ch.name) === first(sh.speaker) ? '{char}' : sh.speaker, sh.line))

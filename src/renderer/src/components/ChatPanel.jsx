@@ -8,10 +8,12 @@ const fileUrl = (p) => `ivfile://local/?p=${encodeURIComponent(p)}`
 const tokens = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n || 0))
 const timeOf = (at) => (at ? new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '')
 
-// The chat with the person's own Claude Code or Codex (src/service/agentchat.js): a panel down the right side, over
+// The chat with the person's own Claude Code, Codex or Hermes (src/service/agentchat.js): a panel down the right side, over
 // whatever page is open. Every IV Studio tool; anything that deletes, costs money, installs or changes Settings shows
 // an Allow card first.
-const NAMES = { claude: 'Claude Code', codex: 'Codex' }
+const NAMES = { claude: 'Claude Code', codex: 'Codex', hermes: 'Hermes' }
+// whose plan or models a chat runs on
+const PLAN = { claude: 'Claude', codex: 'ChatGPT', hermes: 'Hermes' }
 const RENDER = { queued: 'waiting', running: 'rendering', success: 'done', error: 'failed', cancelled: 'cancelled', unknown: '' }
 const KIND = { previews: 'Previews', finish: 'Finish', enhance: 'Enhance' }
 const IDEAS = ['What can you do in IV Studio?', 'Make a 5 second shot of a fox crossing a frozen lake at dawn', 'Which of my shots aren’t finished yet?']
@@ -36,7 +38,7 @@ export function useAgentName() {
   const [name, setName] = useState(null)
   useEffect(() => {
     let live = true
-    if (!agentLook) agentLook = window.ivstudio.chat.status().then((s) => NAMES[s.chat?.engine || s.preferred] || null, () => null)
+    if (!agentLook) agentLook = window.ivstudio.chat.status().then((s) => (NAMES[s.chat?.engine || s.preferred] ? s.agentName || NAMES[s.chat?.engine || s.preferred] : null), () => null)
     agentLook.then((n) => live && setName(n))
     // look again after a while: one may have been installed since
     const t = setTimeout(() => (agentLook = null), 15000)
@@ -60,7 +62,7 @@ export function useChat() {
 
 export function ChatButton({ open, popped = false, busy, onClick }) {
   return (
-    <button className={`chat-open mono ${open ? 'on' : ''}`} onClick={onClick} aria-expanded={open} title={popped ? 'The chat is in its own window: bring it forward' : open ? 'Close the chat' : 'Chat with your Claude Code or Codex'}>
+    <button className={`chat-open mono ${open ? 'on' : ''}`} onClick={onClick} aria-expanded={open} title={popped ? 'The chat is in its own window: bring it forward' : open ? 'Close the chat' : 'Chat with your Claude Code, Codex or Hermes'}>
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 5h16v11H9l-5 4z" />
       </svg>
@@ -126,10 +128,11 @@ function ChatText({ text }) {
   )
 }
 
-function Entry({ e, onAnswer, onUndo, onOpenShot, agentName, first }) {
+function Entry({ e, onAnswer, onUndo, onOpenShot, agentName, userName, first }) {
   if (e.kind === 'you')
     return (
       <div className="chat-row you">
+        {first && userName && <span className="chat-name chat-name-you mono">{userName}</span>}
         <div className="chat-bubble you">
           {e.files?.length > 0 && (
             <div className="chat-files">
@@ -248,14 +251,56 @@ function Entry({ e, onAnswer, onUndo, onOpenShot, agentName, first }) {
 // How full the agent's context window is (agentchat.js applyUsage), and the chat's usage when clicked. Claude Code's
 // figure is exact; Codex's is estimated from its per-turn totals. A plan's own 5-hour and weekly limits aren't given to
 // apps, so they aren't here.
+// The History tab: every saved conversation (the newest 20), newest first, with its agent, and New chat at the top.
+function when(at) {
+  const d = new Date(at)
+  if (Number.isNaN(d.getTime())) return ''
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000)
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  if (days < 1 && new Date().toDateString() === d.toDateString()) return `Today, ${time}`
+  if (days < 2) return `Yesterday, ${time}`
+  if (days < 7) return d.toLocaleDateString([], { weekday: 'long' })
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+function ChatList({ chats, current, busy, canStart, onOpen, onNew }) {
+  return (
+    <div className="chat-body chat-list">
+      <div className="chat-list-top">
+        <p className="small dim">{chats.length ? 'Your conversations, newest first. Open one to carry on where you left off.' : 'No conversations yet. They show up here once you send a message.'}</p>
+        {canStart && (
+          <button className="btn btn-small" disabled={busy} onClick={onNew} title="Start a new conversation">
+            New chat
+          </button>
+        )}
+      </div>
+      {chats.length > 0 && (
+        <ul className="chat-list-items">
+          {chats.map((c) => (
+            <li key={c.id}>
+              <button className={`chat-list-item agent-${c.engine} ${c.id === current ? 'on' : ''}`} disabled={busy && c.id !== current} onClick={() => onOpen(c.id)} aria-current={c.id === current ? 'true' : undefined}>
+                <span className="chat-list-title">{c.title || 'Untitled'}</span>
+                <span className="chat-list-meta mono small">
+                  <span className="chat-list-dot" aria-hidden="true" /> {NAMES[c.engine] || c.name}
+                  <span className="dim"> · {when(c.updatedAt)}</span>
+                  {c.id === current && <span className="chat-list-now"> · Open now</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function ContextMeter({ usage, engine }) {
   const [open, setOpen] = useState(false)
   if (!usage || (!usage.context && !usage.turns)) return null
   const pct = usage.context && usage.window ? Math.min(100, Math.round((100 * usage.context) / usage.window)) : null
   const tone = pct == null ? '' : pct >= 90 ? 'full' : pct >= 70 ? 'warn' : ''
-  const plan = engine === 'claude' ? 'Claude' : 'ChatGPT'
+  const plan = PLAN[engine] || 'ChatGPT'
   const said = usage.context
-    ? `${usage.approx ? 'About ' : ''}${tokens(usage.context)}${usage.window ? ` of ${tokens(usage.window)}` : ''} tokens in ${engine === 'claude' ? 'Claude Code' : 'Codex'}’s working memory${usage.approx ? ' (estimated)' : ''}.`
+    ? `${usage.approx ? 'About ' : ''}${tokens(usage.context)}${usage.window ? ` of ${tokens(usage.window)}` : ''} tokens in ${NAMES[engine] || 'the agent'}’s working memory${usage.approx ? ' (estimated)' : ''}.`
     : 'Not measured yet.'
   return (
     <>
@@ -273,9 +318,9 @@ function ContextMeter({ usage, engine }) {
           </p>
           <p>
             This chat: {tokens(usage.input)} tokens read ({tokens(usage.cached)} from cache), {tokens(usage.output)} written, over {usage.turns} {usage.turns === 1 ? 'turn' : 'turns'}.
-            {usage.apiUsd > 0 ? ` At API prices about $${usage.apiUsd.toFixed(2)}; on your ${plan} plan you aren’t charged per token.` : ` It runs on your ${plan} plan.`}
+            {engine === 'hermes' ? ' It runs on the model and plan you picked in Hermes.' : usage.apiUsd > 0 ? ` At API prices about $${usage.apiUsd.toFixed(2)}; on your ${plan} plan you aren’t charged per token.` : ` It runs on your ${plan} plan.`}
           </p>
-          <p className="dim">Your plan’s 5-hour and weekly limits aren’t shared with other apps; see them in {engine === 'claude' ? 'Claude (Settings → Usage)' : 'ChatGPT or Codex'}.</p>
+          <p className="dim">Your plan’s 5-hour and weekly limits aren’t shared with other apps; see them in {engine === 'claude' ? 'Claude (Settings → Usage)' : engine === 'hermes' ? 'Hermes (hermes status)' : 'ChatGPT or Codex'}.</p>
         </div>
       )}
     </>
@@ -397,8 +442,10 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
   const audioRef = useRef(null)
   const chat = status?.chat
   const installed = status?.installed || {}
-  const ready = ['claude', 'codex'].filter((e) => installed[e])
+  const ready = ['claude', 'codex', 'hermes'].filter((e) => installed[e])
   const pick = chat?.engine || (engine && installed[engine] ? engine : status?.preferred)
+  // what the agent is called: the name the person gave it (Settings → Your agent), else its app's name
+  const call = (e) => status?.agentName || NAMES[e]
   const busy = !!chat?.busy
   const act = (fn) => async (...a) => {
     try {
@@ -520,7 +567,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
     else {
       setAbout(ask.about || null)
       if (ask.text) setText(ask.text)
-      if (ask.send && busy) notify?.(`${NAMES[pick]} is still answering. Your question is ready in the box; send it when it's done.`)
+      if (ask.send && busy) notify?.(`${call(pick)} is still answering. Your question is ready in the box; send it when it's done.`)
       inputRef.current?.focus()
     }
   }, [ask, !!status])
@@ -541,7 +588,6 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
   const popOut = act(() => window.ivstudio.chat.popout())
   const dock = act(() => window.ivstudio.chat.dock())
   const pin = act(async () => setPinned(await window.ivstudio.chat.pin(!pinned)))
-  const others = (status?.chats || []).filter((c) => c.id !== chat?.id)
   const mmss = `${Math.floor(talk.secs / 60)}:${String(talk.secs % 60).padStart(2, '0')}`
   const sendIcon = (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -574,9 +620,12 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
     >
       <header className="chat-head">
         <h2>Chat</h2>
-        <div className="chat-tabs" role="tablist" aria-label="Chat or activity">
+        <div className="chat-tabs" role="tablist" aria-label="Chat, history or activity">
           <button role="tab" aria-selected={tab === 'chat'} className={tab === 'chat' ? 'on' : ''} onClick={() => setTab('chat')}>
             Chat
+          </button>
+          <button role="tab" aria-selected={tab === 'chats'} className={`chat-tab-chats ${tab === 'chats' ? 'on' : ''}`} onClick={() => setTab('chats')} title="Your earlier conversations">
+            History
           </button>
           <button role="tab" aria-selected={tab === 'activity'} className={`chat-tab-activity ${tab === 'activity' ? 'on' : ''}`} onClick={() => setTab('activity')} title="Everything agents did in IV Studio">
             Activity
@@ -631,6 +680,21 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
 
       {tab === 'activity' ? (
         <ActivityLog notify={notify} openRef={openRef} />
+      ) : tab === 'chats' ? (
+        <ChatList
+          chats={status?.chats || []}
+          current={chat?.id}
+          busy={busy}
+          canStart={!!pick}
+          onOpen={async (id) => {
+            if (id !== chat?.id) await openChat(id)
+            setTab('chat')
+          }}
+          onNew={async () => {
+            await fresh()
+            setTab('chat')
+          }}
+        />
       ) : (
         <>
           <div className="chat-subhead">
@@ -645,7 +709,8 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
             ) : (
               pick && (
                 <span className="chat-who mono small">
-                  <span className="chat-who-dot" aria-hidden="true" /> {NAMES[pick]}
+                  <span className="chat-who-dot" aria-hidden="true" /> {call(pick)}
+                  {status?.agentName && <span className="dim"> · {NAMES[pick]}</span>}
                 </span>
               )
             )}
@@ -665,16 +730,6 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
               </select>
             )}
             <span className="spacer" />
-            {others.length > 0 && (
-              <select className="chat-history small" value="" disabled={busy} onChange={(ev) => ev.target.value && openChat(ev.target.value)} aria-label="Earlier chats">
-                <option value="">Earlier chats…</option>
-                {others.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {(c.title || 'Untitled').slice(0, 60)} · {NAMES[c.engine]}
-                  </option>
-                ))}
-              </select>
-            )}
             {chat?.entries?.length > 0 && (
               <button className="btn btn-small chat-new" disabled={busy} onClick={() => fresh()} title="Start a new conversation">
                 New
@@ -689,7 +744,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
 
           {!pick ? (
             <div className="chat-body chat-setup">
-              <p className="small">The chat uses your own Claude Code or Codex, on your own plan. Install one here, or sign in if you already have it.</p>
+              <p className="small">The chat uses your own Claude Code, Codex or Hermes, on your own plan. Install one here, or sign in if you already have it. For Hermes, install it from hermes-agent.nousresearch.com and IV Studio finds it.</p>
               <AgentRows setup={setup} notify={notify} />
             </div>
           ) : (
@@ -697,7 +752,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
               <div className="chat-body" ref={bodyRef} aria-live="polite">
                 {!chat?.entries?.length ? (
                   <div className="chat-empty">
-                    <p className="small">Ask {NAMES[pick]} about IV Studio or your projects, or tell it what to make. Type, or press the mic and talk. It can use everything IV Studio does, and it knows what you’re looking at.</p>
+                    <p className="small">Ask {call(pick)} about IV Studio or your projects, or tell it what to make. Type, or press the mic and talk. It can use everything IV Studio does, and it knows what you’re looking at.</p>
                     <div className="chat-ideas">
                       {ideasFor(context?.page).map((i) => (
                         <button key={i} className="chat-idea small" onClick={() => (setText(i), inputRef.current?.focus())}>
@@ -707,7 +762,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
                     </div>
                   </div>
                 ) : (
-                  chat.entries.map((e, i) => <Entry key={i} e={e} onAnswer={answer} onUndo={undo} onOpenShot={openShot} agentName={NAMES[chat.engine] || 'Agent'} first={e.kind === 'agent' && chat.entries[i - 1]?.kind !== 'agent'} />)
+                  chat.entries.map((e, i) => <Entry key={i} e={e} onAnswer={answer} onUndo={undo} onOpenShot={openShot} agentName={call(chat.engine) || 'Agent'} userName={status?.userName} first={e.kind !== chat.entries[i - 1]?.kind} />)
                 )}
                 {busy && (
                   <div className="chat-row agent">
@@ -781,8 +836,8 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
                         ref={inputRef}
                         rows={1}
                         value={text}
-                        placeholder={`Message ${NAMES[pick]}…`}
-                        aria-label={`Message ${NAMES[pick]}`}
+                        placeholder={`Message ${call(pick)}…`}
+                        aria-label={`Message ${call(pick)}`}
                         onChange={(ev) => setText(ev.target.value)}
                         onKeyDown={(ev) => {
                           if (ev.key === 'Enter' && !ev.shiftKey && !ev.nativeEvent.isComposing) {
@@ -815,7 +870,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
                   )}
                 </div>
                 <p className="chat-foot small dim">
-                  Your own {NAMES[pick]}, on your {pick === 'claude' ? 'Claude' : 'ChatGPT'} plan. It asks before it deletes, spends money or changes a setting.
+                  {pick === 'hermes' ? 'Your own Hermes, on the model you picked in Hermes. Here it uses IV Studio’s tools only, and asks before it deletes, spends money or changes a setting.' : `Your own ${NAMES[pick]}, on your ${PLAN[pick]} plan. It asks before it deletes, spends money or changes a setting.`}
                 </p>
               </div>
             </>
