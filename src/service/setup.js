@@ -54,15 +54,16 @@ export function modelOptions(info, m) {
   return lists.length ? [...new Set(lists.flat())] : null
 }
 
-// For every required model, the name this ComfyUI lists it under (Comfy.submit swaps it into every graph, matched
-// by file name: IV Studio's graphs may name a file in a subfolder, such as "Minimax H3\", that this ComfyUI keeps
-// at the top of its models folder, or the other way round; GitHub #29). info needs only the models' loader nodes.
+// For every model, the name this ComfyUI lists it under (Comfy.submit swaps it into every graph, matched by file
+// name: IV Studio's graphs may name a file in a subfolder, such as "Minimax H3\", that this ComfyUI keeps at the top
+// of its models folder, or the other way round; GitHub #29). Required models may be another version of the file;
+// optional ones only the same file, in whatever folder (an optional picture model is never swapped for a fine-tune).
+// info needs only the models' loader nodes.
 export function modelFileMap(manifest, info, chosen = {}) {
   const map = {}
   for (const m of manifest.models) {
-    if (m.optional) continue
-    const r = resolveModel(m, modelOptions(info, m) || [], chosen)
-    if (r) map[m.match] = r.file
+    const r = resolveModel(m, modelOptions(info, m) || [], m.optional ? {} : chosen)
+    if (r && (!m.optional || r.how === 'exact')) map[m.match] = r.file
   }
   return map
 }

@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { cleanFolder, outputsUnder } from './paths.js'
 import { checkSpend, infoFor, priceGraph } from './pricing.js'
+import { posixModelNames } from './remote.js'
 import { checkH3Terms } from './terms.js'
 
 export class Comfy {
@@ -28,6 +29,19 @@ export class Comfy {
     // The person's own cloud (Modal, RunPod): a CloudPrep (cloudprep.js), set by the app. It answers model lists
     // without waking the GPU and puts a graph's models and LoRAs in the cloud's storage before it's queued.
     this.prep = null
+  }
+
+  // Whether this ComfyUI runs on Linux or a Mac, where its model lists use forward slashes. IV Studio's own cloud and
+  // Comfy Cloud are Linux; a local one is asked once (system_stats), and a ComfyUI that can't say counts as this PC.
+  async posix() {
+    if (this.remote) return true
+    if (this.osFor?.url !== this.url) {
+      const os = await this.systemStats({ timeout: 10000 })
+        .then((s) => s?.system?.os)
+        .catch(() => null)
+      this.osFor = { url: this.url, posix: os ? !['nt', 'win32'].includes(os) : process.platform !== 'win32' }
+    }
+    return this.osFor.posix
   }
 
   // The model names to swap into a graph, asked for again after a minute (the person may add files meanwhile).
@@ -126,6 +140,8 @@ export class Comfy {
     await checkH3Terms(prompt)
     outputsUnder(prompt, this.folders.output)
     renameFiles(prompt, await this.filesFor())
+    // model names in folders with forward slashes on a ComfyUI that lists them so (every job, not only shots)
+    if (await this.posix()) posixModelNames(prompt)
     // the person's own cloud: its models downloaded and this PC's LoRAs uploaded first (asks before downloading)
     if (this.prep) await this.prep.prepare(prompt)
     let price = null

@@ -7,7 +7,8 @@ export const CREDITS = [
     group: 'Models',
     note: 'IV Studio bundles no model weights. Each downloads from its own page, under its own licence.',
     items: [
-      { name: 'MiniMax H3', covers: ['fl2va', 'ref2va', 'video_vae', 'audio_vae', 'image:h3'], by: 'MiniMax', use: 'Every shot: video with sound, references, first and last frames, Continue', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3', note: 'Powered by MiniMax H3. ComfyUI’s packaging by Comfy Org.' },
+      { name: 'MiniMax H3', covers: ['fl2va', 'ref2va', 'video_vae', 'audio_vae', 'image:h3', 'train_te', 'train_video_vae'], by: 'MiniMax', use: 'Every shot: video with sound, references, first and last frames, Continue', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3', note: 'Powered by MiniMax H3. ComfyUI’s packaging by Comfy Org.' },
+      { name: 'MiniMax H3 Image Training Adapter', covers: ['train_adapter'], by: 'circlestone labs', use: 'Training a character LoRA on this PC (the trainer reads it alongside H3)', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/circlestone-labs/MiniMax-H3-Image-Training-Adapter' },
       { name: 'MiniMax H3 INT4 ConvRot text encoder', covers: ['text_encoder'], by: 'Merserk', use: 'The compact Qwen3-VL text encoder H3 reads prompts with', url: 'https://huggingface.co/Merserk/MiniMax-H3-INT4-ConvRot' },
       { name: 'MiniMax H3 experimental (DMAD turbo LoRA)', covers: ['dmad'], by: 'Kijai', use: 'Fast previews in 4 to 8 steps', url: 'https://huggingface.co/Kijai/MiniMax-H3-experimental' },
       { name: 'TAEH3', covers: ['taeh3'], by: 'Kijai', use: 'The live step pictures while a shot renders', licence: 'Apache-2.0', url: 'https://huggingface.co/Kijai/MiniMax-H3-TAE' },

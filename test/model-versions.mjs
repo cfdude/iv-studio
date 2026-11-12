@@ -13,8 +13,8 @@ const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'resources', 'models
 const template = JSON.parse(fs.readFileSync(path.join(ROOT, 'resources', 'workflows', 'iv_studio_api.json'), 'utf8'))
 const byId = Object.fromEntries(manifest.models.map((m) => [m.id, m]))
 let n = 0
-const ok = (name, fn) => {
-  fn()
+const ok = async (name, fn) => {
+  await fn()
   n++
   console.log(`ok  ${name}`)
 }
@@ -92,6 +92,40 @@ ok('the swap reaches every loader of the H3 workflow, and nothing else', () => {
   const changed = Object.keys(graph).filter((id) => JSON.stringify(graph[id]) !== JSON.stringify(JSON.parse(before)[id]))
   for (const id of changed) assert.match(graph[id].class_type, /Loader/, `${id} ${graph[id].class_type}`)
   assert.equal(renameFiles({ a: { inputs: { text: 'hello' } } }, {}).a.inputs.text, 'hello')
+})
+
+ok('an optional model is found in any folder by its own name, never swapped for another version', () => {
+  const qma = byId.qma
+  const lists = (files) => info({ LoraLoaderModelOnly: ['lora_name', files], UNETLoader: ['unet_name', []] })
+  // IV Studio puts it in "Qwen 2.1\"; someone keeps it at the top of loras: the graph's name follows
+  assert.equal(modelFileMap(manifest, lists([qma.match]))[qma.match], qma.match)
+  assert.equal(renameFiles({ a: { inputs: { lora_name: `Qwen 2.1\\${qma.match}` } } }, modelFileMap(manifest, lists([qma.match]))).a.inputs.lora_name, qma.match)
+  // a Flux.2 fine-tune in the Flux 2 folder is another version: optional models aren't swapped for it
+  const flux = byId.flux2_unet
+  const map = modelFileMap(manifest, info({ UNETLoader: ['unet_name', ['Flux 2\\my_flux2_finetune.safetensors']] }))
+  assert.equal(map[flux.match], undefined)
+})
+
+await ok('a ComfyUI on Linux or a Mac gets forward slashes in every job; its OS is asked once', async () => {
+  const { posixModelNames } = await import('../src/service/remote.js')
+  const { Comfy } = await import('../src/service/comfy.js')
+  const g = { 1: { class_type: 'LoraLoaderModelOnly', inputs: { lora_name: 'MiniMax H3\\tess\\tess_mmh3-000040.safetensors', strength_model: 0.8 } }, 2: { class_type: 'X', inputs: { text: 'a\\b', LoraLoaderState: JSON.stringify({ loras: [{ name: 'Styles\\a.safetensors' }] }) } } }
+  posixModelNames(g)
+  assert.equal(g[1].inputs.lora_name, 'MiniMax H3/tess/tess_mmh3-000040.safetensors')
+  assert.equal(g[2].inputs.text, 'a\\b', 'text that isn’t a model file is left alone')
+  assert.equal(JSON.parse(g[2].inputs.LoraLoaderState).loras[0].name, 'Styles/a.safetensors')
+  const asked = []
+  const local = new Comfy('http://127.0.0.1:8188')
+  local.systemStats = async () => (asked.push(1), { system: { os: 'posix' } })
+  assert.equal(await local.posix(), true)
+  assert.equal(await local.posix(), true)
+  assert.equal(asked.length, 1, 'asked once per address')
+  const win = new Comfy('http://127.0.0.1:8188')
+  win.systemStats = async () => ({ system: { os: 'nt' } })
+  assert.equal(await win.posix(), false)
+  const cloud = new Comfy('https://example.invalid', 'iv-studio', 't')
+  cloud.systemStats = async () => assert.fail('the cloud is Linux without asking (asking would wake the GPU)')
+  assert.equal(await cloud.posix(), true)
 })
 
 console.log(`\n${n} checks passed`)

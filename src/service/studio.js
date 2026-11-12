@@ -237,10 +237,9 @@ export class Studio {
   }
 
   // ---------- setup ----------
-  // The required models this ComfyUI has in another version than IV Studio's own (setup.js modelFileMap), read
-  // from just their loader nodes.
+  // The name this ComfyUI lists each model under (setup.js modelFileMap), read from just their loader nodes.
   async modelFiles() {
-    const classes = [...new Set(this.manifest.models.filter((m) => !m.optional).flatMap((m) => [m.loader, m.altLoader].filter(Boolean).map((l) => l.split('.')[0])))]
+    const classes = [...new Set(this.manifest.models.flatMap((m) => [m.loader, m.altLoader].filter(Boolean).map((l) => l.split('.')[0])))]
     const info = Object.assign({}, ...(await Promise.all(classes.map((c) => this.comfy.objectInfo(c).catch(() => ({}))))))
     return modelFileMap(this.manifest, info, this.models)
   }

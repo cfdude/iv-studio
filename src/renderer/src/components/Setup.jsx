@@ -28,6 +28,7 @@ const AREAS = [
   ['Photo effects and transitions', /^effects$|transformation|transition/i, 'Workflows → Effects', 'One-click effects that animate a photo (Wan 2.1 480p with a LoRA per effect), plus Transformations and Transitions between two pictures (these also use the LTX-2.5 files from Video effects).'],
   ['Slow motion', /smooth|slow/i, 'Edit → right-click a clip → Effects…', 'Smooth a choppy clip or slow it down by drawing the frames in between. Small and fast.'],
   ['Music and sounds', /music|sound/i, 'Audio → Music and Audio → Sounds', 'Songs with vocals or instrumentals and sound effects from a description.'],
+  ['Training on this PC', /training characters/i, 'Characters → Train your own → Train a LoRA → This PC', 'The files the trainer needs to train a character LoRA on your own graphics card (with the H3 fl2va model and audio VAE you already have). Not needed to train in the cloud.'],
   ['Places in Projects', /character|angles of a place|projects/i, 'Projects → Cast and places → More angles', 'Draws a place from new camera angles so shots in one room match (a camera-angle LoRA for Qwen Image 2.1, which comes from Picture models).']
 ]
 const areaOf = (i) => AREAS.find(([, re]) => re.test(i.for || ''))?.[0] || 'Other tools'

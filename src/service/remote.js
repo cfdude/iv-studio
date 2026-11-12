@@ -62,6 +62,20 @@ function fixLoraState(v) {
   }
 }
 
+// Model names with forward slashes, for a ComfyUI on Linux or a Mac (it lists "MiniMax H3/tess/x.safetensors", never
+// with backslashes): every model-file input, and the LoRA list inside a LoraLoaderState. In place; returns the graph.
+// Comfy.submit runs it on every graph for such a ComfyUI, so pictures, music, effects and a character's LoRA find
+// their files there too, not only shots.
+export function posixModelNames(g) {
+  for (const node of Object.values(g || {})) {
+    for (const [k, v] of Object.entries(node?.inputs || {})) {
+      if (k === 'LoraLoaderState' && typeof v === 'string') node.inputs[k] = fixLoraState(v)
+      else node.inputs[k] = slashes(v)
+    }
+  }
+  return g
+}
+
 // A value or the value of the primitive node a link points at.
 function resolve(g, v) {
   if (!isLink(v)) return v
@@ -84,14 +98,7 @@ export function adaptGraph(graph, caps, { upscaleSize = null } = {}) {
       g[id] = { class_type: 'MiniMaxH3LatentUpscaleWithModel', inputs: { model: [load, 0], samples: node.inputs.latent, width: upscaleSize.width, height: upscaleSize.height } }
     }
   }
-  if (caps.posix) {
-    for (const node of Object.values(g)) {
-      for (const [k, v] of Object.entries(node.inputs)) {
-        if (k === 'LoraLoaderState' && typeof v === 'string') node.inputs[k] = fixLoraState(v)
-        else node.inputs[k] = slashes(v)
-      }
-    }
-  }
+  if (caps.posix) posixModelNames(g)
   if (!caps.dlss) {
     for (const [id, node] of Object.entries(g)) {
       if (node.class_type !== 'DLSS5_Enhance_Video') continue
