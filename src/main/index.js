@@ -22,6 +22,7 @@ import { CloudVoiceEngine } from '../service/cloudvoice'
 import { MODEL_GROUPS, recommend, scanHardware } from '../service/hardware'
 import { isSpeed } from '../service/speed'
 import { comboOptions } from '../service/setup'
+import { loraFilePath } from '../shared/lora'
 import { managerReq } from '../service/comfyupdate'
 import { comfyHome, comfyProcesses, comfyUp, findComfyElsewhere, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launcherFor, launchersIn, noteLaunch, recentLaunch, sameComfy, startApp, stopComfy, waitDown, waitUp } from '../service/comfylauncher'
 import { ComfyInstaller, checkFolder, latestAsset, pickBuild, suggestFolder } from '../service/comfyinstall'
@@ -1488,7 +1489,7 @@ app.whenReady().then(() => {
       return null
     }
     const roots = (name) => local.find((f) => f.name === name)?.folders || []
-    const find = (kind, rel) => roots(kind).map((d) => path.join(d, rel)).find((p) => fs.existsSync(p))
+    const find = (kind, rel) => roots(kind).map((d) => loraFilePath(d, rel)).find((p) => fs.existsSync(p))
     const done = []
     for (const c of studio.characters()) {
       const lora = c.lora && find('loras', c.lora)
@@ -1797,7 +1798,7 @@ app.whenReady().then(() => {
   async function characterFiles() {
     const local = await fetch(`${readSettings(BASE).comfyUrl}/experiment/models`).then((r) => r.json())
     const roots = (name) => local.find((f) => f.name === name)?.folders || []
-    const find = (kind, rel) => roots(kind).map((d) => path.join(d, rel)).find((p) => fs.existsSync(p))
+    const find = (kind, rel) => roots(kind).map((d) => loraFilePath(d, rel)).find((p) => fs.existsSync(p))
     const files = []
     for (const c of studio.characters()) {
       const lora = c.lora && find('loras', c.lora)
