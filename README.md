@@ -89,7 +89,7 @@ H3 render. To report misuse, email [abuse@infinitevariance.ai](mailto:abuse@infi
   estimated for Codex from its usage) and, when clicked, the chat's tokens. A note shows when the agent summarizes
   earlier messages to make room. Your plan's 5-hour and weekly limits aren't shared with apps, so they aren't shown.
 - **Ask about this.** Buttons around the app hand the chat a question: **Ask … to fix it** on a failed render
-  (with IV Studio's own explanation), **Ask …** on any run and **Ask … to pick the best take** on the Shot page,
+  (with IV Studio's own explanation), **Chat with … about this run** and **Have … pick the best take** on the Shot page,
   and **Ask … about this** in the Library viewer.
 - **Drop files in.** Drop pictures, videos, sound or a script onto the chat, or use its paperclip. The agent can
   look at a picture or a moment of a video, and use the files as a first frame, a reference, a song or a script.

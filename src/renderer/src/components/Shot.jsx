@@ -11,6 +11,7 @@ import { LiveFrame } from './Live'
 import { CompareViewer, PromptDiff, runChanges } from './Compare'
 import { askAgent, useAgentName } from './ChatPanel'
 import { lintPrompt } from '../../../service/lint'
+import { runAskWords } from '../runAsk'
 import { dlssOn, enhancerChoices, finishDefaults, fpsChoices, fpsFor, pickEnhancer } from '../finish'
 import { lintSeedance } from '../../../service/seedlint'
 
@@ -758,7 +759,7 @@ export default function Shot({ projectId, jobs: live, setJobs, notify, go, caps,
   // the version picked for the chat goes when the shot page does (selection.js)
   useEffect(() => () => setSelection('shot', null), [])
   const [project, setProject] = useState(null)
-  // the person's own Claude Code or Codex, for "Ask" and "pick the best take" on a run (ChatPanel.jsx)
+  // the person's own Claude Code or Codex, for "Chat with … about this run" and "Have … pick the best take" on a run (ChatPanel.jsx)
   const agent = useAgentName()
   // a sequence's shot-by-shot project: which shot each run is (sequences.runsOf), so edits go back through it
   const [seqRuns, setSeqRuns] = useState(null)
@@ -1000,8 +1001,8 @@ export default function Shot({ projectId, jobs: live, setJobs, notify, go, caps,
               )}
               {changes.length > 0 && <span className="run-changes mono small">Changed: {changes.join(' · ')}</span>}
               {agent && (
-                <button className="btn btn-small run-ask" onClick={() => askAgent({ about: `run ${runs.length - i} of this shot (previews job ${run.id})` })} title={`Ask ${agent} about this run in the chat`}>
-                  Ask {agent}
+                <button className="btn btn-small run-ask" onClick={() => askAgent({ about: `run ${runs.length - i} of this shot (previews job ${run.id})` })} title={runAskWords(agent).chat.title}>
+                  {runAskWords(agent).chat.label}
                 </button>
               )}
             </div>
@@ -1048,9 +1049,9 @@ export default function Shot({ projectId, jobs: live, setJobs, notify, go, caps,
                         text: 'Which of these takes would you finish, and why? Use rank_takes, then review_take on the two best, and answer in a few short sentences. Don’t finish or render anything until I say so.'
                       })
                     }
-                    title={`${agent} ranks the takes, looks closely at the best two and says which it would finish. It doesn't finish anything until you say so.`}
+                    title={runAskWords(agent).pick.title}
                   >
-                    Ask {agent} to pick the best take
+                    {runAskWords(agent).pick.label}
                   </button>
                 )}
               </div>
