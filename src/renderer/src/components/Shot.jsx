@@ -11,7 +11,7 @@ import { LiveFrame } from './Live'
 import { CompareViewer, PromptDiff, runChanges } from './Compare'
 import { askAgent, useAgentName } from './ChatPanel'
 import { lintPrompt } from '../../../service/lint'
-import { dlssOn, enhancerChoices, finishDefaults, fpsFor, pickEnhancer } from '../finish'
+import { dlssOn, enhancerChoices, finishDefaults, fpsChoices, fpsFor, pickEnhancer } from '../finish'
 import { lintSeedance } from '../../../service/seedlint'
 
 const DONE = ['success', 'error', 'cancelled']
@@ -394,7 +394,8 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote, ownCloud }
   const enhancer = pickEnhancer(opts.enhancer, choices)
   const seedvr2 = enhancer === 'seedvr2'
   const upscale = enhancer === 'upscale'
-  const FPS = fpsFor(caps, enhancer)
+  const FPS = fpsChoices(caps, enhancer, opts.fps)
+  const canFps = fpsFor(caps, enhancer)
   const [size, setSize] = useState(null)
   const [busy, setBusy] = useState(false)
   const set = (patch) => setOpts((o) => ({ ...o, ...patch }))
@@ -495,7 +496,7 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote, ownCloud }
             <span className="row-label">Frame rate</span>
             <div className="segmented">
               {FPS.map((f) => (
-                <button key={f} className={opts.fps === f ? 'on' : ''} onClick={() => set({ fps: f })}>
+                <button key={f} className={opts.fps === f ? 'on' : ''} disabled={!!f && !canFps.includes(f)} title={f && !canFps.includes(f) ? 'Needs the Frame Interpolation (RIFE) pack' : undefined} onClick={() => set({ fps: f })}>
                   {f ? f : '24'}
                 </button>
               ))}

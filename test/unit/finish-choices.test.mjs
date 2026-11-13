@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { describe, test } from 'node:test'
-import { dlssOn, enhancerChoices, finishDefaults, fpsFor, pickEnhancer } from '../../src/renderer/src/finish.js'
+import { dlssOn, enhancerChoices, finishDefaults, fpsChoices, fpsFor, pickEnhancer } from '../../src/renderer/src/finish.js'
 
 const mac = { dlss: false, gpuKind: 'mps', esrgan: true, rife: true, fps: [0, 48, 72, 120], fpsBuiltIn: [0, 48, 72, 120] }
 const macBare = { dlss: false, gpuKind: 'mps', esrgan: false, rife: false, fps: [0], fpsBuiltIn: [0] }
@@ -42,6 +42,18 @@ describe('fpsFor', () => {
     assert.deepEqual(fpsFor(win, 'dlss'), [0, 30, 50, 60, 120])
     assert.deepEqual(fpsFor({ ...win, fpsBuiltIn: [0, 48] }, 'upscale'), [0, 48])
   })
+})
+
+describe('fpsChoices', () => {
+  test('the upscale lists 48 (the Mac default), 72 and 120, with or without RIFE installed', () => {
+    assert.deepEqual(fpsChoices(mac, 'upscale', 48), [0, 48, 72, 120])
+    assert.deepEqual(fpsChoices(macBare, 'upscale', 0), [0, 48, 72, 120])
+  })
+  test('whatever rate the finish is set to is always in the row', () => {
+    assert.deepEqual(fpsChoices(win, 'dlss', 48), [0, 30, 48, 50, 60, 120])
+    assert.deepEqual(fpsChoices(win, 'dlss', 0), [0, 30, 50, 60, 120])
+  })
+  test('the saved Mac default (hardware.js: 48 on the upscale) is among the choices', () => assert.ok(fpsChoices(mac, 'upscale', MAC_PREFS.fps).includes(48)))
 })
 
 describe('finishDefaults', () => {
