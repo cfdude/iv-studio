@@ -140,7 +140,7 @@ writing a prompt yourself; `write_prompt` already follows it.
   `picked` records the person's choice, which shifts the weights towards what they keep picking.
 - **Quality.** `steps: 4` is Draft (quicker previews); 8 is the default. The finish is the same either way. The
   speed presets (`get_speeds`) set steps, size and takes together.
-- **Enhancer.** A finish's `enhancer` is `dlss` (the default where DLSS 5 is installed, else `upscale`: DLSS 5 in the finish, with the optional RTX 2x and
+- **Enhancer.** A finish's `enhancer` is `dlss` (the default on a Windows NVIDIA ComfyUI; elsewhere `upscale`: DLSS 5 in the finish, with the optional RTX 2x and
   frame generation), `upscale` (no DLSS 5: the finish's own Real-ESRGAN 2x with `upscale2x`, and RIFE frame
   interpolation with `fps` 48, 72 or 120; what a Mac uses, since DLSS 5 is Windows-only and SeedVR2 is refused on an
   Apple GPU; Real-ESRGAN x2 and the RIFE pack are optional installs in Setup, and a finish that needs one it lacks
