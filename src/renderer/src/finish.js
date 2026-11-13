@@ -3,9 +3,13 @@
 
 // DLSS 5 where it is installed (caps.dlss is false only once ComfyUI has been read and has none); the built-in 2×
 // upscale and frame rate everywhere; SeedVR2 on a local CUDA ComfyUI only (it is refused on an Apple GPU).
+// DLSS 5 is on offer unless this ComfyUI has been read and cannot run it: no DLSS node, an Apple GPU, or a Mac or Linux
+// computer (it is a Windows NVIDIA program). capabilities() already folds those into caps.dlss; the rest is belt and braces.
+export const dlssOn = (caps) => caps?.dlss !== false && caps?.gpuKind !== 'mps' && caps?.posix !== true
+
 export function enhancerChoices(caps, remote) {
   const choices = []
-  if (caps?.dlss !== false) choices.push('dlss')
+  if (dlssOn(caps)) choices.push('dlss')
   choices.push('upscale')
   if (!remote && caps?.gpuKind === 'cuda') choices.push('seedvr2')
   return choices

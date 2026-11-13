@@ -29,17 +29,22 @@ const MODEL_FILE = /\.(safetensors|gguf|sft|pth|pt|ckpt|bin)$/i
 export function capabilities(objectInfo, systemStats) {
   const spec = objectInfo.UpscaleModelLoader?.input?.required?.model_name
   const upscalers = (Array.isArray(spec?.[0]) ? spec[0] : spec?.[1]?.options) || [] // old and new combo formats
+  // ComfyUI reports Python's os.name ('nt') on some versions and sys.platform ('win32') on others
+  const posix = !['nt', 'win32'].includes(systemStats?.system?.os)
+  // the GPU's type ('cuda', 'mps' or null), by the one GPU rule
+  const gpuKind = findGpu(systemStats?.devices)?.type || null
+  // DLSS 5 is a Windows NVIDIA program (it calls VE_CLI.exe). The node pack can sit in a Mac's custom_nodes and still
+  // show up in /object_info, so the node alone never makes it available: only a Windows machine that isn't an Apple GPU.
+  const dlss = !!objectInfo.DLSS5_Enhance_Video && !posix && gpuKind !== 'mps'
   return {
-    // ComfyUI reports Python's os.name ('nt') on some versions and sys.platform ('win32') on others
-    posix: !['nt', 'win32'].includes(systemStats?.system?.os),
-    // the GPU's type ('cuda', 'mps' or null), by the one GPU rule
-    gpuKind: findGpu(systemStats?.devices)?.type || null,
-    dlss: !!objectInfo.DLSS5_Enhance_Video,
+    posix,
+    gpuKind,
+    dlss,
     rife: !!objectInfo['RIFE VFI'],
     // Real-ESRGAN x2 itself (upscale2x is also true when DLSS 5 does the 2×)
     esrgan: upscalers.includes(CLOUD_UPSCALER),
-    upscale2x: !!objectInfo.DLSS5_Enhance_Video || upscalers.includes(CLOUD_UPSCALER),
-    fps: objectInfo.DLSS5_Enhance_Video ? DLSS_FPS : objectInfo['RIFE VFI'] ? CLOUD_FPS : [0],
+    upscale2x: dlss || upscalers.includes(CLOUD_UPSCALER),
+    fps: dlss ? DLSS_FPS : objectInfo['RIFE VFI'] ? CLOUD_FPS : [0],
     // the frame rates RIFE makes, for the 'upscale' enhancer (finishCaps), whether or not DLSS 5 is also here
     fpsBuiltIn: objectInfo['RIFE VFI'] ? CLOUD_FPS : [0],
     // ComfyUI 0.44+ has the H3 latent upscaler built in (the same LBH weights, from models/latent_upscale_models)

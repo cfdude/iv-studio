@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { describe, test } from 'node:test'
-import { enhancerChoices, finishDefaults, fpsFor, pickEnhancer } from '../../src/renderer/src/finish.js'
+import { dlssOn, enhancerChoices, finishDefaults, fpsFor, pickEnhancer } from '../../src/renderer/src/finish.js'
 
 const mac = { dlss: false, gpuKind: 'mps', esrgan: true, rife: true, fps: [0, 48, 72, 120], fpsBuiltIn: [0, 48, 72, 120] }
 const macBare = { dlss: false, gpuKind: 'mps', esrgan: false, rife: false, fps: [0], fpsBuiltIn: [0] }
@@ -17,6 +17,16 @@ describe('enhancerChoices', () => {
   test('Linux with an NVIDIA card has the upscale and SeedVR2', () => assert.deepEqual(enhancerChoices(linux, false), ['upscale', 'seedvr2']))
   test('the cloud has no SeedVR2', () => assert.deepEqual(enhancerChoices({ ...linux }, true), ['upscale']))
   test('before ComfyUI has been read, DLSS 5 stays on offer as it did', () => assert.deepEqual(enhancerChoices(null, false), ['dlss', 'upscale']))
+})
+
+describe('DLSS 5 on a Mac', () => {
+  test('is never on offer or the start, even if a stale read says the node pack is there', () => {
+    const stale = { ...mac, dlss: true }
+    assert.deepEqual(enhancerChoices(stale, false), ['upscale'])
+    assert.equal(dlssOn({ dlss: true, posix: true, gpuKind: 'cuda' }), false)
+    assert.equal(dlssOn(win), true)
+    assert.equal(finishDefaults({ enhancer: 'dlss' }, stale, false).enhancer, 'upscale')
+  })
 })
 
 describe('pickEnhancer', () => {

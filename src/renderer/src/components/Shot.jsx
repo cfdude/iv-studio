@@ -11,7 +11,7 @@ import { LiveFrame } from './Live'
 import { CompareViewer, PromptDiff, runChanges } from './Compare'
 import { askAgent, useAgentName } from './ChatPanel'
 import { lintPrompt } from '../../../service/lint'
-import { enhancerChoices, finishDefaults, fpsFor, pickEnhancer } from '../finish'
+import { dlssOn, enhancerChoices, finishDefaults, fpsFor, pickEnhancer } from '../finish'
 import { lintSeedance } from '../../../service/seedlint'
 
 const DONE = ['success', 'error', 'cancelled']
@@ -183,7 +183,7 @@ function SeedanceFinishPanel({ job, candidate, onStart, notify, caps, remote, ow
   // only what runs on this machine: SeedVR2 needs a CUDA GPU (never an Apple GPU; or the person's own cloud), DLSS 5
   // needs DLSS in this ComfyUI, and H3's pass needs one of the two to follow it
   const seedvr2Ok = !!ownCloud || caps?.gpuKind === 'cuda'
-  const dlssOk = !ownCloud && caps?.dlss !== false && caps?.gpuKind !== 'mps'
+  const dlssOk = !ownCloud && dlssOn(caps)
   const engines = [seedvr2Ok && 'seedvr2', dlssOk && 'dlss', !ownCloud && dlssOk && 'h3', !ownCloud && seedvr2Ok && 'h3seedvr2'].filter(Boolean)
   // free on this PC first; paid Seedance 1080p is one click away (and asks before it spends)
   // (the person's own cloud finishes with SeedVR2 there; Comfy Cloud has no free finish)
@@ -373,7 +373,7 @@ const finishChoices = (caps, remote, ownCloud) => {
 
 function FinishPanel({ job, candidate, onStart, notify, caps, remote, ownCloud }) {
   const choices = finishChoices(caps, remote, ownCloud)
-  const dlss = caps?.dlss !== false
+  const dlss = dlssOn(caps)
   const [opts, setOpts] = useState({ megapixels: 2, upscale2x: false, fps: 0, audio: 'pass', enhancer: pickEnhancer('dlss', choices), enhanceResolution: 1080, dlssStrength: 0.8, dlssStyle: 'Default' })
   const [shotSpeed, setShotSpeed] = useState(job.plan.request?.speed || null)
   // the shot's speed preset (else the saved one) sets the finish size and the 2x; the defaults Check my computer chose
@@ -539,7 +539,7 @@ function FinishPanel({ job, candidate, onStart, notify, caps, remote, ownCloud }
 // full-size players, so a shot with several finishes doesn't run on for screens.
 function VersionsCard({ run, finishes, jobs, remote, ownCloud, caps, notify, marks, onMark, onCompare, review, reviewing, enhance, enhancing, written, editRun, project, versionOf, shotFromVersion, pictureToEdit }) {
   // Enhance offers only what runs here: DLSS 5 where ComfyUI has it, SeedVR2 on a CUDA GPU or the person's own cloud
-  const dlssOk = caps?.dlss !== false
+  const dlssOk = dlssOn(caps)
   const seedvr2Ok = !!ownCloud || enhancerChoices(caps, remote).includes('seedvr2')
   const enhanceOk = dlssOk || seedvr2Ok
   const list = []

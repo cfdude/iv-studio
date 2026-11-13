@@ -31,6 +31,21 @@ describe('planFinish with the upscale enhancer', () => {
   })
 })
 
+describe('capabilities().dlss: only a Windows machine that is not an Apple GPU', () => {
+  const info = { DLSS5_Enhance_Video: {} }
+  test('the Windows-only node pack in a Mac or Linux ComfyUI does not make DLSS 5 available', () => {
+    assert.equal(capabilities(info, { system: { os: 'darwin' }, devices: [mps] }).dlss, false)
+    assert.equal(capabilities(info, { system: { os: 'linux' }, devices: [cuda] }).dlss, false)
+    assert.equal(capabilities(info, { system: { os: 'darwin' }, devices: [mps] }).upscale2x, false, 'its 2x is not DLSS 5\'s either')
+    assert.deepEqual(capabilities(info, { system: { os: 'darwin' }, devices: [mps] }).fps, [0])
+  })
+  test('Windows with the pack has it, under either name ComfyUI reports for the OS', () => {
+    assert.equal(capabilities(info, { system: { os: 'win32' }, devices: [cuda] }).dlss, true)
+    assert.equal(capabilities(info, { system: { os: 'nt' }, devices: [cuda] }).dlss, true)
+    assert.equal(capabilities({}, { system: { os: 'nt' }, devices: [cuda] }).dlss, false)
+  })
+})
+
 describe('finishCaps: what a finish with each enhancer can use', () => {
   const sys = (devices) => ({ system: { os: 'posix' }, devices })
   test('upscale never uses DLSS 5, even where it is installed, and takes the RIFE frame rates', () => {
@@ -70,11 +85,11 @@ describe('Studio.finishCandidate with the upscale enhancer', () => {
 describe('Studio.finishCandidate with no enhancer named (the MCP default)', () => {
   const preview = { request: { mode: 'text', seed: 1 }, groups: ['x'], values: {}, resolved: { width: 864, height: 480, frames: 124, seconds: 5.167, previews: 3 } }
   // what an agent that names no enhancer gets, by the machine's ComfyUI
-  const picked = async (objectInfo, device, remote = false) => {
+  const picked = async (objectInfo, device, remote = false, os = 'posix') => {
     let queued = null
     const stub = {
       comfy: { remote, hosted: remote },
-      capabilities: async () => capabilities(objectInfo, { system: { os: 'posix' }, devices: [device] }),
+      capabilities: async () => capabilities(objectInfo, { system: { os }, devices: [device] }),
       getJob: () => ({ kind: 'previews', plan: preview, name: 'n', projectId: 'p', id: 'j' }),
       getProject: () => ({}),
       submit: async (job) => ((queued = job), job)
@@ -88,7 +103,25 @@ describe('Studio.finishCandidate with no enhancer named (the MCP default)', () =
   })
   test('[mcp:finish_candidate] a machine without DLSS 5 finishes with the upscale; one with it keeps DLSS 5', async () => {
     assert.equal(await picked(BOTH, cuda), 'upscale')
-    assert.equal(await picked({ DLSS5_Enhance_Video: {}, ...BOTH }, cuda), 'dlss')
+    assert.equal(await picked({ DLSS5_Enhance_Video: {}, ...BOTH }, cuda, false, 'nt'), 'dlss')
+  })
+  test('[mcp:finish_candidate] DLSS 5 in a non-Windows ComfyUI (a Windows-only pack in a Mac\'s custom_nodes) is never the default', async () => {
+    assert.equal(await picked({ DLSS5_Enhance_Video: {}, ...BOTH }, cuda, false, 'linux'), 'upscale')
+    assert.equal(await picked({ DLSS5_Enhance_Video: {}, ...BOTH }, mps, false, 'darwin'), 'upscale')
+  })
+  test('[mcp:finish_candidate] asking for DLSS 5 where it cannot run is refused before anything is queued', async () => {
+    for (const [dev, os] of [[mps, 'darwin'], [cuda, 'linux']]) {
+      let queued = false
+      const stub = {
+        comfy: { remote: false, hosted: false },
+        capabilities: async () => capabilities({ DLSS5_Enhance_Video: {}, ...BOTH }, { system: { os }, devices: [dev] }),
+        getJob: () => ({ kind: 'previews', plan: preview, name: 'n', projectId: 'p', id: 'j' }),
+        getProject: () => ({}),
+        submit: async () => ((queued = true), {})
+      }
+      await assert.rejects(Studio.prototype.finishCandidate.call(stub, { jobId: 'j', enhancer: 'dlss' }), /DLSS 5 runs on Windows computers with an NVIDIA card only\. Finish with the 2× upscale instead\./)
+      assert.equal(queued, false)
+    }
   })
   // the planners that never run a finish say the same enhancer the finish will use, once ComfyUI has been read
   test('planFinishJob and plan_render name the machine\'s default, so a plan matches what finish_candidate runs', () => {
