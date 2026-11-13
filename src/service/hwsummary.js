@@ -44,6 +44,21 @@ export function summaryStale(hw) {
   return (hw.v ?? 0) < SUMMARY_VERSION || /^ANGLE \(/.test(String(hw.gpu || ''))
 }
 
+// The by-itself re-check of a stale card runs at most once per app session, whether or not it works: a card that stays
+// stale (the scan throws, or the graphics name is one we don't know) must not scan again on every Settings visit.
+let autoTried = false
+export function autoRecheckOnce(stale, run) {
+  if (!stale || autoTried) return false
+  autoTried = true
+  Promise.resolve()
+    .then(run)
+    .catch(() => {})
+  return true
+}
+export const resetAutoRecheck = () => {
+  autoTried = false
+}
+
 // A stored summary as the card shows it: the GPU's own name, whatever an older build kept ("ANGLE (…) · 24 GB").
 export function summaryForDisplay(hw) {
   if (!hw?.gpu) return hw

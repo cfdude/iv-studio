@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { recommend } from '../../src/service/hardware.js'
-import { driveName, gbs, SUMMARY_VERSION, summaryForDisplay, summaryOf, summaryStale } from '../../src/service/hwsummary.js'
+import { autoRecheckOnce, driveName, gbs, resetAutoRecheck, SUMMARY_VERSION, summaryForDisplay, summaryOf, summaryStale } from '../../src/service/hwsummary.js'
 
 const GB = 1024 ** 3
 
@@ -58,5 +58,22 @@ describe('a summary an older build stored (Settings → Your computer)', () => {
     const s = summaryOf(d)
     assert.equal(s.v, SUMMARY_VERSION)
     assert.equal(summaryStale(s), false)
+  })
+})
+
+describe('autoRecheckOnce', () => {
+  test('runs once per session however often Settings opens, and a failure is silent', async () => {
+    resetAutoRecheck()
+    let runs = 0
+    const failing = async () => {
+      runs++
+      throw new Error('scan failed')
+    }
+    assert.equal(autoRecheckOnce(false, failing), false)
+    assert.equal(autoRecheckOnce(true, failing), true)
+    assert.equal(autoRecheckOnce(true, failing), false)
+    assert.equal(autoRecheckOnce(true, failing), false)
+    await new Promise((r) => setImmediate(r))
+    assert.equal(runs, 1)
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import StartComfy, { RestartComfy } from './StartComfy'
 import { UpdateSettings } from './Update'
 import { ART } from './Hero'
@@ -9,7 +9,7 @@ import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
 import { SetCard, SetField, SetSwitch, Pill, SetPath, SetCode } from './SettingsKit'
 import { startTour } from '../tours'
-import { summaryForDisplay, summaryOf, summaryStale } from '../../../service/hwsummary'
+import { autoRecheckOnce, summaryForDisplay, summaryOf, summaryStale } from '../../../service/hwsummary'
 import { comfyLauncherHelp, keychainRefusedText } from '../../../shared/platform'
 import { secretRemedy } from '../../../service/secrets'
 import { usePlatform } from '../platform'
@@ -78,19 +78,16 @@ function PcCard({ n, settings, setSettings, notify }) {
       setSettings(await window.ivstudio.settings.set({ hardware: summaryOf(await window.ivstudio.hardware.scan()) }))
       if (quiet !== true) notify('Checked your computer again.', 'info')
     } catch (err) {
-      notify(err.message)
+      if (quiet !== true) notify(err.message)
     } finally {
       setScanning(false)
     }
   }
   // a card an older build wrote (no stamp, the raw graphics name, a Mac filed as cloud) looks again by itself, once
-  const autoChecked = useRef(false)
+  // per app session and without a message if it fails; "Check again" is the one that tells you
   const stale = summaryStale(settings.hardware)
   useEffect(() => {
-    if (stale && !autoChecked.current) {
-      autoChecked.current = true
-      check(true)
-    }
+    autoRecheckOnce(stale, () => check(true))
   }, [stale])
   const welcome = () => window.dispatchEvent(new CustomEvent('iv:welcome'))
   return (
