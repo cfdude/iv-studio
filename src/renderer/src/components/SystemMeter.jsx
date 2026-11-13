@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { meterParts, meterTitle } from '../meter'
 
 // The title bar's GPU and memory readout (Valtz's idea): VRAM in use on this PC's GPU and RAM in use, refreshed
 // every few seconds while the window is visible. Over 90% turns red, which is when a render starts swapping.
@@ -29,7 +30,7 @@ export default function SystemMeter({ notify }) {
       const gb = (a, b) => (a != null && b != null ? Math.max(0, (a - b) / 1024 ** 3) : null)
       const v = gb(r.before.vram, r.after.vram)
       const m = gb(r.before.ram, r.after.ram) // an Apple GPU is the same memory as RAM: say it once
-      notify?.(r.busy ? 'A render is running: ComfyUI frees its memory when it finishes.' : `Freed ${v != null ? `${v.toFixed(1)} GB of GPU memory` : 'GPU memory'}${m != null && m >= 0.1 && st?.gpu?.name !== 'Apple GPU' ? ` and ${m.toFixed(1)} GB of RAM` : ''}.`, 'info')
+      notify?.(r.busy ? 'A render is running: ComfyUI frees its memory when it finishes.' : `Freed ${v != null ? `${v.toFixed(1)} GB of GPU memory` : 'GPU memory'}${m != null && m >= 0.1 && !st?.gpu?.unified ? ` and ${m.toFixed(1)} GB of RAM` : ''}.`, 'info')
       window.ivstudio.system.stats().then(setSt, () => {})
     } catch (err) {
       notify?.(err.message)
@@ -38,11 +39,9 @@ export default function SystemMeter({ notify }) {
     }
   }
   if (!st) return null
-  const parts = []
-  if (st.gpu) parts.push({ label: 'GPU', used: st.gpu.total - st.gpu.free, total: st.gpu.total })
-  parts.push({ label: 'RAM', used: st.ram.total - st.ram.free, total: st.ram.total })
+  const parts = meterParts(st)
   const full = parts.some((p) => p.used / p.total > 0.9)
-  const title = [st.gpu && `${st.gpu.name}: ${GB(st.gpu.total - st.gpu.free)} of ${GB(st.gpu.total)} GB in use, ${GB(st.gpu.comfyHeld)} GB of it held by ComfyUI.`, `RAM: ${GB(st.ram.total - st.ram.free)} of ${GB(st.ram.total)} GB in use.`].filter(Boolean).join(' ')
+  const title = meterTitle(st)
   return (
     <span className="system-meter mono" title={title}>
       {parts.map((p) => {
@@ -60,8 +59,8 @@ export default function SystemMeter({ notify }) {
         className={`system-free ${full ? 'urge' : ''}`}
         disabled={freeing}
         onClick={free}
-        aria-label="Free GPU and RAM memory"
-        title={`Free up GPU and RAM memory now${full ? ' (it’s nearly full)' : ''}: ComfyUI unloads its models (after a running render finishes), IV Studio’s voice engine stops, and the prompt writer lets go. Nothing is deleted; the next render loads what it needs again.`}
+        aria-label={st.gpu?.unified ? 'Free memory' : 'Free GPU and RAM memory'}
+        title={`Free up ${st.gpu?.unified ? '' : 'GPU and RAM '}memory now${full ? ' (it’s nearly full)' : ''}: ComfyUI unloads its models (after a running render finishes), IV Studio’s voice engine stops, and the prompt writer lets go. Nothing is deleted; the next render loads what it needs again.`}
       >
         <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
           <rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
