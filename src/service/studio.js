@@ -775,6 +775,10 @@ export class Studio {
     if (engine !== 'dlss') {
       const refusal = seedvr2Refusal((await this.capabilities().catch(() => ({}))).gpuKind)
       if (refusal) throw new Error(refusal)
+    } else {
+      // DLSS 5 is refused first, so a caller on a Mac or in the cloud gets that answer and not "no finished video"
+      if (this.comfy.ownCloud) throw new Error('DLSS 5 runs on Windows computers only. In the cloud, enhance with SeedVR2.')
+      if (!(await this.capabilities().catch(() => ({}))).dlss) throw new Error(DLSS_REFUSAL)
     }
     const source = this.getJob(jobId)
     const out = source.outputs.find((o) => o.kind === 'final') || source.outputs.find((o) => o.kind === 'master')
@@ -782,7 +786,6 @@ export class Studio {
     // in the person's own cloud a render made there is read where it is (its output name); others are uploaded
     if (!here && !(this.comfy.ownCloud && out?.url)) throw new Error('That render has no finished video on this computer to enhance.')
     if (engine === 'dlss') {
-      if (this.comfy.ownCloud) throw new Error('DLSS 5 runs on Windows computers only. In the cloud, enhance with SeedVR2.')
       return this.enhanceDlss(source, out, scale, { strength, style })
     }
     const noise = Math.min(1, Math.max(0, Number(detail) || 0))

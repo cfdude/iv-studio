@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import { describe, test } from 'node:test'
 import { SEEDVR2_DEVICE, SEEDVR2_MPS_MESSAGE, seedvr2Refusal } from '../../src/service/gpu.js'
 import { capabilities } from '../../src/service/remote.js'
-import { Studio } from '../../src/service/studio.js'
+import { DLSS_REFUSAL, Studio } from '../../src/service/studio.js'
 
 const GB = 1024 ** 3
 const mps = { name: 'mps', type: 'mps', vram_total: 64 * GB }
@@ -72,8 +72,20 @@ describe('enhanceFinal', () => {
     const down = { ...stub([mps]), capabilities: async () => { throw new Error('fetch failed') } }
     await assert.rejects(Studio.prototype.enhanceFinal.call(down, { jobId: 'j', engine: 'seedvr2' }), { message: STOP })
   })
-  test('DLSS enhance is not gated', async () => {
-    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps]), { jobId: 'j', engine: 'dlss' }), { message: STOP })
+  test('DLSS enhance is refused on a computer without DLSS 5, before the job is looked at', async () => {
+    await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps]), { jobId: 'j', engine: 'dlss' }), { message: DLSS_REFUSAL })
+  })
+  test('DLSS enhance on a computer with DLSS 5 gets past the gate', async () => {
+    const win = { ...stub([cuda]), capabilities: async () => ({ dlss: true, gpuKind: 'cuda' }) }
+    await assert.rejects(Studio.prototype.enhanceFinal.call(win, { jobId: 'j', engine: 'dlss' }), { message: STOP })
+  })
+  test('with DLSS 5 present, a render with no finished video still says so', async () => {
+    const win = { ...stub([cuda]), capabilities: async () => ({ dlss: true, gpuKind: 'cuda' }), getJob: () => ({ outputs: [] }) }
+    await assert.rejects(Studio.prototype.enhanceFinal.call(win, { jobId: 'j', engine: 'dlss' }), { message: /no finished video on this computer/ })
+  })
+  test('the DLSS refusal comes before "no finished video", whatever the job holds', async () => {
+    const noVideo = { ...stub([mps]), getJob: () => ({ outputs: [] }) }
+    await assert.rejects(Studio.prototype.enhanceFinal.call(noVideo, { jobId: 'j', engine: 'dlss' }), { message: DLSS_REFUSAL })
   })
   test('Comfy Cloud keeps its own message, on any GPU', async () => {
     await assert.rejects(Studio.prototype.enhanceFinal.call(stub([mps], true), { jobId: 'j', engine: 'seedvr2' }), { message: /^Enhance runs on this computer's ComfyUI or your own cloud/ })
@@ -99,5 +111,19 @@ describe('finishCandidate', () => {
   })
   test('an own cloud that reports an Apple GPU is still refused SeedVR2', async () => {
     await assert.rejects(fin([mps], false, { enhancer: 'seedvr2' }, true), { message: SEEDVR2_MPS_MESSAGE })
+  })
+})
+
+describe('DLSS 5 refused off Windows at the Seedance finish entry points', () => {
+  const source = { projectId: 'p', name: 'n', plan: { request: { aspect: '16:9' }, resolved: { width: 1280, height: 720, seconds: 5, frames: 121 } }, outputs: [{ kind: 'preview', candidate: 1, path: 'package.json' }] }
+  const self = (devices) => ({ ...stub(devices), seedanceFinishPlan: Studio.prototype.seedanceFinishPlan })
+  test('seedanceFinish with the DLSS finish on a Mac says so, before a job is recorded', async () => {
+    await assert.rejects(Studio.prototype.seedanceFinish.call(self([mps]), source, { candidate: 1, way: 'local', engine: 'dlss' }), { message: DLSS_REFUSAL })
+  })
+  test('seedanceFinish with SeedVR2 is unaffected by the DLSS check', async () => {
+    await assert.rejects(Studio.prototype.seedanceFinish.call(self([mps]), source, { candidate: 1, way: 'local', engine: 'seedvr2' }), { message: SEEDVR2_MPS_MESSAGE })
+  })
+  test('refineTake followed by DLSS 5 on a Mac says so and points at SeedVR2', async () => {
+    await assert.rejects(Studio.prototype.refineTake.call(self([mps]), source, source.outputs[0], { candidate: 1, then: 'dlss' }), { message: `${DLSS_REFUSAL} For this finish use SeedVR2 after H3 instead.` })
   })
 })
