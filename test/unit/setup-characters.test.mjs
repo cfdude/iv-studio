@@ -11,12 +11,13 @@ import { startFakeComfy } from '../fakes/comfyui.mjs'
 const template = JSON.parse(fs.readFileSync('resources/workflows/iv_studio_api.json', 'utf8'))
 const manifest = JSON.parse(fs.readFileSync('resources/models.json', 'utf8'))
 const combo = (name, options) => ({ input: { required: { [name]: [options] } } })
+const shippedTess = { id: 'tess', lora: { folder: 'MiniMax H3/tess', file: 'tess_mmh3-000040.safetensors', url: 'https://example.invalid/t' } }
 const tess = { id: 'tess', name: 'Tess Marlow', lora: 'MiniMax H3\\tess\\tess_mmh3-000040.safetensors', strength: 0.8 }
 
 describe('sameLora', () => {
-  test('separators and case do not matter', () => {
+  test('separators do not matter, case does (ComfyUI needs the exact name)', () => {
     assert.equal(sameLora('MiniMax H3\\tess\\a.safetensors', 'MiniMax H3/tess/a.safetensors'), true)
-    assert.equal(sameLora('minimax h3/Tess/A.safetensors', 'MiniMax H3\\tess\\a.safetensors'), true)
+    assert.equal(sameLora('minimax h3/Tess/A.safetensors', 'MiniMax H3\\tess\\a.safetensors'), false)
     assert.equal(sameLora('a/b.safetensors', 'a/c.safetensors'), false)
     assert.equal(sameLora('', undefined), true)
   })
@@ -35,14 +36,24 @@ describe('checkSetup character LoRAs on a Mac', () => {
   })
   after(() => fake.close())
 
-  test('a Windows-spelled LoRA path matches the Mac ComfyUI\'s forward-slash list, whatever the case', async () => {
-    const i = await item([tess], ['minimax h3/Tess/TESS_MMH3-000040.safetensors'], [])
+  test('a Windows-spelled LoRA path matches the Mac ComfyUI\'s forward-slash list', async () => {
+    const i = await item([tess], ['MiniMax H3/tess/tess_mmh3-000040.safetensors'], [])
     assert.equal(i.status, 'ok')
   })
+  test('a name that differs only by case is not found (ComfyUI would refuse it)', async () => {
+    const i = await item([tess], ['minimax h3/Tess/TESS_MMH3-000040.safetensors'], [])
+    assert.equal(i.status, 'warn')
+  })
   test('missing: a saved record with no catalog flag still gets the Download button when IV Studio ships that character', async () => {
-    const i = await item([tess], ['MiniMax H3/Turbo/x.safetensors'], [{ id: 'tess', lora: { url: 'https://example.invalid/t' } }])
+    const i = await item([tess], ['MiniMax H3/Turbo/x.safetensors'], [shippedTess])
     assert.equal(i.status, 'warn')
     assert.equal(i.download, 'tess')
+  })
+  test('a person\'s own character that reuses the id "tess" with a different LoRA gets no Download (it would overwrite their LoRA)', async () => {
+    const own = { ...tess, lora: 'Mine\\my_tess.safetensors' }
+    const i = await item([own], ['MiniMax H3/Turbo/x.safetensors'], [shippedTess])
+    assert.equal(i.status, 'warn')
+    assert.equal(i.download, undefined)
   })
   test('missing and not shipped: no Download button (nothing to download from)', async () => {
     const i = await item([{ ...tess, id: 'mine' }], ['MiniMax H3/Turbo/x.safetensors'], [{ id: 'tess', lora: { url: 'x' } }])
