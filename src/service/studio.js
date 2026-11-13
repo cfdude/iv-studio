@@ -247,11 +247,20 @@ export class Studio {
     return modelFileMap(this.manifest, info, this.models)
   }
 
+  // The ready-made characters that ship with IV Studio (resources/characters/catalog.json): id and LoRA source.
+  shippedCharacters() {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(this.resourcesDir, 'characters', 'catalog.json'), 'utf8')).characters.map((c) => ({ id: c.id, lora: c.lora || null }))
+    } catch {
+      return []
+    }
+  }
+
   // An unreachable ComfyUI still reports remote, so the title bar keeps its cloud badge and GPU meter.
   async checkSetup() {
     let result
     try {
-      result = await checkSetup({ comfy: this.comfy, template: this.template, manifest: this.manifest, characters: this.characters(), chosen: this.models })
+      result = await checkSetup({ comfy: this.comfy, template: this.template, manifest: this.manifest, characters: this.characters(), chosen: this.models, catalog: this.shippedCharacters() })
       this.comfy.fileMap = null
     } catch (err) {
       return { ready: false, items: [{ id: 'comfyui', label: 'ComfyUI', status: 'missing', detail: err.message }], remote: this.comfy.remote, hosted: this.comfy.hosted }

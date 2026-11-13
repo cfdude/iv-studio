@@ -71,7 +71,13 @@ export function modelFileMap(manifest, info, chosen = {}) {
 
 export const fileBase = base
 
-export async function checkSetup({ comfy, template, manifest, characters, chosen = {} }) {
+// Two LoRA names are the same file when they differ only by separator ('\\' from Windows, '/' from a Mac or Linux
+// ComfyUI) or by case (macOS and Windows are case-insensitive).
+export const sameLora = (a, b) => String(a || '').replace(/\\/g, '/').toLowerCase() === String(b || '').replace(/\\/g, '/').toLowerCase()
+
+// catalog: the ready-made characters IV Studio ships ({ id, lora }); a saved character with one of those ids can be
+// downloaded even if its saved record doesn't say so (a record copied from another computer has no catalog flag).
+export async function checkSetup({ comfy, template, manifest, characters, chosen = {}, catalog = [] }) {
   const items = []
   let stats
   try {
@@ -159,8 +165,9 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
       items.push({ id: `character:${c.id}`, label: `Character: ${c.name}`, status: has ? 'ok' : 'warn', detail: has ? `RefMod ${c.refmod}` : `RefMod not found: ${c.refmod}`, kind: 'character' })
       continue
     }
-    const ok = loras.some((l) => l.replace(/\\/g, '/') === String(c.lora || '').replace(/\\/g, '/'))
-    items.push({ id: `character:${c.id}`, label: `Character: ${c.name}`, status: ok ? 'ok' : 'warn', detail: ok ? c.lora : `LoRA not found: ${c.lora}`, kind: 'character', download: !ok && c.catalog ? c.id : undefined })
+    const ok = !!c.lora && loras.some((l) => sameLora(l, c.lora))
+    const shipped = !!c.catalog || catalog.some((e) => e.id === c.id && e.lora)
+    items.push({ id: `character:${c.id}`, label: `Character: ${c.name}`, status: ok ? 'ok' : 'warn', detail: ok ? c.lora : `LoRA not found: ${c.lora}`, kind: 'character', download: !ok && shipped ? c.id : undefined })
   }
 
   const blocking = items.filter((i) => i.status === 'missing')
