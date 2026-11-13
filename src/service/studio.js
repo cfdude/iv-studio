@@ -70,6 +70,7 @@ const familyOf = (kind) => FAMILIES[kind] || (/^(picture|clipfx):/.test(String(k
 // texture. So SeedVR2 is the free finish's default, DLSS 5 the quick one, and H3 stays light.
 export const REFINE_STRENGTH = { light: 0.1, medium: 0.2 }
 // DLSS 5's look: its noise-reduction intensity (0-2) and style, as node inputs (or, short, for a job's record)
+export const DLSS_REFUSAL = 'DLSS 5 runs on Windows computers with an NVIDIA card only. Finish with the 2× upscale instead.'
 export const DLSS_STYLES = ['Default', 'Natural', 'Cinematic']
 export function dlssLook({ strength = null, style = null } = {}, record = false) {
   const out = {}
@@ -246,11 +247,20 @@ export class Studio {
     return modelFileMap(this.manifest, info, this.models)
   }
 
+  // The ready-made characters that ship with IV Studio (resources/characters/catalog.json): id and LoRA source.
+  shippedCharacters() {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(this.resourcesDir, 'characters', 'catalog.json'), 'utf8')).characters.map((c) => ({ id: c.id, lora: c.lora || null }))
+    } catch {
+      return []
+    }
+  }
+
   // An unreachable ComfyUI still reports remote, so the title bar keeps its cloud badge and GPU meter.
   async checkSetup() {
     let result
     try {
-      result = await checkSetup({ comfy: this.comfy, template: this.template, manifest: this.manifest, characters: this.characters(), chosen: this.models })
+      result = await checkSetup({ comfy: this.comfy, template: this.template, manifest: this.manifest, characters: this.characters(), chosen: this.models, catalog: this.shippedCharacters() })
       this.comfy.fileMap = null
     } catch (err) {
       return { ready: false, items: [{ id: 'comfyui', label: 'ComfyUI', status: 'missing', detail: err.message }], remote: this.comfy.remote, hosted: this.comfy.hosted }
@@ -466,6 +476,8 @@ export class Studio {
     const caps = await this.capabilities()
     // no enhancer named: this machine's own default (an Apple GPU, or any ComfyUI without DLSS 5, gets the upscale)
     if (!given.enhancer) given.enhancer = defaultEnhancer(caps, this.comfy.hosted)
+    // DLSS 5 only runs on a Windows computer with an NVIDIA card; refuse it up front, before any render
+    if (given.enhancer === 'dlss' && !caps.dlss) throw new Error(DLSS_REFUSAL)
     // the 'upscale' enhancer has its own limits (Real-ESRGAN, RIFE); the others are the ComfyUI's
     const finish = applyFinishSpeed(given, speed || source.plan.request?.speed || fallbackSpeed, finishCaps(caps, given.enhancer))
     const can = finish.enhancer === 'upscale' ? finishCaps(caps, 'upscale') : caps
@@ -593,7 +605,8 @@ export class Studio {
       // or 1440p on this PC
       if (this.comfy.hosted) throw new Error('The free finish runs on this computer\'s ComfyUI or your own cloud. Use Seedance 1080p, or keep the take as it is.')
       if (this.comfy.ownCloud && resolved.refiner === 'dlss') throw new Error('DLSS 5 runs on Windows computers only. In the cloud, finish with SeedVR2, Seedance 1080p, or keep the take as it is.')
-      // refused before a job is recorded: SeedVR2 can't run on an Apple GPU
+      // refused before a job is recorded: DLSS 5 can't run off Windows, SeedVR2 can't run on an Apple GPU
+      if (resolved.refiner === 'dlss' && !(await this.capabilities().catch(() => ({}))).dlss) throw new Error(DLSS_REFUSAL)
       if (resolved.refiner !== 'dlss') {
         const refusal = seedvr2Refusal((await this.capabilities().catch(() => ({}))).gpuKind)
         if (refusal) throw new Error(refusal)
@@ -634,7 +647,7 @@ export class Studio {
     if (!take.path || !fs.existsSync(take.path)) throw new Error('That take isn\'t on this computer yet.')
     const caps = await this.capabilities()
     if (then === 'seedvr2' && seedvr2Refusal(caps.gpuKind)) throw new Error(seedvr2Refusal(caps.gpuKind))
-    if (then === 'dlss' && !caps.dlss) throw new Error('The free finish needs DLSS 5 in ComfyUI (Settings → Setup).')
+    if (then === 'dlss' && !caps.dlss) throw new Error(`${DLSS_REFUSAL} For this finish use SeedVR2 after H3 instead.`)
     const info = await probe(FFPROBE, take.path)
     const frames = Math.round((info.duration || source.plan.resolved.seconds) * (info.fps || 24))
     const request = source.plan.request
@@ -762,6 +775,10 @@ export class Studio {
     if (engine !== 'dlss') {
       const refusal = seedvr2Refusal((await this.capabilities().catch(() => ({}))).gpuKind)
       if (refusal) throw new Error(refusal)
+    } else {
+      // DLSS 5 is refused first, so a caller on a Mac or in the cloud gets that answer and not "no finished video"
+      if (this.comfy.ownCloud) throw new Error('DLSS 5 runs on Windows computers only. In the cloud, enhance with SeedVR2.')
+      if (!(await this.capabilities().catch(() => ({}))).dlss) throw new Error(DLSS_REFUSAL)
     }
     const source = this.getJob(jobId)
     const out = source.outputs.find((o) => o.kind === 'final') || source.outputs.find((o) => o.kind === 'master')
@@ -769,7 +786,6 @@ export class Studio {
     // in the person's own cloud a render made there is read where it is (its output name); others are uploaded
     if (!here && !(this.comfy.ownCloud && out?.url)) throw new Error('That render has no finished video on this computer to enhance.')
     if (engine === 'dlss') {
-      if (this.comfy.ownCloud) throw new Error('DLSS 5 runs on Windows computers only. In the cloud, enhance with SeedVR2.')
       return this.enhanceDlss(source, out, scale, { strength, style })
     }
     const noise = Math.min(1, Math.max(0, Number(detail) || 0))
@@ -793,7 +809,7 @@ export class Studio {
   }
 
   async enhanceDlss(source, out, scale, { strength = null, style = null } = {}) {
-    if (!(await this.capabilities()).dlss) throw new Error('DLSS 5 isn\'t installed in ComfyUI.')
+    if (!(await this.capabilities()).dlss) throw new Error(DLSS_REFUSAL)
     const name = `${path.basename(out.path).replace(/\.[^.]+$/, '').replace(/-audio$/, '')}_dlss_${scale}x`
     const t = this.template['50'].inputs
     // DLSS 5 only reads videos inside ComfyUI's input or output folders, and ComfyUI doesn't say where those are. A

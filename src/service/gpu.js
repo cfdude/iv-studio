@@ -55,7 +55,7 @@ export function statsReadout(stats, unified) {
   const d = findGpu(stats?.devices)
   if (!d) return { gpu: null }
   const apple = d.type === 'mps' && unified?.total > 0
-  return { gpu: { name: gpuLabel(d), total: apple ? unified.total : d.vram_total, free: apple ? unified.free : d.vram_free, comfyHeld: d.torch_vram_total } }
+  return { gpu: { name: gpuLabel(d), total: apple ? unified.total : d.vram_total, free: apple ? unified.free : d.vram_free, comfyHeld: d.torch_vram_total, ...(apple ? { unified: true } : {}) } }
 }
 
 export const SEEDVR2_MPS_MESSAGE = 'SeedVR2 isn\'t available on an Apple GPU yet. Use the 2× upscale and frame rate options instead.'

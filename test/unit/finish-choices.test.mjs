@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { describe, test } from 'node:test'
-import { enhancerChoices, finishDefaults, fpsFor, pickEnhancer } from '../../src/renderer/src/finish.js'
+import { dlssOn, enhancerChoices, finishDefaults, fpsChoices, fpsFor, pickEnhancer } from '../../src/renderer/src/finish.js'
 
 const mac = { dlss: false, gpuKind: 'mps', esrgan: true, rife: true, fps: [0, 48, 72, 120], fpsBuiltIn: [0, 48, 72, 120] }
 const macBare = { dlss: false, gpuKind: 'mps', esrgan: false, rife: false, fps: [0], fpsBuiltIn: [0] }
@@ -19,6 +19,16 @@ describe('enhancerChoices', () => {
   test('before ComfyUI has been read, DLSS 5 stays on offer as it did', () => assert.deepEqual(enhancerChoices(null, false), ['dlss', 'upscale']))
 })
 
+describe('DLSS 5 on a Mac', () => {
+  test('is never on offer or the start, even if a stale read says the node pack is there', () => {
+    const stale = { ...mac, dlss: true }
+    assert.deepEqual(enhancerChoices(stale, false), ['upscale'])
+    assert.equal(dlssOn({ dlss: true, posix: true, gpuKind: 'cuda' }), false)
+    assert.equal(dlssOn(win), true)
+    assert.equal(finishDefaults({ enhancer: 'dlss' }, stale, false).enhancer, 'upscale')
+  })
+})
+
 describe('pickEnhancer', () => {
   test('keeps a wanted enhancer that is on offer, else the first on offer', () => {
     assert.equal(pickEnhancer('seedvr2', ['dlss', 'upscale', 'seedvr2']), 'seedvr2')
@@ -32,6 +42,18 @@ describe('fpsFor', () => {
     assert.deepEqual(fpsFor(win, 'dlss'), [0, 30, 50, 60, 120])
     assert.deepEqual(fpsFor({ ...win, fpsBuiltIn: [0, 48] }, 'upscale'), [0, 48])
   })
+})
+
+describe('fpsChoices', () => {
+  test('the upscale lists 48 (the Mac default), 72 and 120, with or without RIFE installed', () => {
+    assert.deepEqual(fpsChoices(mac, 'upscale', 48), [0, 48, 72, 120])
+    assert.deepEqual(fpsChoices(macBare, 'upscale', 0), [0, 48, 72, 120])
+  })
+  test('whatever rate the finish is set to is always in the row', () => {
+    assert.deepEqual(fpsChoices(win, 'dlss', 48), [0, 30, 48, 50, 60, 120])
+    assert.deepEqual(fpsChoices(win, 'dlss', 0), [0, 30, 50, 60, 120])
+  })
+  test('the saved Mac default (hardware.js: 48 on the upscale) is among the choices', () => assert.ok(fpsChoices(mac, 'upscale', MAC_PREFS.fps).includes(48)))
 })
 
 describe('finishDefaults', () => {

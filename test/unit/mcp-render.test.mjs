@@ -311,8 +311,9 @@ describe('MCP render planning, preview, job, ranking, finish and enhance tools',
     const source = await finished()
     const queued = fake.prompts.length
     // a previews job has takes, not a final
-    await fails('enhance_final', { jobId: source.id, engine: 'dlss' }, /That render has no finished video on this computer to enhance\./)
-    await fails('enhance_final', { jobId: 'nope', engine: 'dlss' }, /No job nope/)
+    // this computer has no DLSS 5, so that answer comes first, whatever the job holds (the no-video message is in seedvr2-gate.test.mjs)
+    await fails('enhance_final', { jobId: source.id, engine: 'dlss' }, /DLSS 5 runs on Windows computers with an NVIDIA card only/)
+    await fails('enhance_final', { jobId: 'nope', engine: 'dlss' }, /DLSS 5 runs on Windows/)
     await fails('enhance_final', { jobId: source.id, engine: 'dlss', resolution: 720 }, /resolution/i)
     await fails('enhance_final', { jobId: source.id, engine: 'dlss', scale: 3 }, /scale/i)
     assert.equal(fake.prompts.length, queued)
