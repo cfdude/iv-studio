@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import StartComfy, { RestartComfy } from './StartComfy'
 import { UpdateSettings } from './Update'
 import { ART } from './Hero'
@@ -9,7 +9,7 @@ import { ask } from './Confirm'
 import { setUnblurred } from './Loras'
 import { SetCard, SetField, SetSwitch, Pill, SetPath, SetCode } from './SettingsKit'
 import { startTour } from '../tours'
-import { summaryOf } from '../../../service/hwsummary'
+import { summaryForDisplay, summaryOf, summaryStale } from '../../../service/hwsummary'
 import { comfyLauncherHelp, keychainRefusedText } from '../../../shared/platform'
 import { secretRemedy } from '../../../service/secrets'
 import { usePlatform } from '../platform'
@@ -61,7 +61,7 @@ const kindOf = (n) => (/fl2va/i.test(n) ? 'fl2va' : /ref2va|omniref/i.test(n) ? 
 
 // The welcome wizard's scan, and a way back into it.
 function PcCard({ n, settings, setSettings, notify }) {
-  const hw = settings.hardware
+  const hw = summaryForDisplay(settings.hardware)
   const speed = savedSpeed(settings)
   async function pickSpeed(id) {
     try {
@@ -72,17 +72,26 @@ function PcCard({ n, settings, setSettings, notify }) {
   }
   const [scanning, setScanning] = useState(false)
   // looks again in place and updates the card (and the shot defaults stay as they are); the wizard is its own link
-  async function check() {
+  async function check(quiet = false) {
     setScanning(true)
     try {
       setSettings(await window.ivstudio.settings.set({ hardware: summaryOf(await window.ivstudio.hardware.scan()) }))
-      notify('Checked your computer again.', 'info')
+      if (quiet !== true) notify('Checked your computer again.', 'info')
     } catch (err) {
       notify(err.message)
     } finally {
       setScanning(false)
     }
   }
+  // a card an older build wrote (no stamp, the raw graphics name, a Mac filed as cloud) looks again by itself, once
+  const autoChecked = useRef(false)
+  const stale = summaryStale(settings.hardware)
+  useEffect(() => {
+    if (stale && !autoChecked.current) {
+      autoChecked.current = true
+      check(true)
+    }
+  }, [stale])
   const welcome = () => window.dispatchEvent(new CustomEvent('iv:welcome'))
   return (
     <SetCard
@@ -92,7 +101,7 @@ function PcCard({ n, settings, setSettings, notify }) {
       sub="What this computer can do, and the defaults that suit it."
       aside={
         <>
-          <button className="btn btn-small" disabled={scanning} onClick={check}>
+          <button className="btn btn-small" disabled={scanning} onClick={() => check()}>
             {scanning ? 'Checking…' : hw ? 'Check again' : 'Check my computer'}
           </button>{' '}
           <button className="link-btn small" onClick={welcome}>
